@@ -52,14 +52,13 @@ async function loadTournamentData() {
 
 // Загрузка игр турнира
 async function loadGames() {
-    try {
-        // Пока у нас нет отдельного endpoint для игр турнира
-        // Возвращаем пустой массив, позже доработаем backend
-        return [];
-    } catch (error) {
-        console.error(error);
-        return [];
-    }
+  try {
+    const games = await API.getTournamentGames(tournamentId);
+    return games;
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
 }
 
 // Отрисовка заголовка
@@ -97,47 +96,65 @@ function renderPlayers() {
 
 // Отрисовка списка игр
 function renderGames() {
-    // Создаём массив игр по количеству из tournament.total_games
-    const gameSlots = Array.from({ length: tournament.total_games }, (_, i) => {
-        const gameNumber = i + 1;
-        const existingGame = games.find(g => g.game_number === gameNumber);
-        return existingGame || { game_number: gameNumber, created: false };
+  // Создаём массив игр по количеству из tournament.total_games
+  const gameSlots = Array.from({ length: tournament.total_games }, (_, i) => {
+    const gameNumber = i + 1;
+    const existingGame = games.find(g => g.game_number === gameNumber);
+    return existingGame || { game_number: gameNumber, created: false };
+  });
+  
+  gamesList.innerHTML = gameSlots.map(game => {
+    if (!game.created) {
+      return `
+        <div class="tournament-card">
+          <h3>🎮 ИГРА ${game.game_number}/${tournament.total_games}</h3>
+          <div class="tournament-meta">
+            ⚠️ Игра не создана
+          </div>
+          <button class="btn btn-primary create-game" data-game-number="${game.game_number}">
+            + Создать игру
+          </button>
+        </div>
+      `;
+    }
+    
+    // Игра создана
+    const hasSeating = game.seating_count && game.seating_count > 0;
+    const statusText = game.status === 'in_progress' 
+      ? '<span style="color: var(--success);">В процессе</span>'
+      : game.status === 'finished'
+      ? '<span style="color: var(--text-secondary);">Завершена</span>'
+      : 'Не начата';
+    
+    return `
+      <div class="tournament-card">
+        <h3>🎮 ИГРА ${game.game_number}/${tournament.total_games}</h3>
+        <div class="tournament-meta">
+          ${game.series_name ? `📺 ${game.series_name}<br>` : ''}
+          Стол ${game.table_number} | ${statusText}<br>
+          ${hasSeating ? `✅ Рассадка создана (${game.seating_count}/10)` : '⚠️ Рассадка не создана'}
+        </div>
+        <button class="btn btn-primary open-game" data-id="${game.id}">
+          ⚙️ ${hasSeating ? 'Управлять игрой' : 'Создать рассадку'}
+        </button>
+      </div>
+    `;
+  }).join('');
+  
+  // Обработчики
+  document.querySelectorAll('.create-game').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('gameNumber').value = btn.dataset.gameNumber;
+      createGameModal.classList.add('active');
     });
-
-    gamesList.innerHTML = gameSlots.map(game => {
-        if (!game.created) {
-            return `
-                <div class="tournament-card">
-                    <h3>🎮 ИГРА ${game.game_number}/${tournament.total_games}</h3>
-                    <div class="tournament-meta">
-                        ⚠️ Игра не создана
-                    </div>
-                    <button class="btn btn-primary create-game" data-game-number="${game.game_number}">
-                        + Создать игру
-                    </button>
-                </div>
-            `;
-        }
-
-        return `
-            <div class="tournament-card">
-                <h3>🎮 ИГРА ${game.game_number}/${tournament.total_games}</h3>
-                <div class="tournament-meta">
-                    ${game.series_name ? `📺 ${game.series_name}<br>` : ''}
-                    Стол ${game.table_number} | 
-                    ${game.status === 'in_progress' 
-                        ? '<span style="color: var(--success);">В процессе</span>'
-                        : game.status === 'finished'
-                        ? '<span style="color: var(--text-secondary);">Завершена</span>'
-                        : 'Не начата'
-                    }
-                </div>
-                <button class="btn btn-primary open-game" data-id="${game.id}">
-                    ⚙️ Управлять игрой
-                </button>
-            </div>
-        `;
-    }).join('');
+  });
+  
+  document.querySelectorAll('.open-game').forEach(btn => {
+    btn.addEventListener('click', () => {
+      window.location.href = `game.html?id=${btn.dataset.id}`;
+    });
+  });
+}
 
     // Обработчики
     document.querySelectorAll('.create-game').forEach(btn => {

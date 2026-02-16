@@ -4,11 +4,14 @@ const Game = require('../models/Game');
 const pool = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 
-// GET /api/games/:id - Получить полные данные игры
+// GET /api/games/:id - Получить игру по ID
 router.get('/:id', async (req, res) => {
   try {
-    const gameData = await Game.getFullData(req.params.id);
-    res.json(gameData);
+    const game = await Game.getById(req.params.id);
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+    res.json(game);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -152,6 +155,27 @@ router.post('/:id/rounds', async (req, res) => {
     );
     
     res.json({ message: 'Round added' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/tournaments/:tournamentId/games - Получить игры турнира
+router.get('/tournaments/:tournamentId/games', async (req, res) => {
+  try {
+    const games = await Game.getByTournamentId(req.params.tournamentId);
+    res.json(games);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/games/:id/rounds/:roundNumber - Обновить круг
+router.put('/:id/rounds/:roundNumber', async (req, res) => {
+  try {
+    const { gameId, roundNumber } = { gameId: req.params.id, roundNumber: parseInt(req.params.roundNumber) };
+    await Game.updateRound(gameId, roundNumber, req.body);
+    res.json({ message: 'Round updated successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

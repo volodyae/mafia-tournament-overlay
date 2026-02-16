@@ -5,6 +5,8 @@ let tournamentPlayers = [];
 let socket = null;
 let currentNominees = [];
 let votedOutPlayers = [];
+let selectedFirstKilled = null;
+let selectedSuspects = [];
 
 // DOM элементы
 const gameTitle = document.getElementById('gameTitle');
@@ -15,7 +17,6 @@ const seatingGrid = document.getElementById('seatingGrid');
 const saveSeatingBtn = document.getElementById('saveSeatingBtn');
 const rolesSection = document.getElementById('rolesSection');
 const rolesGrid = document.getElementById('rolesGrid');
-const randomRolesBtn = document.getElementById('randomRolesBtn');
 const applyRolesBtn = document.getElementById('applyRolesBtn');
 const bestMoveSection = document.getElementById('bestMoveSection');
 const nomineesSection = document.getElementById('nomineesSection');
@@ -105,23 +106,47 @@ function renderOverlayLink() {
 // === РАССАДКА ===
 
 function renderEmptySeating() {
-    seatingGrid.innerHTML = Array.from({ length: 10 }, (_, i) => {
-        const position = i + 1;
-        return `
-            <div class="seating-item">
-                <div class="position-number">${position}</div>
-                <select class="form-select seating-player-select" data-position="${position}">
-                    <option value="">Выберите игрока</option>
-                    ${tournamentPlayers.map(p => 
-                        `<option value="${p.id}">${p.nickname}</option>`
-                    ).join('')}
-                </select>
-            </div>
-        `;
-    }).join('');
-    
-    saveSeatingBtn.style.display = 'block';
+  seatingGrid.innerHTML = Array.from({ length: 10 }, (_, i) => {
+    const position = i + 1;
+    return `
+      <div class="seating-item">
+        <div class="position-number">${position}</div>
+        <select class="form-select seating-player-select" data-position="${position}" onchange="updateAvailablePlayers()">
+          <option value="">Выберите игрока</option>
+          ${tournamentPlayers.map(p => `<option value="${p.id}">${p.nickname}</option>`).join('')}
+        </select>
+      </div>
+    `;
+  }).join('');
+  
+  saveSeatingBtn.style.display = 'block';
 }
+
+// ЗАДАЧА 7: Обновить доступных игроков
+window.updateAvailablePlayers = () => {
+  const selects = document.querySelectorAll('.seating-player-select');
+  const selectedPlayerIds = Array.from(selects)
+    .map(s => s.value)
+    .filter(v => v !== '');
+  
+  selects.forEach(select => {
+    const currentValue = select.value;
+    const options = Array.from(select.options);
+    
+    options.forEach(option => {
+      if (option.value === '') return; // Пропустить "Выберите игрока"
+      
+      // Скрыть уже выбранных игроков (кроме текущего значения)
+      if (selectedPlayerIds.includes(option.value) && option.value !== currentValue) {
+        option.disabled = true;
+        option.style.display = 'none';
+      } else {
+        option.disabled = false;
+        option.style.display = '';
+      }
+    });
+  });
+};
 
 function renderSeatingWithPlayers() {
     seatingGrid.innerHTML = gameData.seating.map(seat => `
@@ -212,31 +237,6 @@ function renderRoles() {
     });
 }
 
-randomRolesBtn.addEventListener('click', () => {
-    const positions = Array.from({ length: 10 }, (_, i) => i + 1);
-    shuffle(positions);
-
-    const roles = [
-        { role: 'don', team: 'black' },
-        { role: 'sheriff', team: 'red' },
-        { role: 'mafia', team: 'black' },
-        { role: 'mafia', team: 'black' },
-        ...Array(6).fill({ role: 'civilian', team: 'red' })
-    ];
-
-    positions.forEach((pos, index) => {
-        const roleData = roles[index];
-        const btn = document.querySelector(`.role-btn[data-position="${pos}"][data-role="${roleData.role}"]`);
-        
-        document.querySelectorAll(`.role-btn[data-position="${pos}"]`).forEach(b => {
-            b.classList.remove('active');
-        });
-        
-        if (btn) btn.classList.add('active');
-    });
-
-    UI.showToast('Роли розданы случайно');
-});
 
 applyRolesBtn.addEventListener('click', async () => {
     const roles = [];
@@ -289,58 +289,147 @@ applyRolesBtn.addEventListener('click', async () => {
 
 
 // === ЛУЧШИЙ ХОД ===
-
 function renderBestMove() {
-    const aliveSeats = gameData.seating.filter(s => !s.is_eliminated);
-    
-    const options = aliveSeats.map(s => 
-        `<option value="${s.player_id}">${s.position}. ${s.nickname}</option>`
-    ).join('');
-
-    document.getElementById('firstKilledSelect').innerHTML = 
-        '<option value="">Выберите игрока</option>' + options;
-    
-    document.getElementById('suspect1').innerHTML = 
-        '<option value="">Подозреваемый 1</option>' + options;
-    
-    document.getElementById('suspect2').innerHTML = 
-        '<option value="">Подозреваемый 2</option>' + options;
-    
-    document.getElementById('suspect3').innerHTML = 
-        '<option value="">Подозреваемый 3</option>' + options;
-
-    if (gameData.best_move) {
-        document.getElementById('firstKilledSelect').value = gameData.best_move.first_killed_player_id;
-        document.getElementById('suspect1').value = gameData.best_move.suspect_1;
-        document.getElementById('suspect2').value = gameData.best_move.suspect_2;
-        document.getElementById('suspect3').value = gameData.best_move.suspect_3;
-    }
+  const aliveSeats = gameData.seating.filter(s => !s.is_eliminated);
+  
+  // Кнопки для первого убитого
+  const bestMoveButtons = document.getElementById('bestMoveButtons');
+  bestMoveButtons.innerHTML = aliveSeats.map(s => `
+    <button class="btn ${selectedFirstKilled === s.player_id ? 'btn-primary' : 'btn-secondary'}" 
+            onclick="selectFirstKilled('${s.player_id}', ${s.position})"
+            style="min-width: 50px;">
+      ${s.position}
+    </button>
+  `).join('');
+  
+  // Кнопки для подозреваемых
+  const suspectsButtons = document.getElementById('suspectsButtons');
+  suspectsButtons.innerHTML = aliveSeats.map(s => `
+    <button class="btn ${selectedSuspects.includes(s.player_id) ? 'btn-primary' : 'btn-secondary'}" 
+            onclick="toggleSuspect('${s.player_id}', ${s.position})"
+            style="min-width: 50px;">
+      ${s.position}
+    </button>
+  `).join('');
+  
+  // Загрузить сохраненные данные
+  if (gameData.best_move) {
+    selectedFirstKilled = gameData.best_move.first_killed_player_id;
+    selectedSuspects = [
+      gameData.best_move.suspect_1,
+      gameData.best_move.suspect_2,
+      gameData.best_move.suspect_3
+    ].filter(Boolean);
+    updateBestMoveUI();
+  }
 }
 
+// Выбрать первого убитого
+window.selectFirstKilled = (playerId, position) => {
+  selectedFirstKilled = playerId;
+  renderBestMove();
+};
+
+// Переключить подозреваемого
+window.toggleSuspect = (playerId, position) => {
+  const index = selectedSuspects.indexOf(playerId);
+  
+  if (index > -1) {
+    selectedSuspects.splice(index, 1);
+  } else {
+    if (selectedSuspects.length >= 3) {
+      UI.showToast('Максимум 3 подозреваемых', 'error');
+      return;
+    }
+    selectedSuspects.push(playerId);
+  }
+  
+  // Сортировать по позициям
+  selectedSuspects.sort((a, b) => {
+    const posA = gameData.seating.find(s => s.player_id === a).position;
+    const posB = gameData.seating.find(s => s.player_id === b).position;
+    return posA - posB;
+  });
+  
+  updateBestMoveUI();
+};
+
+// Обновить отображение
+function updateBestMoveUI() {
+  renderBestMove();
+  
+  const positions = selectedSuspects.map(id => {
+    const seat = gameData.seating.find(s => s.player_id === id);
+    return seat ? seat.position : '?';
+  });
+  document.getElementById('suspectsDisplay').textContent = 
+    positions.length > 0 ? positions.join(', ') : 'нет';
+}
+
+// Сохранить ЛХ
 document.getElementById('applyBestMoveBtn').addEventListener('click', async () => {
-    const data = {
-        first_killed_player_id: document.getElementById('firstKilledSelect').value,
-        suspect_1: document.getElementById('suspect1').value,
-        suspect_2: document.getElementById('suspect2').value,
-        suspect_3: document.getElementById('suspect3').value
-    };
-
-    if (!data.first_killed_player_id || !data.suspect_1 || !data.suspect_2 || !data.suspect_3) {
-        UI.showToast('Заполните все поля ЛХ', 'error');
-        return;
-    }
-
-    try {
-        await API.setBestMove(gameId, data);
-        UI.showToast('ЛХ установлен');
-        
-        socket.emit('best_move_set', { gameId, data });
-        
-        await loadGameData();
-    } catch (error) {
-        UI.showToast('Ошибка установки ЛХ', 'error');
-    }
+  if (!selectedFirstKilled) {
+    UI.showToast('Выберите первого убитого', 'error');
+    return;
+  }
+  
+  if (selectedSuspects.length !== 3) {
+    UI.showToast('Выберите ровно 3 подозреваемых', 'error');
+    return;
+  }
+  
+  const data = {
+    first_killed_player_id: selectedFirstKilled,
+    suspect_1: selectedSuspects[0],
+    suspect_2: selectedSuspects[1],
+    suspect_3: selectedSuspects[2]
+  };
+  
+  try {
+    await API.setBestMove(gameId, data);
+    UI.showToast('ЛХ сохранен');
+    socket.emit('best_move_set', { gameId, data });
+    
+    // ЗАДАЧА 3: Автоматически записать первого убитого в круг 1
+    await autoSetFirstKilledInRound1();
+    
+    await loadGameData();
+  } catch (error) {
+    UI.showToast('Ошибка сохранения ЛХ', 'error');
+  }
 });
+
+// === ЗАДАЧА 3: Автозапись первого убитого ===
+async function autoSetFirstKilledInRound1() {
+  if (!selectedFirstKilled) return;
+  
+  // Проверить, есть ли уже круг 1
+  const round1 = gameData.rounds?.find(r => r.round_number === 1);
+  if (round1 && round1.mafia_kill_player_id) {
+    // Круг 1 уже есть и убийство записано
+    return;
+  }
+  
+  // Если круга 1 нет, создать его с первым убитым
+  if (!round1) {
+    const roundData = {
+      round_number: 1,
+      mafia_kill_player_id: selectedFirstKilled,
+      mafia_miss: false,
+      don_check_player_id: null,
+      sheriff_check_player_id: null,
+      voted_out_players: [],
+      nobody_voted_out: false
+    };
+    
+    try {
+      await API.addRound(gameId, roundData);
+      UI.showToast('Первый убитый автоматически записан в круг 1');
+    } catch (error) {
+      console.error('Ошибка автозаписи первого убитого:', error);
+    }
+  }
+}
 
 // === ВЫСТАВЛЕНИЕ НА ГОЛОСОВАНИЕ ===
 
@@ -440,7 +529,7 @@ document.getElementById('addNomineeSelect').addEventListener('change', async (e)
 //});
 
 document.getElementById('clearNomineesBtn').addEventListener('click', async () => {
-    if (!UI.confirm('Очистить всех кандидатов?')) return;
+  // Убрали подтверждение для быстрой очистки
     
     currentNominees = [];
     
@@ -459,36 +548,59 @@ document.getElementById('clearNomineesBtn').addEventListener('click', async () =
 // === КРУГИ ===
 
 function renderRounds() {
-    if (!gameData.rounds || gameData.rounds.length === 0) {
-        roundsList.innerHTML = '<p style="color: var(--text-secondary);">Нет кругов. Добавьте первый круг.</p>';
-        return;
-    }
-
-    roundsList.innerHTML = gameData.rounds.map(round => {
-        const mafiaKill = round.mafia_miss ? '❌ Промах' : 
-            round.mafia_kill_player_id ? getPlayerName(round.mafia_kill_player_id) : '-';
-        
-        const donCheck = round.don_check_player_id ? getPlayerName(round.don_check_player_id) : '❌';
-        const sheriffCheck = round.sheriff_check_player_id ? getPlayerName(round.sheriff_check_player_id) : '❌';
-        
-        const votedOut = round.nobody_voted_out ? '❌ Никто' :
-            round.voted_out_players ? JSON.parse(round.voted_out_players).map(id => getPlayerName(id)).join(', ') : '-';
-
-        return `
-            <div class="round-card">
-                <div class="round-header">
-                    <h4>🌙 Круг ${round.round_number}</h4>
-                </div>
-                <div style="font-size: 14px; line-height: 1.8;">
-                    🔫 Убийства: <strong>${mafiaKill}</strong><br>
-                    🎩 Дон: <strong>${donCheck}</strong><br>
-                    ⭐ Шериф: <strong>${sheriffCheck}</strong><br>
-                    👍 Голосование: <strong>${votedOut}</strong>
-                </div>
-            </div>
-        `;
-    }).join('');
+  if (!gameData.rounds || gameData.rounds.length === 0) {
+    roundsList.innerHTML = '<div class="empty-state"><p>Нет кругов. Добавьте первый круг.</p></div>';
+    return;
+  }
+  
+  roundsList.innerHTML = gameData.rounds.map(round => {
+    const mafiaKill = round.mafia_miss ? '❌ Промах' : round.mafia_kill_player_id ? getPlayerName(round.mafia_kill_player_id) : '-';
+    const donCheck = round.don_check_player_id ? getPlayerName(round.don_check_player_id) : '❌';
+    const sheriffCheck = round.sheriff_check_player_id ? getPlayerName(round.sheriff_check_player_id) : '❌';
+    const votedOut = round.nobody_voted_out ? '❌ Никто' : round.voted_out_players ? JSON.parse(round.voted_out_players).map(id => getPlayerName(id)).join(', ') : '-';
+    
+    return `
+      <div class="card" style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h4>🌙 Круг ${round.round_number}</h4>
+          <button class="btn btn-secondary" onclick="editRound(${round.round_number})" style="padding: 6px 12px; font-size: 14px;">
+            ✏️ Редактировать
+          </button>
+        </div>
+        <div style="margin-top: 12px;">
+          <p><strong>🔫 Убийство мафии:</strong> ${mafiaKill}</p>
+          <p><strong>🎩 Проверка дона:</strong> ${donCheck}</p>
+          <p><strong>⭐ Проверка шерифа:</strong> ${sheriffCheck}</p>
+          <p><strong>👍 Голосование:</strong> ${votedOut}</p>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
+
+// ЗАДАЧА 5: Редактировать круг
+window.editRound = async (roundNumber) => {
+  const round = gameData.rounds.find(r => r.round_number === roundNumber);
+  if (!round) return;
+  
+  votedOutPlayers = round.voted_out_players ? JSON.parse(round.voted_out_players) : [];
+  
+  document.getElementById('roundModalTitle').textContent = `Редактировать круг ${roundNumber}`;
+  document.getElementById('roundNumber').value = roundNumber;
+  
+  populateRoundSelects();
+  
+  // Заполнить текущие значения
+  document.getElementById('mafiaKill').value = round.mafia_miss ? 'miss' : (round.mafia_kill_player_id || '');
+  document.getElementById('donCheck').value = round.don_check_player_id || 'none';
+  document.getElementById('sheriffCheck').value = round.sheriff_check_player_id || 'none';
+  
+  renderVotedOutList();
+  roundModal.classList.add('active');
+  
+  // Изменить форму на режим редактирования
+  roundForm.dataset.mode = 'edit';
+};
 
 addRoundBtn.addEventListener('click', () => {
     votedOutPlayers = [];
@@ -570,34 +682,42 @@ document.getElementById('addVotedOut').addEventListener('change', (e) => {
 });
 
 roundForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const mafiaKillValue = document.getElementById('mafiaKill').value;
-    const donCheckValue = document.getElementById('donCheck').value;
-    const sheriffCheckValue = document.getElementById('sheriffCheck').value;
-
-    const roundData = {
-        round_number: parseInt(document.getElementById('roundNumber').value),
-        mafia_kill_player_id: mafiaKillValue === 'miss' ? null : (mafiaKillValue || null),
-        mafia_miss: mafiaKillValue === 'miss',
-        don_check_player_id: donCheckValue === 'none' ? null : (donCheckValue || null),
-        sheriff_check_player_id: sheriffCheckValue === 'none' ? null : (sheriffCheckValue || null),
-        voted_out_players: votedOutPlayers.length > 0 ? votedOutPlayers : [],
-        nobody_voted_out: votedOutPlayers.length === 0
-    };
-
-    try {
-        await API.addRound(gameId, roundData);
-        UI.showToast('Круг добавлен');
-        
-        socket.emit('round_added', { gameId, roundData });
-        
-        roundModal.classList.remove('active');
-        await loadGameData();
-    } catch (error) {
-        UI.showToast('Ошибка добавления круга', 'error');
-        console.error(error);
+  e.preventDefault();
+  
+  const mafiaKillValue = document.getElementById('mafiaKill').value;
+  const donCheckValue = document.getElementById('donCheck').value;
+  const sheriffCheckValue = document.getElementById('sheriffCheck').value;
+  const roundNumber = parseInt(document.getElementById('roundNumber').value);
+  
+  const roundData = {
+    round_number: roundNumber,
+    mafia_kill_player_id: mafiaKillValue === 'miss' ? null : (mafiaKillValue || null),
+    mafia_miss: mafiaKillValue === 'miss',
+    don_check_player_id: donCheckValue === 'none' ? null : (donCheckValue || null),
+    sheriff_check_player_id: sheriffCheckValue === 'none' ? null : (sheriffCheckValue || null),
+    voted_out_players: votedOutPlayers.length > 0 ? votedOutPlayers : [],
+    nobody_voted_out: votedOutPlayers.length === 0
+  };
+  
+  try {
+    const isEdit = roundForm.dataset.mode === 'edit';
+    
+    if (isEdit) {
+      await API.updateRound(gameId, roundNumber, roundData);
+      UI.showToast('Круг обновлен');
+    } else {
+      await API.addRound(gameId, roundData);
+      UI.showToast('Круг добавлен');
     }
+    
+    socket.emit('round_updated', { gameId, roundData });
+    roundModal.classList.remove('active');
+    roundForm.dataset.mode = '';
+    await loadGameData();
+  } catch (error) {
+    UI.showToast(isEdit ? 'Ошибка обновления круга' : 'Ошибка добавления круга', 'error');
+    console.error(error);
+  }
 });
 
 // === ОБРАБОТЧИКИ ===

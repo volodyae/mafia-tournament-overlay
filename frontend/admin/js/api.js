@@ -142,6 +142,11 @@ static async removePlayerFromTournament(tournamentId, playerId) {
             body: JSON.stringify(roundData)
         });
     }
+
+static async getTournamentGames(tournamentId) {
+  return this.request(`/games/tournaments/${tournamentId}/games`);
+}
+
 }
 
 // Утилиты UI
@@ -181,6 +186,13 @@ class UI {
     static confirm(message) {
         return window.confirm(message);
     }
+
+static async updateRound(gameId, roundNumber, roundData) {
+  return this.request(`/games/${gameId}/rounds/${roundNumber}`, {
+    method: 'PUT',
+    body: JSON.stringify(roundData)
+  });
+}
 
     // Форматирование даты
     static formatDate(dateString) {
