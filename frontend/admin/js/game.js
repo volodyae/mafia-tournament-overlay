@@ -292,29 +292,31 @@ applyRolesBtn.addEventListener('click', async () => {
 function renderBestMove() {
   const aliveSeats = gameData.seating.filter(s => !s.is_eliminated);
   
-  // Кнопки для первого убитого
-  const bestMoveButtons = document.getElementById('bestMoveButtons');
-  bestMoveButtons.innerHTML = aliveSeats.map(s => `
-    <button class="btn ${selectedFirstKilled === s.player_id ? 'btn-primary' : 'btn-secondary'}" 
-            onclick="selectFirstKilled('${s.player_id}', ${s.position})"
-            style="min-width: 50px;">
-      ${s.position}
-    </button>
-  `).join('');
+  // ✅ УБРАЛИ: Кнопки для первого убитого - теперь берется автоматически из круга 1
+  
+  // Показать информацию о первом убитом из круга 1
+  const bestMoveInfo = document.getElementById('bestMoveInfo');
+  if (gameData.best_move && gameData.best_move.first_killed_player_id) {
+    const firstKilledSeat = gameData.seating.find(s => s.player_id === gameData.best_move.first_killed_player_id);
+    if (firstKilledSeat) {
+      bestMoveInfo.innerHTML = `<p><strong>Первый убитый (из круга 1):</strong> ${firstKilledSeat.position}. ${firstKilledSeat.nickname}</p>`;
+    }
+  } else {
+    bestMoveInfo.innerHTML = `<p style="color: var(--text-secondary);">Первый убитый будет установлен автоматически после добавления круга 1</p>`;
+  }
   
   // Кнопки для подозреваемых
   const suspectsButtons = document.getElementById('suspectsButtons');
   suspectsButtons.innerHTML = aliveSeats.map(s => `
     <button class="btn ${selectedSuspects.includes(s.player_id) ? 'btn-primary' : 'btn-secondary'}" 
-            onclick="toggleSuspect('${s.player_id}', ${s.position})"
-            style="min-width: 50px;">
-      ${s.position}
+        onclick="toggleSuspect('${s.player_id}', ${s.position})"
+        style="min-width: 50px;">
+        ${s.position}
     </button>
   `).join('');
   
   // Загрузить сохраненные данные
   if (gameData.best_move) {
-    selectedFirstKilled = gameData.best_move.first_killed_player_id;
     selectedSuspects = [
       gameData.best_move.suspect_1,
       gameData.best_move.suspect_2,
@@ -324,11 +326,6 @@ function renderBestMove() {
   }
 }
 
-// Выбрать первого убитого
-window.selectFirstKilled = (playerId, position) => {
-  selectedFirstKilled = playerId;
-  renderBestMove();
-};
 
 // Переключить подозреваемого
 window.toggleSuspect = (playerId, position) => {
@@ -368,18 +365,23 @@ function updateBestMoveUI() {
 
 // Сохранить ЛХ
 document.getElementById('applyBestMoveBtn').addEventListener('click', async () => {
-  if (!selectedFirstKilled) {
-    UI.showToast('Выберите первого убитого', 'error');
-    return;
-  }
+  // ✅ УБРАЛИ проверку первого убитого - он берется автоматически из круга 1
   
   if (selectedSuspects.length !== 3) {
     UI.showToast('Выберите ровно 3 подозреваемых', 'error');
     return;
   }
   
+  // Получить first_killed из best_move или показать ошибку
+  let firstKilledPlayerId = gameData.best_move?.first_killed_player_id;
+  
+  if (!firstKilledPlayerId) {
+    UI.showToast('Сначала добавьте круг 1 с первым убитым', 'error');
+    return;
+  }
+  
   const data = {
-    first_killed_player_id: selectedFirstKilled,
+    first_killed_player_id: firstKilledPlayerId,
     suspect_1: selectedSuspects[0],
     suspect_2: selectedSuspects[1],
     suspect_3: selectedSuspects[2]
@@ -390,19 +392,12 @@ document.getElementById('applyBestMoveBtn').addEventListener('click', async () =
     UI.showToast('ЛХ сохранен');
     socket.emit('best_move_set', { gameId, data });
     
-    // ЗАДАЧА 3: Автоматически записать первого убитого в круг 1
-    await autoSetFirstKilledInRound1();
-    
     await loadGameData();
   } catch (error) {
     UI.showToast('Ошибка сохранения ЛХ', 'error');
   }
 });
 
-// === ЗАДАЧА 3: Автозапись первого убитого ===
-async function autoSetFirstKilledInRound1() {
-  if (!selectedFirstKilled) return;
-  
   // Проверить, есть ли уже круг 1
   const round1 = gameData.rounds?.find(r => r.round_number === 1);
   if (round1 && round1.mafia_kill_player_id) {
