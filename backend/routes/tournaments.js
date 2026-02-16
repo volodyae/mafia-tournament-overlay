@@ -65,4 +65,32 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// POST /api/tournaments/:id/players - Добавить игроков в турнир
+router.post('/:id/players', async (req, res) => {
+  try {
+    const { player_ids } = req.body;
+    
+    if (!player_ids || !Array.isArray(player_ids) || player_ids.length === 0) {
+      return res.status(400).json({ error: 'player_ids array is required' });
+    }
+    
+    await Tournament.addPlayers(req.params.id, player_ids);
+    const players = await Tournament.getPlayers(req.params.id);
+    res.json({ message: 'Players added successfully', players });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/tournaments/:id/players/:playerId - Удалить игрока из турнира
+router.delete('/:id/players/:playerId', async (req, res) => {
+  try {
+    await Tournament.removePlayer(req.params.id, req.params.playerId);
+    const players = await Tournament.getPlayers(req.params.id);
+    res.json({ message: 'Player removed successfully', players });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

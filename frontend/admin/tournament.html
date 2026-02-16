@@ -84,5 +84,32 @@
 
     <script src="js/api.js"></script>
     <script src="js/tournament.js"></script>
+<!-- Модальное окно управления игроками -->
+<div id="managePlayersModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>👥 Управление игроками турнира</h3>
+      <button class="close-btn" id="closePlayersModal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- Добавление игроков -->
+      <div style="margin-bottom: 24px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Добавить игрока:</label>
+        <select id="addPlayerSelect" class="form-input" style="width: 100%;">
+          <option value="">Выберите игрока</option>
+        </select>
+      </div>
+      
+      <!-- Список игроков турнира -->
+      <div>
+        <h4 style="margin-bottom: 12px;">Участники турнира (<span id="modalPlayersCount">0</span>)</h4>
+        <div id="modalPlayersList" class="players-list">
+          <!-- Список игроков -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

@@ -83,6 +83,18 @@ class API {
             method: 'DELETE'
         });
     }
+static async addPlayersToTournament(tournamentId, playerIds) {
+  return this.request(`/tournaments/${tournamentId}/players`, {
+    method: 'POST',
+    body: JSON.stringify({ player_ids: playerIds })
+  });
+}
+
+static async removePlayerFromTournament(tournamentId, playerId) {
+  return this.request(`/tournaments/${tournamentId}/players/${playerId}`, {
+    method: 'DELETE'
+  });
+}
 
     // === ИГРЫ ===
     static async getGame(id) {

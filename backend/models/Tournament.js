@@ -57,6 +57,13 @@ class Tournament {
     );
     return result.rows[0];
   }
-}
 
+// Удалить игрока из турнира
+static async removePlayer(tournamentId, playerId) {
+  await pool.query(
+    'DELETE FROM tournament_players WHERE tournament_id = $1 AND player_id = $2',
+    [tournamentId, playerId]
+  );
+}
+}
 module.exports = Tournament;
