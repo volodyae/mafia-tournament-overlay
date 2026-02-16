@@ -238,7 +238,29 @@
                 </div>
             </div>
 
-            bestMoveSection
+                    <!-- Лучший ход -->
+        <div class="game-section" id="bestMoveSection" style="display: none;">
+            <h3>⭐ Лучший ход</h3>
+            
+            <div class="form-group">
+                <label>Первый убитый (игрок ЛХ):</label>
+                <div id="bestMoveButtons" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+                    <!-- Заполняется через JS -->
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Выбрать 3 подозреваемых (в порядке возрастания):</label>
+                <div style="margin-bottom: 8px; color: var(--text-secondary);">
+                    Выбрано: <span id="suspectsDisplay">нет</span>
+                </div>
+                <div id="suspectsButtons" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+                    <!-- Заполняется через JS -->
+                </div>
+            </div>
+            
+            <button class="btn btn-success" id="applyBestMoveBtn">✅ Сохранить ЛХ</button>
+        </div>
 
             <!-- Выставление на голосование -->
             <div class="game-section" id="nomineesSection" style="display: none;">

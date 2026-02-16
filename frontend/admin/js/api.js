@@ -12,12 +12,12 @@ class API {
                 },
                 ...options
             });
-
+            
             if (!response.ok) {
                 const error = await response.json();
                 throw new Error(error.error || 'Ошибка запроса');
             }
-
+            
             return await response.json();
         } catch (error) {
             console.error('API Error:', error);
@@ -83,18 +83,19 @@ class API {
             method: 'DELETE'
         });
     }
-static async addPlayersToTournament(tournamentId, playerIds) {
-  return this.request(`/tournaments/${tournamentId}/players`, {
-    method: 'POST',
-    body: JSON.stringify({ player_ids: playerIds })
-  });
-}
 
-static async removePlayerFromTournament(tournamentId, playerId) {
-  return this.request(`/tournaments/${tournamentId}/players/${playerId}`, {
-    method: 'DELETE'
-  });
-}
+    static async addPlayersToTournament(tournamentId, playerIds) {
+        return this.request(`/tournaments/${tournamentId}/players`, {
+            method: 'POST',
+            body: JSON.stringify({ player_ids: playerIds })
+        });
+    }
+
+    static async removePlayerFromTournament(tournamentId, playerId) {
+        return this.request(`/tournaments/${tournamentId}/players/${playerId}`, {
+            method: 'DELETE'
+        });
+    }
 
     // === ИГРЫ ===
     static async getGame(id) {
@@ -143,10 +144,16 @@ static async removePlayerFromTournament(tournamentId, playerId) {
         });
     }
 
-static async getTournamentGames(tournamentId) {
-  return this.request(`/games/tournaments/${tournamentId}/games`);
-}
+    static async updateRound(gameId, roundNumber, roundData) {
+        return this.request(`/games/${gameId}/rounds/${roundNumber}`, {
+            method: 'PUT',
+            body: JSON.stringify(roundData)
+        });
+    }
 
+    static async getTournamentGames(tournamentId) {
+        return this.request(`/games/tournaments/${tournamentId}/games`);
+    }
 }
 
 // Утилиты UI
@@ -157,7 +164,7 @@ class UI {
         toast.className = `toast ${type}`;
         toast.textContent = message;
         document.body.appendChild(toast);
-
+        
         setTimeout(() => {
             toast.remove();
         }, 3000);
@@ -186,13 +193,6 @@ class UI {
     static confirm(message) {
         return window.confirm(message);
     }
-
-static async updateRound(gameId, roundNumber, roundData) {
-  return this.request(`/games/${gameId}/rounds/${roundNumber}`, {
-    method: 'PUT',
-    body: JSON.stringify(roundData)
-  });
-}
 
     // Форматирование даты
     static formatDate(dateString) {
