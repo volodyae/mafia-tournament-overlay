@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оверлей Спортивной Мафии - Прототип</title>
+    <style>
+        :root {
+            /* Цвета команд */
+            --red-team-bg: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+            --black-team-bg: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+            --red-team-solid: #DC2626;
+            --black-team-solid: #1F2937;
+            --red-underline: #DC2626;
+            --black-underline: #1F2937;
+            
+            /* Цвета текста */
+            --text-primary: #FFFFFF;
+            --text-secondary: #E5E7EB;
+            --text-muted: #9CA3AF;
+            
+            /* Базовые размеры для 1920x1080 */
+            --base-card-width: 150px;
+            --base-card-height: 180px;
+            --base-font-size: 16px;
+            --base-spacing: 8px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Oswald', -apple-system, sans-serif;
+            background: transparent;
+            overflow: hidden;
+            color: var(--text-primary);
+        }
+
+        /* Контейнер для масштабирования */
+        .overlay-container {
+            width: 1920px;
+            height: 1080px;
+            position: relative;
+            transform-origin: top left;
+        }
+
+        /* Автоматическое масштабирование */
+        @media (min-width: 2560px) and (min-height: 1440px) {
+            .overlay-container {
+                transform: scale(1.333); /* 2K: 2560/1920 */
+            }
+        }
+
+        @media (min-width: 3840px) and (min-height: 2160px) {
+            .overlay-container {
+                transform: scale(2); /* 4K: 3840/1920 */
+            }
+        }
+
+        /* Левый верхний блок */
+        .info-block-left {
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            background: transparent;
+            padding: 16px;
+            min-width: 320px;
+        }
+
+        .top-info-row {
+            display: flex;
+            gap: 120px;
+            margin-bottom: 11px;
+        }
+
+        .best-move {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .best-move-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .best-move-players {
+            display: flex;
+            gap: 11px;
+            align-items: center;
+        }
+
+        .best-move-player {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .best-move-number {
+            font-size: 16px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            min-width: 27px;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .best-move-number.team-red {
+            background: var(--red-team-solid);
+            color: white;
+        }
+
+        .best-move-number.team-black {
+            background: var(--black-team-solid);
+            color: white;
+        }
+
+        .role-icon {
+            font-size: 16px;
+            font-weight: 600;
+            display: none; /* Скрыты иконки ролей в ЛХ и таблице */
+        }
+
+        .nominees {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nominees-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-transform: uppercase;
+        }
+
+        .nominees-list {
+            display: flex;
+            gap: 11px;
+            align-items: center;
+        }
+
+        .nominee-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .nominee-number {
+            font-size: 16px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            min-width: 27px;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nominee-number.team-red {
+            background: var(--red-team-solid);
+            color: white;
+        }
+
+        .nominee-number.team-black {
+            background: var(--black-team-solid);
+            color: white;
+        }
+
+        /* Таблица результатов */
+        .rounds-table {
+            border-collapse: collapse;
+            table-layout: fixed;
+            width: auto;
+        }
+
+        .rounds-table th {
+            padding: 2px 0;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-primary);
+            opacity: 0.6;
+            width: 32px;
+        }
+
+        .rounds-table th:first-child {
+            width: 28px;
+            padding-right: 8px;
+        }
+
+        .rounds-table td {
+            padding: 3px 0;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            width: 32px;
+        }
+
+        .rounds-table td:first-child {
+            width: 28px;
+            padding-right: 8px;
+        }
+
+        .rounds-table .action-icon {
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .round-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .round-number {
+            font-size: 14px;
+            font-weight: 700;
+            padding: 2px 4px;
+            border-radius: 4px;
+            min-width: 20px;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .round-number.team-red {
+            background: var(--red-team-solid);
+            color: white;
+        }
+
+        .round-number.team-black {
+            background: var(--black-team-solid);
+            color: white;
+        }
+
+        /* Правый верхний блок */
+        .info-block-right {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            background: transparent;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .series-info {
+            margin-bottom: 8px;
+        }
+
+        .series-name {
+            font-size: 30px;
+            font-weight: 600;
+            color: var(--text-primary);
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+
+        .game-info {
+            font-size: 30px;
+            font-weight: 600;
+            text-align: right;
+            opacity: 0.7;
+            margin-top: 0px;
+            color: var(--text-primary);
+        }
+
+        .game-current {
+            color: var(--text-primary);
+            font-size: 30px;
+            font-weight: 600;
+        }
+
+        /* Нижняя панель */
+        .bottom-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            padding: 20px;
+            gap: 8px;
+        }
+
+        /* Карточка игрока */
+        .player-card {
+            width: 150px;
+            height: 180px;
+            position: relative;
+            border-radius: 12px;
+            overflow: visible;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        }
+
+        .player-card.team-red {
+    background: var(--red-team-bg);
+}
+
+.player-card.team-black {
+    background: var(--black-team-bg);
+}
+
+.player-card.team-red.sheriff {
+    background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%);
+}
+
+
+        .player-card.eliminated {
+            transform: translateY(20px);
+            opacity: 0.5;
+            filter: grayscale(100%);
+        }
+
+        /* Роль в правом верхнем углу */
+        .role-badge {
+            position: absolute;
+            top: -12px;
+            right: 0px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            font-size: 23px;
+            font-weight: 700;
+            width: 35px;
+            height: 44px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            line-height: 1;
+            padding-bottom: 3px;
+        }
+
+        /* Иконка причины выбытия */
+        .elimination-icon {
+            position: absolute;
+            top: -12px;
+            left: 0px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3;
+            border: 2px solid #DC2626;
+        }
+
+        /* Портрет игрока */
+        .player-portrait {
+            width: 100%;
+            height: 130px;
+            object-fit: cover;
+            object-position: center top;
+        }
+
+        /* Информация под портретом */
+        .player-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.8) 70%, transparent 100%);
+            padding: 32px 8px 8px 8px;
+            text-align: center;
+        }
+
+        .player-number {
+            font-size: 18px;
+            font-weight: 700;
+            width: 20px;
+            flex-shrink: 0;
+            text-align: left;
+        }
+
+        .player-nickname {
+            font-size: 16px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .player-nickname-text {
+            flex: 1;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Логотип турнира (опционально) */
+        .tournament-logo {
+            width: 100px;
+            height: 100px;
+            margin-right: 12px;
+            display: none; /* По умолчанию скрыт */
+        }
+
+        .tournament-logo.visible {
+            display: block;
+        }
+
+        .tournament-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Анимации */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        /* Заглушка для игроков без фото */
+        .player-placeholder {
+            width: 100%;
+            height: 130px;
+            background: linear-gradient(135deg, #374151 0%, #1F2937 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: #6B7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay-container">
+        <!-- Левый верхний блок -->
+        <div class="info-block-left animate-in">
+            <!-- Верхняя строка: ЛХ и Выставлены -->
+            <div class="top-info-row">
+                <!-- Лучший ход -->
+                <div class="best-move">
+                    <div class="best-move-title">ЛХ:</div>
+                    <div class="best-move-players">
+                        <!-- Заполняется через JS -->
+                    </div>
+                </div>
+
+                <!-- Выставлены на голосование -->
+                <div class="nominees">
+                    <div class="nominees-title">Выставлены:</div>
+                    <div class="nominees-list">
+                        <!-- Заполняется через JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Таблица результатов -->
+            <table class="rounds-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>1</th>
+                        <th>2</th>
+                        <th>3</th>
+                        <th>4</th>
+                        <th>5</th>
+                        <th>6</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Заполняется через JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Правый верхний блок -->
+        <div class="info-block-right animate-in">
+            <div class="series-info">
+                <div class="series-name">СЕРИЯ</div>
+            </div>
+            <div class="game-info">
+                ИГРА <span class="game-current">1</span> / 5
+            </div>
+        </div>
+
+        <!-- Нижняя панель с карточками игроков -->
+        <div class="bottom-panel">
+            <!-- Заполняется через JS -->
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script>
+        // Получаем gameId из URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameId = urlParams.get('gameId');
+
+        if (!gameId) {
+            console.error('gameId not provided in URL');
+            document.body.innerHTML = '<div style="color: white; text-align: center; padding: 50px; font-size: 24px;">❌ Game ID not found</div>';
+        }
+
+        let gameData = null;
+        let socket = null;
+
+        // Автоматическое определение разрешения и масштабирование
+        function scaleOverlay() {
+            const container = document.querySelector('.overlay-container');
+            const baseWidth = 1920;
+            const baseHeight = 1080;
+            
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+            
+            const scaleX = screenWidth / baseWidth;
+            const scaleY = screenHeight / baseHeight;
+            const scale = Math.min(scaleX, scaleY);
+            
+            container.style.transform = `scale(${scale})`;
+            
+            const scaledWidth = baseWidth * scale;
+            const scaledHeight = baseHeight * scale;
+            const offsetX = (screenWidth - scaledWidth) / 2;
+            const offsetY = (screenHeight - scaledHeight) / 2;
+            
+            container.style.left = `${offsetX}px`;
+            container.style.top = `${offsetY}px`;
+        }
+
+        // Загрузка данных игры
+        async function loadGameData() {
+            try {
+                const response = await fetch(`http://localhost:3000/api/games/${gameId}`);
+                gameData = await response.json();
+                
+                console.log('Game data loaded:', gameData);
+                renderOverlay();
+            } catch (error) {
+                console.error('Error loading game data:', error);
+            }
+        }
+
+        // Отрисовка оверлея
+function renderOverlay() {
+    if (!gameData || !gameData.seating) return;
+
+    // Обновляем правый блок (серия и номер игры)
+    document.querySelector('.series-name').textContent = gameData.series_name || 'СЕРИЯ';
+    document.querySelector('.game-current').textContent = gameData.game_number;
+    
+    // Отрисовка карточек игроков
+    const bottomPanel = document.querySelector('.bottom-panel');
+    bottomPanel.innerHTML = gameData.seating.map(seat => {
+        const isEliminated = seat.is_eliminated;
+        const team = seat.team === 'red' ? 'team-red' : 'team-black';
+        const sheriffClass = seat.role === 'sheriff' ? 'sheriff' : '';
+        const roleLabel = getRoleLabel(seat.role);
+        const eliminationIcon = seat.elimination_reason === 'voted' ? '👍' : '🔫';
+
+        return `
+            <div class="player-card ${team} ${sheriffClass} ${isEliminated ? 'eliminated' : ''}">
+                ${isEliminated ? `<div class="elimination-icon">${eliminationIcon}</div>` : ''}
+                ${roleLabel ? `<div class="role-badge">${roleLabel}</div>` : ''}
+                ${seat.photo_url 
+                    ? `<img src="${seat.photo_url}" alt="${seat.nickname}" class="player-portrait" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <div class="player-placeholder" style="display:none;">👤</div>`
+                    : `<div class="player-placeholder">👤</div>`
+                }
+                <div class="player-info">
+                    <div class="player-nickname">
+                        <span class="player-number">${seat.position}</span>
+                        <span class="player-nickname-text">${seat.nickname}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Отрисовка ЛХ
+    if (gameData.best_move) {
+        renderBestMove();
+    }
+
+    // Отрисовка выставленных
+    if (gameData.nominees) {
+        renderNominees();
+    }
+
+    // Отрисовка таблицы результатов
+    if (gameData.rounds) {
+        renderRounds();
+    }
+}
+
+
+        // Отрисовка лучшего хода
+        function renderBestMove() {
+            const bm = gameData.best_move;
+            const suspects = [bm.suspect_1, bm.suspect_2, bm.suspect_3];
+            
+            const bestMovePlayersDiv = document.querySelector('.best-move-players');
+            bestMovePlayersDiv.innerHTML = suspects.map(playerId => {
+                const seat = gameData.seating.find(s => s.player_id === playerId);
+                if (!seat) return '';
+                
+                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                return `
+                    <div class="best-move-player">
+                        <div class="best-move-number ${teamClass}">${seat.position}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Отрисовка выставленных
+        function renderNominees() {
+    const nomineesList = document.querySelector('.nominees-list');
+    
+    if (!gameData.nominees || gameData.nominees.length === 0) {
+        nomineesList.innerHTML = ''; // Пусто, если нет кандидатов
+        return;
+    }
+    
+    nomineesList.innerHTML = gameData.nominees.map(nominee => {
+        const seat = gameData.seating.find(s => s.player_id === nominee.player_id);
+        if (!seat) return '';
+        
+        const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+        return `
+            <div class="nominee-item">
+                <div class="nominee-number ${teamClass}">${seat.position}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+
+        // Отрисовка таблицы результатов
+        function renderRounds() {
+            const tbody = document.querySelector('.rounds-table tbody');
+            const maxRounds = 6; // Максимум столбцов
+
+            // Создаём строки для каждого типа действия
+            const actions = ['🔫', '🎩', '⭐', '👍'];
+            const rows = actions.map(action => {
+                let cells = `<td class="action-icon">${action}</td>`;
+                
+                for (let i = 0; i < maxRounds; i++) {
+                    const round = gameData.rounds[i];
+                    if (!round) {
+                        cells += '<td></td>';
+                        continue;
+                    }
+
+                    let content = '';
+                    if (action === '🔫') {
+                        if (round.mafia_miss) {
+                            content = '<div class="round-number">❌</div>';
+                        } else if (round.mafia_kill_player_id) {
+                            const seat = gameData.seating.find(s => s.player_id === round.mafia_kill_player_id);
+                            const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                            content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                        }
+                    } else if (action === '🎩') {
+                        if (round.don_check_player_id) {
+                            const seat = gameData.seating.find(s => s.player_id === round.don_check_player_id);
+                            const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                            content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                        } else {
+                            content = '<div class="round-number">❌</div>';
+                        }
+                    } else if (action === '⭐') {
+                        if (round.sheriff_check_player_id) {
+                            const seat = gameData.seating.find(s => s.player_id === round.sheriff_check_player_id);
+                            const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                            content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                        } else {
+                            content = '<div class="round-number">❌</div>';
+                        }
+                    } else if (action === '👍') {
+                        if (round.nobody_voted_out) {
+                            content = '<div class="round-number">❌</div>';
+                        } else if (round.voted_out_players) {
+                            const playerIds = JSON.parse(round.voted_out_players);
+                            const seat = gameData.seating.find(s => s.player_id === playerIds[0]);
+                            if (seat) {
+                                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                                content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                            }
+                        }
+                    }
+
+                    cells += `<td><div class="round-cell">${content}</div></td>`;
+                }
+
+                return `<tr>${cells}</tr>`;
+            });
+
+            tbody.innerHTML = rows.join('');
+        }
+
+        // Получить букву роли
+        function getRoleLabel(role) {
+            const labels = {
+                'mafia': 'М',
+                'don': 'Д',
+                'sheriff': 'Ш',
+                'civilian': ''
+            };
+            return labels[role] || '';
+        }
+
+        // Подключение к WebSocket
+        function connectWebSocket() {
+            socket = io('http://localhost:3000');
+            
+            socket.on('connect', () => {
+                console.log('WebSocket connected');
+                socket.emit('join_game', gameId);
+            });
+
+            socket.on('game_updated', (data) => {
+                console.log('Game update received:', data);
+                loadGameData(); // Перезагружаем данные
+            });
+
+            socket.on('disconnect', () => {
+                console.log('WebSocket disconnected');
+            });
+        }
+
+        // Инициализация
+        window.addEventListener('load', () => {
+            scaleOverlay();
+            loadGameData();
+            connectWebSocket();
+        });
+
+        window.addEventListener('resize', scaleOverlay);
+    </script>
+</body>
+</html>

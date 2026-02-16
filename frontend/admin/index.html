@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель - Турниры</title>
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Навигация -->
+        <nav class="navbar">
+            <h1>🏆 Админ-панель Мафии</h1>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link active">Турниры</a>
+                <a href="players.html" class="nav-link">База игроков</a>
+            </div>
+        </nav>
+
+        <!-- Главный контент -->
+        <div class="content">
+            <div class="page-header">
+                <h2>Мои турниры</h2>
+                <button class="btn btn-primary" id="createTournamentBtn">
+                    + Создать турнир
+                </button>
+            </div>
+
+            <!-- Список турниров -->
+            <div id="tournamentsList" class="tournaments-list">
+                <!-- Заполняется через JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно создания турнира -->
+    <div id="createTournamentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Создание турнира</h3>
+                <button class="close-btn" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createTournamentForm">
+                    <div class="form-group">
+                        <label>Название турнира:</label>
+                        <input type="text" id="tournamentName" class="form-input" 
+                               placeholder="Серия 4 - Кубок Мега" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Количество игр:</label>
+                        <div class="number-input">
+                            <button type="button" class="btn-minus" data-target="totalGames">-</button>
+                            <input type="number" id="totalGames" class="form-input" 
+                                   value="5" min="1" max="20" required>
+                            <button type="button" class="btn-plus" data-target="totalGames">+</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Количество столов:</label>
+                        <div class="number-input">
+                            <button type="button" class="btn-minus" data-target="totalTables">-</button>
+                            <input type="number" id="totalTables" class="form-input" 
+                                   value="1" min="1" max="5" required>
+                            <button type="button" class="btn-plus" data-target="totalTables">+</button>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Создать турнир</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/tournaments.js"></script>
+</body>
+</html>

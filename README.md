@@ -1,2 +1,18 @@
-# mafia-tournament-overlay
-Web application for Mafia tournament graphics overlay
+\# Mafia Overlay Backend
+
+
+
+\## 🚀 Установка и запуск
+
+
+
+\### 1. Установить зависимости
+
+```bash
+
+cd backend
+
+npm install
+
+
+

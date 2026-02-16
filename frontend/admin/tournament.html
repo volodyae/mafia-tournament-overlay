@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление турниром</title>
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Навигация -->
+        <nav class="navbar">
+            <h1>🏆 Админ-панель Мафии</h1>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">← Назад к турнирам</a>
+            </div>
+        </nav>
+
+        <!-- Главный контент -->
+        <div class="content">
+            <div class="page-header">
+                <div>
+                    <h2 id="tournamentName">Загрузка...</h2>
+                    <p id="tournamentMeta" style="color: var(--text-secondary); margin-top: 4px;"></p>
+                </div>
+            </div>
+
+            <!-- Список игр турнира -->
+            <div class="section">
+                <h3 style="margin-bottom: 16px;">📊 Игры турнира</h3>
+                <div id="gamesList" class="tournaments-list">
+                    <!-- Заполняется через JS -->
+                </div>
+            </div>
+
+            <!-- Участники турнира -->
+            <div class="section" style="margin-top: 32px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3>👥 Участники турнира (<span id="playersCount">0</span>)</h3>
+                    <button class="btn btn-primary" id="managePlayers">Управление игроками</button>
+                </div>
+                <div id="tournamentPlayers" class="players-list">
+                    <!-- Заполняется через JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно создания игры -->
+    <div id="createGameModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Создать игру</h3>
+                <button class="close-btn" id="closeGameModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createGameForm">
+                    <div class="form-group">
+                        <label>Номер игры:</label>
+                        <input type="number" id="gameNumber" class="form-input" 
+                               value="1" min="1" required readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Номер стола:</label>
+                        <input type="number" id="tableNumber" class="form-input" 
+                               value="1" min="1" max="5" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Название серии (опционально):</label>
+                        <input type="text" id="seriesName" class="form-input" 
+                               placeholder="Серия 4">
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelGameBtn">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Создать игру</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/tournament.js"></script>
+</body>
+</html>
