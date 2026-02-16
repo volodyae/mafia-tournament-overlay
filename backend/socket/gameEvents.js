@@ -21,6 +21,15 @@ module.exports = (io) => {
       socket.emit('joined_game', { gameId, roomName });
     });
     
+// 🔁 Единый канал обновления игры
+    socket.on('game_updated', (data) => {
+      if (!data || !data.gameId) return;
+      io.to(`game_${data.gameId}`).emit('game_updated', {
+        type: 'full_update',
+        data
+      });
+    });
+
     // Обновление ролей
     socket.on('roles_updated', (data) => {
       io.to(`game_${data.gameId}`).emit('game_updated', {

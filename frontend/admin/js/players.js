@@ -12,6 +12,7 @@ const playerForm = document.getElementById('playerForm');
 const closePlayerModal = document.getElementById('closePlayerModal');
 const cancelPlayerBtn = document.getElementById('cancelPlayerBtn');
 const modalTitle = document.getElementById('modalTitle');
+const baseUrl = window.OVERLAY_CONFIG.BASE_URL;
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', () => {
@@ -178,17 +179,16 @@ playerForm.addEventListener('submit', async (e) => {
             formData.append('photo', fileInput.files[0]);
 
             try {
-                const response = await fetch('http://localhost:3000/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Ошибка загрузки файла');
-                }
-                
-                const result = await response.json();
-                photoUrl = `http://localhost:3000${result.photo_url}`;
+                const response = await fetch(`${baseUrl}/api/upload/player-photo`, {
+  method: 'POST',
+  body: formData
+});
+if (!response.ok) {
+    throw new Error('Ошибка загрузки файла');
+}
+
+const result = await response.json();
+photoUrl = result.photo_url; // уже полный URL от сервера
             } catch (error) {
                 UI.showToast('Ошибка загрузки фото', 'error');
                 console.error(error);

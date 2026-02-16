@@ -563,23 +563,24 @@
 
         // Загрузка данных игры
         async function loadGameData() {
-            try {
-                const response = await fetch(`http://localhost:3000/api/games/${gameId}`);
-                gameData = await response.json();
-                
-                console.log('Game data loaded:', gameData);
-                renderOverlay();
-            } catch (error) {
-                console.error('Error loading game data:', error);
-            }
-        }
+    try {
+        const response = await fetch(`http://localhost:3000/api/games/${gameId}`);
+        gameData = await response.json();
+
+        console.log('Game data loaded:', gameData);
+        renderOverlay();
+    } catch (error) {
+        console.error('Error loading game data:', error);
+    }
+}
+
 
         // Отрисовка оверлея
 function renderOverlay() {
     if (!gameData || !gameData.seating) return;
 
     // Обновляем правый блок (серия и номер игры)
-    document.querySelector('.series-name').textContent = gameData.series_name || 'СЕРИЯ';
+    document.querySelector('.series-name').textContent = gameData.tournament_name || gameData.series_name || 'СЕРИЯ';
     document.querySelector('.game-current').textContent = gameData.game_number;
     
     // Отрисовка карточек игроков
@@ -712,17 +713,17 @@ function renderOverlay() {
                             content = '<div class="round-number">❌</div>';
                         }
                     } else if (action === '👍') {
-                        if (round.nobody_voted_out) {
-                            content = '<div class="round-number">❌</div>';
-                        } else if (round.voted_out_players) {
-                            const playerIds = JSON.parse(round.voted_out_players);
-                            const seat = gameData.seating.find(s => s.player_id === playerIds[0]);
-                            if (seat) {
-                                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                                content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
-                            }
-                        }
-                    }
+  if (round.nobody_voted_out) {
+    content = '<div class="round-number">❌</div>';
+  } else if (round.voted_out_players && round.voted_out_players.length > 0) {
+    const firstId = round.voted_out_players[0];
+    const seat = gameData.seating.find(s => s.player_id === firstId);
+    if (seat) {
+      const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+      content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+    }
+  }
+}
 
                     cells += `<td><div class="round-cell">${content}</div></td>`;
                 }
@@ -746,22 +747,23 @@ function renderOverlay() {
 
         // Подключение к WebSocket
         function connectWebSocket() {
-            socket = io('http://localhost:3000');
-            
-            socket.on('connect', () => {
-                console.log('WebSocket connected');
-                socket.emit('join_game', gameId);
-            });
+    socket = io('http://localhost:3000');
 
-            socket.on('game_updated', (data) => {
-                console.log('Game update received:', data);
-                loadGameData(); // Перезагружаем данные
-            });
+    socket.on('connect', () => {
+        console.log('WebSocket connected');
+        socket.emit('join_game', gameId);
+    });
 
-            socket.on('disconnect', () => {
-                console.log('WebSocket disconnected');
-            });
-        }
+    socket.on('game_updated', (data) => {
+        console.log('Game update received:', data);
+        loadGameData(); // Перезагружаем данные игры
+    });
+
+    socket.on('disconnect', () => {
+        console.log('WebSocket disconnected');
+    });
+}
+
 
         // Инициализация
         window.addEventListener('load', () => {

@@ -34,9 +34,20 @@ class Game {
   static async getFullData(gameId) {
     try {
       const game = await this.getById(gameId);
-      
+      const tournamentResult = await pool.query(
+  'SELECT name FROM tournaments WHERE id = $1',
+  [game.tournament_id]
+);
+const tournamentName = tournamentResult.rows?.name || null;
       if (!game) {
-        return null;
+        return {
+  ...game,
+  tournament_name: tournamentName,
+  seating: seating.rows,
+  rounds: processedRounds,
+  best_move: bestMove.rows || null,
+  nominees: nominees.rows
+};
       }
       
       // Рассадка с информацией об игроках
@@ -56,13 +67,25 @@ class Game {
       );
 
       // ✅ ИСПРАВЛЕНИЕ: Обработать voted_out_players для каждого круга
-      const processedRounds = rounds.rows.map(round => ({
-        ...round,
-        // Убедиться что voted_out_players это строка JSON для frontend
-        voted_out_players: typeof round.voted_out_players === 'string' 
-          ? round.voted_out_players 
-          : JSON.stringify(round.voted_out_players || [])
-      }));
+      const processedRounds = rounds.rows.map(round => {
+  let votedOut = [];
+
+  if (Array.isArray(round.voted_out_players)) {
+    votedOut = round.voted_out_players;
+  } else if (typeof round.voted_out_players === 'string' && round.voted_out_players.trim() !== '') {
+    try {
+      votedOut = JSON.parse(round.voted_out_players);
+    } catch {
+      votedOut = [];
+    }
+  }
+
+  return {
+    ...round,
+    voted_out_players: votedOut
+  };
+});
+
 
       // Лучший ход
       const bestMove = await pool.query(

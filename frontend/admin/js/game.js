@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Подключение к WebSocket
 function connectWebSocket() {
     try {
-        socket = io('http://localhost:3000');
+        socket = io(window.OVERLAY_CONFIG.SOCKET_URL);
         
         socket.on('connect', () => {
             console.log('✅ WebSocket connected');
@@ -118,7 +118,7 @@ function renderGameHeader() {
 
 // Отрисовка ссылки на оверлей
 function renderOverlayLink() {
-    const url = `http://localhost:3000/overlay/index.html?gameId=${gameId}`;
+    const url = `${window.OVERLAY_CONFIG.BASE_URL}/overlay/index.html?gameId=${gameId}`;
     overlayUrl.textContent = url;
 }
 
@@ -515,7 +515,11 @@ function renderRounds() {
     const mafiaKill = round.mafia_miss ? '❌ Промах' : round.mafia_kill_player_id ? getPlayerName(round.mafia_kill_player_id) : '-';
     const donCheck = round.don_check_player_id ? getPlayerName(round.don_check_player_id) : '❌';
     const sheriffCheck = round.sheriff_check_player_id ? getPlayerName(round.sheriff_check_player_id) : '❌';
-    const votedOut = round.nobody_voted_out ? '❌ Никто' : round.voted_out_players ? JSON.parse(round.voted_out_players).map(id => getPlayerName(id)).join(', ') : '-';
+    const votedOut = round.nobody_voted_out
+  ? '❌ Никто'
+  : (round.voted_out_players && round.voted_out_players.length > 0
+      ? round.voted_out_players.map(id => getPlayerName(id)).join(', ')
+      : '-');
     
     return `
       <div class="card" style="margin-bottom: 16px;">
@@ -541,7 +545,7 @@ window.editRound = async (roundNumber) => {
   const round = gameData.rounds.find(r => r.round_number === roundNumber);
   if (!round) return;
   
-  votedOutPlayers = round.voted_out_players ? JSON.parse(round.voted_out_players) : [];
+  votedOutPlayers = round.voted_out_players || [];
   
   document.getElementById('roundModalTitle').textContent = `Редактировать круг ${roundNumber}`;
   document.getElementById('roundNumber').value = roundNumber;

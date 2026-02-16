@@ -42,15 +42,20 @@ router.post('/player-photo', upload.single('photo'), (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    res.json({ 
+
+    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const photoUrl = `${baseUrl}/uploads/${req.file.filename}`;
+
+    res.json({
       success: true,
-      url: `/uploads/${req.file.filename}`,
+      photo_url: photoUrl,
       filename: req.file.filename
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 router.delete('/:filename', (req, res) => {
   try {

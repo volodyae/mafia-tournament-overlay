@@ -5,6 +5,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
+const path = require('path');
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -16,7 +17,7 @@ const io = new Server(server, {
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('../frontend'));
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Import routes
 const playersRouter = require('./routes/players');
@@ -29,7 +30,7 @@ app.use('/api/players', playersRouter);
 app.use('/api/tournaments', tournamentsRouter);
 app.use('/api/games', gamesRouter);
 app.use('/api/upload', uploadRouter);
-app.use('/uploads', express.static('../frontend/uploads'));
+app.use('/uploads', express.static(path.join(__dirname, '../frontend/uploads')));
 
 // WebSocket setup
 const gameEvents = require('./socket/gameEvents');
