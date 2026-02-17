@@ -10,10 +10,6 @@ const tournamentMeta = document.getElementById('tournamentMeta');
 const gamesList = document.getElementById('gamesList');
 const tournamentPlayers = document.getElementById('tournamentPlayers');
 const playersCount = document.getElementById('playersCount');
-const createGameModal = document.getElementById('createGameModal');
-const createGameForm = document.getElementById('createGameForm');
-const closeGameModal = document.getElementById('closeGameModal');
-const cancelGameBtn = document.getElementById('cancelGameBtn');
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', () => {
@@ -96,42 +92,25 @@ function renderPlayers() {
 
 // Отрисовка списка игр
 function renderGames() {
-    // Создаём массив игр по количеству из tournament.total_games
-    const gameSlots = Array.from({ length: tournament.total_games }, (_, i) => {
-        const gameNumber = i + 1;
-        const existingGame = games.find(g => g.game_number === gameNumber);
-        return existingGame || { game_number: gameNumber, created: false };
-    });
-    
-    gamesList.innerHTML = gameSlots.map(game => {
-        if (!game.created) {
-            return `
-                <div class="tournament-card">
-                    <h3>🎮 ИГРА ${game.game_number}/${tournament.total_games}</h3>
-                    <div class="tournament-meta">
-                        ⚠️ Игра не создана
-                    </div>
-                    <button class="btn btn-primary create-game" data-game-number="${game.game_number}">
-                        + Создать игру
-                    </button>
-                </div>
-            `;
-        }
-        
-        // Игра создана
+    if (!games || games.length === 0) {
+        UI.showEmpty(gamesList, 'Игр ещё нет. Попробуйте заново создать турнир.');
+        return;
+    }
+
+    gamesList.innerHTML = games.map(game => {
         const hasSeating = game.seating_count && game.seating_count > 0;
         const statusText = game.status === 'in_progress' 
             ? '<span style="color: var(--success);">В процессе</span>'
             : game.status === 'finished'
             ? '<span style="color: var(--text-secondary);">Завершена</span>'
             : 'Не начата';
-        
+
         return `
             <div class="tournament-card">
-                <h3>🎮 ИГРА ${game.game_number}/${tournament.total_games}</h3>
+                <h3>🎮 ИГРА ${game.game_number}/${tournament.total_games}, стол ${game.table_number}</h3>
                 <div class="tournament-meta">
                     ${game.series_name ? `📺 ${game.series_name}<br>` : ''}
-                    Стол ${game.table_number} | ${statusText}<br>
+                    ${statusText}<br>
                     ${hasSeating ? `✅ Рассадка создана (${game.seating_count}/10)` : '⚠️ Рассадка не создана'}
                 </div>
                 <button class="btn btn-primary open-game" data-id="${game.id}">
@@ -140,15 +119,8 @@ function renderGames() {
             </div>
         `;
     }).join('');
-    
+
     // Обработчики кнопок
-    document.querySelectorAll('.create-game').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.getElementById('gameNumber').value = btn.dataset.gameNumber;
-            createGameModal.classList.add('active');
-        });
-    });
-    
     document.querySelectorAll('.open-game').forEach(btn => {
         btn.addEventListener('click', () => {
             window.location.href = `game.html?id=${btn.dataset.id}`;
@@ -156,47 +128,8 @@ function renderGames() {
     });
 }
 
-// Создание игры
-createGameForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const data = {
-        tournament_id: tournamentId,
-        game_number: parseInt(document.getElementById('gameNumber').value),
-        table_number: parseInt(document.getElementById('tableNumber').value),
-        series_name: document.getElementById('seriesName').value.trim() || null
-    };
-    
-    try {
-        const newGame = await API.createGame(data);
-        UI.showToast('Игра создана');
-        createGameModal.classList.remove('active');
-        
-        // Перенаправляем на страницу игры для создания рассадки
-        window.location.href = `game.html?id=${newGame.id}`;
-    } catch (error) {
-        UI.showToast('Ошибка создания игры', 'error');
-        console.error(error);
-    }
-});
-
 // Обработчики событий
 function setupEventListeners() {
-    // Закрытие модального окна создания игры
-    closeGameModal.addEventListener('click', () => {
-        createGameModal.classList.remove('active');
-    });
-    
-    cancelGameBtn.addEventListener('click', () => {
-        createGameModal.classList.remove('active');
-    });
-    
-    createGameModal.addEventListener('click', (e) => {
-        if (e.target === createGameModal) {
-            createGameModal.classList.remove('active');
-        }
-    });
-    
     // Управление игроками
     document.getElementById('managePlayers').addEventListener('click', async () => {
         await openManagePlayersModal();

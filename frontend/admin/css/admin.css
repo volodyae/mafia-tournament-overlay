@@ -439,6 +439,20 @@ body {
     }
 }
 
+/* Горизонтальное расположение секций на странице игры */
+.game-section-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 900px) {
+    .game-section-row {
+        flex-direction: column;
+    }
+}
+
 /* Загрузка */
 .loading {
     text-align: center;
@@ -459,4 +473,35 @@ body {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+.nominee-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.nominee-btn {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    background: var(--bg-secondary);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: 0.2s;
+}
+
+.nominee-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.nominee-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
 }

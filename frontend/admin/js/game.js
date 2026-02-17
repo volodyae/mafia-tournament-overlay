@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Подключение к WebSocket
 function connectWebSocket() {
     try {
-        socket = io(window.OVERLAY_CONFIG.SOCKET_URL);
+        socket = io('http://localhost:3000');
         
         socket.on('connect', () => {
             console.log('✅ WebSocket connected');
@@ -64,6 +64,7 @@ function connectWebSocket() {
         
         socket.on('game_updated', (data) => {
             console.log('Game update received:', data);
+            loadGameData();
         });
     } catch (error) {
         console.error('WebSocket connection error:', error);
@@ -118,7 +119,7 @@ function renderGameHeader() {
 
 // Отрисовка ссылки на оверлей
 function renderOverlayLink() {
-    const url = `${window.OVERLAY_CONFIG.BASE_URL}/overlay/index.html?gameId=${gameId}`;
+    const url = `http://localhost:3000/overlay/index.html?gameId=${gameId}`;
     overlayUrl.textContent = url;
 }
 
@@ -412,17 +413,85 @@ document.getElementById('applyBestMoveBtn').addEventListener('click', async () =
 // === ВЫСТАВЛЕНИЕ НА ГОЛОСОВАНИЕ ===
 
 function renderNominees() {
+    // Берём только живых игроков
     const aliveSeats = gameData.seating.filter(s => !s.is_eliminated);
-    
-    const options = aliveSeats.map(s => 
-        `<option value="${s.player_id}">${s.position}. ${s.nickname}</option>`
-    ).join('');
 
-    document.getElementById('addNomineeSelect').innerHTML = 
-        '<option value="">Выберите игрока</option>' + options;
+    // Синхронизируем currentNominees с живыми (на случай, если кто-то вылетел)
+    currentNominees = (gameData.nominees || []).filter(n =>
+        aliveSeats.some(s => s.player_id === n.player_id)
+    );
 
-    currentNominees = gameData.nominees || [];
+    // Кнопки 1–10
+    const nomineeButtons = document.getElementById('nomineeButtons');
+    nomineeButtons.innerHTML = Array.from({ length: 10 }, (_, i) => {
+        const position = i + 1;
+        const seat = aliveSeats.find(s => s.position === position);
+
+        // Если на этой позиции нет живого игрока — кнопка отключена
+        if (!seat) {
+            return `<button class="nominee-btn" disabled>${position}</button>`;
+        }
+
+        const isSelected = currentNominees.some(n => n.player_id === seat.player_id);
+        const btnClass = isSelected ? 'nominee-btn active' : 'nominee-btn';
+
+        return `<button 
+            class="${btnClass}" 
+            type="button"
+            data-player-id="${seat.player_id}" 
+            data-position="${position}">
+            ${position}
+        </button>`;
+    }).join('');
+
+    // Навешиваем обработчики
+    nomineeButtons.querySelectorAll('.nominee-btn').forEach(btn => {
+        if (btn.disabled) return;
+        btn.addEventListener('click', () => toggleNominee(btn));
+    });
+
     renderNomineesList();
+}
+
+function toggleNominee(button) {
+    const playerId = button.dataset.playerId;
+    const position = parseInt(button.dataset.position, 10);
+
+    const seat = gameData.seating.find(s => s.player_id === playerId);
+    if (!seat || seat.is_eliminated) {
+        UI.showToast('Игрок уже выбыл и не может быть выставлен', 'error');
+        return;
+    }
+
+    const existingIndex = currentNominees.findIndex(n => n.player_id === playerId);
+
+    if (existingIndex > -1) {
+        // Убрать из списка
+        currentNominees.splice(existingIndex, 1);
+    } else {
+        // Добавить
+        currentNominees.push({ player_id: playerId, nickname: seat.nickname });
+    }
+
+
+    // Сохраняем на сервере
+    updateNomineesOnServer();
+}
+
+async function updateNomineesOnServer() {
+    try {
+        const playerIds = currentNominees.map(n => n.player_id);
+        await API.updateNominees(gameId, playerIds);
+
+        socket.emit('game_updated', { gameId });
+
+        renderNomineesList();
+        // Переотрисуем кнопки, чтобы подсветка совпала
+        renderNominees();
+    } catch (error) {
+        UI.showToast('Ошибка обновления выставленных', 'error');
+        console.error(error);
+    }
 }
 
 function renderNomineesList() {
@@ -443,6 +512,17 @@ function renderNomineesList() {
         `;
     }).join('');
 }
+
+window.removeNominee = async (playerId) => {
+    currentNominees = currentNominees.filter(n => n.player_id !== playerId);
+    await updateNomineesOnServer();
+};
+
+document.getElementById('clearNomineesBtn').addEventListener('click', async () => {
+    currentNominees = [];
+    await updateNomineesOnServer();
+    UI.showToast('Список очищен');
+});
 
 window.removeNominee = async (playerId) => {
     currentNominees = currentNominees.filter(n => n.player_id !== playerId);

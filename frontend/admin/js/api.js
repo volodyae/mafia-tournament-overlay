@@ -1,5 +1,5 @@
 // Базовый URL API
-const API_URL = window.OVERLAY_CONFIG.API_URL;
+const API_URL = 'http://localhost:3000/api';
 
 // Утилита для HTTP-запросов
 class API {

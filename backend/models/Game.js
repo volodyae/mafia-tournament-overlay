@@ -34,21 +34,17 @@ class Game {
   static async getFullData(gameId) {
     try {
       const game = await this.getById(gameId);
-      const tournamentResult = await pool.query(
-  'SELECT name FROM tournaments WHERE id = $1',
-  [game.tournament_id]
-);
-const tournamentName = tournamentResult.rows?.name || null;
+      
       if (!game) {
-        return {
-  ...game,
-  tournament_name: tournamentName,
-  seating: seating.rows,
-  rounds: processedRounds,
-  best_move: bestMove.rows || null,
-  nominees: nominees.rows
-};
+        return null;
       }
+
+      // Подтягиваем название турнира
+      const tournamentResult = await pool.query(
+        'SELECT name FROM tournaments WHERE id = $1',
+        [game.tournament_id]
+      );
+      const tournamentName = tournamentResult.rows[0]?.name || null;
       
       // Рассадка с информацией об игроках
       const seating = await pool.query(
@@ -66,26 +62,25 @@ const tournamentName = tournamentResult.rows?.name || null;
         [gameId]
       );
 
-      // ✅ ИСПРАВЛЕНИЕ: Обработать voted_out_players для каждого круга
+      // Обработать voted_out_players как массив
       const processedRounds = rounds.rows.map(round => {
-  let votedOut = [];
+        let votedOut = [];
 
-  if (Array.isArray(round.voted_out_players)) {
-    votedOut = round.voted_out_players;
-  } else if (typeof round.voted_out_players === 'string' && round.voted_out_players.trim() !== '') {
-    try {
-      votedOut = JSON.parse(round.voted_out_players);
-    } catch {
-      votedOut = [];
-    }
-  }
+        if (Array.isArray(round.voted_out_players)) {
+          votedOut = round.voted_out_players;
+        } else if (typeof round.voted_out_players === 'string' && round.voted_out_players.trim() !== '') {
+          try {
+            votedOut = JSON.parse(round.voted_out_players);
+          } catch {
+            votedOut = [];
+          }
+        }
 
-  return {
-    ...round,
-    voted_out_players: votedOut
-  };
-});
-
+        return {
+          ...round,
+          voted_out_players: votedOut
+        };
+      });
 
       // Лучший ход
       const bestMove = await pool.query(
@@ -105,6 +100,7 @@ const tournamentName = tournamentResult.rows?.name || null;
 
       return {
         ...game,
+        tournament_name: tournamentName,
         seating: seating.rows,
         rounds: processedRounds,
         best_move: bestMove.rows[0] || null,

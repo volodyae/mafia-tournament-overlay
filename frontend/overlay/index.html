@@ -310,17 +310,16 @@
         }
 
         .player-card.team-red {
-    background: var(--red-team-bg);
-}
+            background: var(--red-team-bg);
+        }
 
-.player-card.team-black {
-    background: var(--black-team-bg);
-}
+        .player-card.team-black {
+            background: var(--black-team-bg);
+        }
 
-.player-card.team-red.sheriff {
-    background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%);
-}
-
+        .player-card.team-red.sheriff {
+            background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%);
+        }
 
         .player-card.eliminated {
             transform: translateY(20px);
@@ -563,70 +562,69 @@
 
         // Загрузка данных игры
         async function loadGameData() {
-    try {
-        const response = await fetch(`http://localhost:3000/api/games/${gameId}`);
-        gameData = await response.json();
-
-        console.log('Game data loaded:', gameData);
-        renderOverlay();
-    } catch (error) {
-        console.error('Error loading game data:', error);
-    }
-}
-
+            try {
+                const response = await fetch(`http://localhost:3000/api/games/${gameId}`);
+                gameData = await response.json();
+                
+                console.log('Game data loaded:', gameData);
+                renderOverlay();
+            } catch (error) {
+                console.error('Error loading game data:', error);
+            }
+        }
 
         // Отрисовка оверлея
-function renderOverlay() {
-    if (!gameData || !gameData.seating) return;
+        function renderOverlay() {
+            if (!gameData || !gameData.seating) return;
 
-    // Обновляем правый блок (серия и номер игры)
-    document.querySelector('.series-name').textContent = gameData.tournament_name || gameData.series_name || 'СЕРИЯ';
-    document.querySelector('.game-current').textContent = gameData.game_number;
-    
-    // Отрисовка карточек игроков
-    const bottomPanel = document.querySelector('.bottom-panel');
-    bottomPanel.innerHTML = gameData.seating.map(seat => {
-        const isEliminated = seat.is_eliminated;
-        const team = seat.team === 'red' ? 'team-red' : 'team-black';
-        const sheriffClass = seat.role === 'sheriff' ? 'sheriff' : '';
-        const roleLabel = getRoleLabel(seat.role);
-        const eliminationIcon = seat.elimination_reason === 'voted' ? '👍' : '🔫';
+            // Обновляем правый блок (название турнира и номер игры)
+            const seriesEl = document.querySelector('.series-name');
+            seriesEl.textContent = gameData.tournament_name || gameData.series_name || 'СЕРИЯ';
+            document.querySelector('.game-current').textContent = gameData.game_number;
+            
+            // Отрисовка карточек игроков
+            const bottomPanel = document.querySelector('.bottom-panel');
+            bottomPanel.innerHTML = gameData.seating.map(seat => {
+                const isEliminated = seat.is_eliminated;
+                const team = seat.team === 'red' ? 'team-red' : 'team-black';
+                const sheriffClass = seat.role === 'sheriff' ? 'sheriff' : '';
+                const roleLabel = getRoleLabel(seat.role);
+                const eliminationIcon = seat.elimination_reason === 'voted' ? '👍' : '🔫';
 
-        return `
-            <div class="player-card ${team} ${sheriffClass} ${isEliminated ? 'eliminated' : ''}">
-                ${isEliminated ? `<div class="elimination-icon">${eliminationIcon}</div>` : ''}
-                ${roleLabel ? `<div class="role-badge">${roleLabel}</div>` : ''}
-                ${seat.photo_url 
-                    ? `<img src="${seat.photo_url}" alt="${seat.nickname}" class="player-portrait" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                       <div class="player-placeholder" style="display:none;">👤</div>`
-                    : `<div class="player-placeholder">👤</div>`
-                }
-                <div class="player-info">
-                    <div class="player-nickname">
-                        <span class="player-number">${seat.position}</span>
-                        <span class="player-nickname-text">${seat.nickname}</span>
+                return `
+                    <div class="player-card ${team} ${sheriffClass} ${isEliminated ? 'eliminated' : ''}">
+                        ${isEliminated ? `<div class="elimination-icon">${eliminationIcon}</div>` : ''}
+                        ${roleLabel ? `<div class="role-badge">${roleLabel}</div>` : ''}
+                        ${seat.photo_url 
+                            ? `<img src="${seat.photo_url}" alt="${seat.nickname}" class="player-portrait" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                               <div class="player-placeholder" style="display:none;">👤</div>`
+                            : `<div class="player-placeholder">👤</div>`
+                        }
+                        <div class="player-info">
+                            <div class="player-nickname">
+                                <span class="player-number">${seat.position}</span>
+                                <span class="player-nickname-text">${seat.nickname}</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        `;
-    }).join('');
+                `;
+            }).join('');
 
-    // Отрисовка ЛХ
-    if (gameData.best_move) {
-        renderBestMove();
-    }
+            // Отрисовка ЛХ
+            if (gameData.best_move) {
+                renderBestMove();
+            }
 
-    // Отрисовка выставленных
-    if (gameData.nominees) {
-        renderNominees();
-    }
+            // Отрисовка выставленных
+            if (gameData.nominees) {
+                renderNominees();
+            }
 
-    // Отрисовка таблицы результатов
-    if (gameData.rounds) {
-        renderRounds();
-    }
-}
-
+            // Отрисовка таблицы результатов
+            if (gameData.rounds) {
+                renderRounds();
+            }
+        }
 
         // Отрисовка лучшего хода
         function renderBestMove() {
@@ -649,33 +647,31 @@ function renderOverlay() {
 
         // Отрисовка выставленных
         function renderNominees() {
-    const nomineesList = document.querySelector('.nominees-list');
-    
-    if (!gameData.nominees || gameData.nominees.length === 0) {
-        nomineesList.innerHTML = ''; // Пусто, если нет кандидатов
-        return;
-    }
-    
-    nomineesList.innerHTML = gameData.nominees.map(nominee => {
-        const seat = gameData.seating.find(s => s.player_id === nominee.player_id);
-        if (!seat) return '';
-        
-        const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-        return `
-            <div class="nominee-item">
-                <div class="nominee-number ${teamClass}">${seat.position}</div>
-            </div>
-        `;
-    }).join('');
-}
-
+            const nomineesList = document.querySelector('.nominees-list');
+            
+            if (!gameData.nominees || gameData.nominees.length === 0) {
+                nomineesList.innerHTML = '';
+                return;
+            }
+            
+            nomineesList.innerHTML = gameData.nominees.map(nominee => {
+                const seat = gameData.seating.find(s => s.player_id === nominee.player_id);
+                if (!seat) return '';
+                
+                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                return `
+                    <div class="nominee-item">
+                        <div class="nominee-number ${teamClass}">${seat.position}</div>
+                    </div>
+                `;
+            }).join('');
+        }
 
         // Отрисовка таблицы результатов
         function renderRounds() {
             const tbody = document.querySelector('.rounds-table tbody');
             const maxRounds = 6; // Максимум столбцов
 
-            // Создаём строки для каждого типа действия
             const actions = ['🔫', '🎩', '⭐', '👍'];
             const rows = actions.map(action => {
                 let cells = `<td class="action-icon">${action}</td>`;
@@ -693,37 +689,43 @@ function renderOverlay() {
                             content = '<div class="round-number">❌</div>';
                         } else if (round.mafia_kill_player_id) {
                             const seat = gameData.seating.find(s => s.player_id === round.mafia_kill_player_id);
-                            const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                            content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                            if (seat) {
+                                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                                content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                            }
                         }
                     } else if (action === '🎩') {
                         if (round.don_check_player_id) {
                             const seat = gameData.seating.find(s => s.player_id === round.don_check_player_id);
-                            const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                            content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                            if (seat) {
+                                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                                content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                            }
                         } else {
                             content = '<div class="round-number">❌</div>';
                         }
                     } else if (action === '⭐') {
                         if (round.sheriff_check_player_id) {
                             const seat = gameData.seating.find(s => s.player_id === round.sheriff_check_player_id);
-                            const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                            content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                            if (seat) {
+                                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                                content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                            }
                         } else {
                             content = '<div class="round-number">❌</div>';
                         }
                     } else if (action === '👍') {
-  if (round.nobody_voted_out) {
-    content = '<div class="round-number">❌</div>';
-  } else if (round.voted_out_players && round.voted_out_players.length > 0) {
-    const firstId = round.voted_out_players[0];
-    const seat = gameData.seating.find(s => s.player_id === firstId);
-    if (seat) {
-      const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-      content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
-    }
-  }
-}
+                        if (round.nobody_voted_out) {
+                            content = '<div class="round-number">❌</div>';
+                        } else if (round.voted_out_players && round.voted_out_players.length > 0) {
+                            const firstId = round.voted_out_players[0];
+                            const seat = gameData.seating.find(s => s.player_id === firstId);
+                            if (seat) {
+                                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                                content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                            }
+                        }
+                    }
 
                     cells += `<td><div class="round-cell">${content}</div></td>`;
                 }
@@ -747,23 +749,22 @@ function renderOverlay() {
 
         // Подключение к WebSocket
         function connectWebSocket() {
-    socket = io('http://localhost:3000');
+            socket = io('http://localhost:3000');
+            
+            socket.on('connect', () => {
+                console.log('WebSocket connected');
+                socket.emit('join_game', gameId);
+            });
 
-    socket.on('connect', () => {
-        console.log('WebSocket connected');
-        socket.emit('join_game', gameId);
-    });
+            socket.on('game_updated', (data) => {
+                console.log('Game update received:', data);
+                loadGameData();
+            });
 
-    socket.on('game_updated', (data) => {
-        console.log('Game update received:', data);
-        loadGameData(); // Перезагружаем данные игры
-    });
-
-    socket.on('disconnect', () => {
-        console.log('WebSocket disconnected');
-    });
-}
-
+            socket.on('disconnect', () => {
+                console.log('WebSocket disconnected');
+            });
+        }
 
         // Инициализация
         window.addEventListener('load', () => {

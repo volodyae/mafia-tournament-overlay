@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Tournament = require('../models/Tournament');
+const Game = require('../models/Game'); // ⬅️ добавили
 
 // GET /api/tournaments - Получить все турниры
 router.get('/', async (req, res) => {
@@ -29,13 +30,29 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { name, total_games, total_tables, player_ids } = req.body;
-    
+
+    // 1) создаём турнир
     const tournament = await Tournament.create({ name, total_games, total_tables });
-    
+
+    // 2) при необходимости добавляем игроков в турнир
     if (player_ids && player_ids.length > 0) {
       await Tournament.addPlayers(tournament.id, player_ids);
     }
-    
+
+    // 3) автоматически создаём игры для каждого стола
+    //    для каждого стола от 1 до total_tables
+    //    для каждого game_number от 1 до total_games
+    for (let table = 1; table <= total_tables; table++) {
+      for (let gameNumber = 1; gameNumber <= total_games; gameNumber++) {
+        await Game.create({
+          tournament_id: tournament.id,
+          game_number: gameNumber,
+          table_number: table,
+          series_name: null
+        });
+      }
+    }
+
     res.status(201).json(tournament);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -69,11 +86,11 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/players', async (req, res) => {
   try {
     const { player_ids } = req.body;
-    
+
     if (!player_ids || !Array.isArray(player_ids) || player_ids.length === 0) {
       return res.status(400).json({ error: 'player_ids array is required' });
     }
-    
+
     await Tournament.addPlayers(req.params.id, player_ids);
     const players = await Tournament.getPlayers(req.params.id);
     res.json({ message: 'Players added successfully', players });
