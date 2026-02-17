@@ -1,242 +1,313 @@
 const express = require('express');
 const router = express.Router();
-const Game = require('../models/Game');
 const pool = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
+const Game = require('../models/Game');
 
-// GET /api/games/:id - Получить игру по ID
+// Получить игру с полными данными
 router.get('/:id', async (req, res) => {
   try {
     const game = await Game.getFullData(req.params.id);
-    
     if (!game) {
       return res.status(404).json({ error: 'Game not found' });
     }
-    
     res.json(game);
   } catch (error) {
-    console.error('Error loading game:', error);
+    console.error('Error getting game:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// POST /api/games - Создать игру
+// Создать игру
 router.post('/', async (req, res) => {
   try {
-    const game = await Game.create(req.body);
+    const { tournament_id, game_number, table_number, series_name } = req.body;
+    const game = await Game.create({ tournament_id, game_number, table_number, series_name });
     res.status(201).json(game);
   } catch (error) {
+    console.error('Error creating game:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// POST /api/games/:id/seating - Создать рассадку
+// Создать или обновить рассадку игры, сохраняя роли
 router.post('/:id/seating', async (req, res) => {
   const client = await pool.connect();
+
   try {
+    const gameId = req.params.id;
     const { seating } = req.body;
-    
+
+    if (!Array.isArray(seating) || seating.length !== 10) {
+      return res.status(400).json({ error: 'seating must be an array of 10 items' });
+    }
+
     await client.query('BEGIN');
-    
-    // Используем параметризованные запросы
-    for (const s of seating) {
+
+    // Текущая рассадка с ролями
+    const currentRes = await client.query(
+      'SELECT player_id, role, team FROM game_seating WHERE game_id = $1',
+      [gameId]
+    );
+    const currentMap = new Map(
+      currentRes.rows.map(row => [row.player_id, { role: row.role, team: row.team }])
+    );
+
+    // Удаляем старую рассадку
+    await client.query('DELETE FROM game_seating WHERE game_id = $1', [gameId]);
+
+    // Вставляем новую, роли сохраняем по player_id
+    for (const seat of seating) {
+      const prev = currentMap.get(seat.player_id) || { role: 'civilian', team: 'red' };
+
       await client.query(
-        'INSERT INTO game_seating (id, game_id, position, player_id) VALUES ($1, $2, $3, $4)',
-        [uuidv4(), req.params.id, s.position, s.player_id]
+        `INSERT INTO game_seating (id, game_id, player_id, position, role, team)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [uuidv4(), gameId, seat.player_id, seat.position, prev.role, prev.team]
       );
     }
-    
+
     await client.query('COMMIT');
-    
-    // Возвращаем полные данные игры
-    const gameData = await Game.getFullData(req.params.id);
-    res.json(gameData);
+
+    res.json({ success: true });
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Error creating seating:', error);
+    console.error('Error saving seating:', error);
     res.status(500).json({ error: error.message });
   } finally {
     client.release();
   }
 });
 
-// PUT /api/games/:id/roles - Назначить роли
-router.put('/:id/roles', async (req, res) => {
+// Назначить роли
+router.post('/:id/roles', async (req, res) => {
   const client = await pool.connect();
+
   try {
+    const gameId = req.params.id;
     const { roles } = req.body;
-    
+
+    if (!Array.isArray(roles) || roles.length !== 10) {
+      return res.status(400).json({ error: 'roles must be an array of 10 items' });
+    }
+
     await client.query('BEGIN');
-    
+
     for (const r of roles) {
       await client.query(
-        'UPDATE game_seating SET role = $1, team = $2 WHERE game_id = $3 AND position = $4',
-        [r.role, r.team, req.params.id, r.position]
+        `UPDATE game_seating 
+         SET role = $1, team = $2
+         WHERE game_id = $3 AND position = $4`,
+        [r.role, r.team, gameId, r.position]
       );
     }
-    
+
     await client.query('COMMIT');
-    res.json({ message: 'Roles assigned' });
+
+    res.json({ success: true });
   } catch (error) {
     await client.query('ROLLBACK');
+    console.error('Error assigning roles:', error);
     res.status(500).json({ error: error.message });
   } finally {
     client.release();
   }
 });
 
-// POST /api/games/:id/best-move - Установить ЛХ
-router.post('/:id/best-move', async (req, res) => {
+// Обновить список выставленных на голосование (с сохранением порядка)
+router.put('/:id/nominees', async (req, res) => {
   try {
-    const { first_killed_player_id, suspect_1, suspect_2, suspect_3 } = req.body;
-    
-    await pool.query(
-      `INSERT INTO best_move (id, game_id, first_killed_player_id, suspect_1, suspect_2, suspect_3)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (game_id) DO UPDATE SET
-       first_killed_player_id = $3, suspect_1 = $4, suspect_2 = $5, suspect_3 = $6`,
-      [uuidv4(), req.params.id, first_killed_player_id, suspect_1, suspect_2, suspect_3]
-    );
-    
-    res.json({ message: 'Best move set' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// POST /api/games/:id/nominees - Обновить выставленных
-router.post('/:id/nominees', async (req, res) => {
-  const client = await pool.connect();
-  try {
+    const gameId = req.params.id;
     const { player_ids } = req.body;
-    
-    await client.query('BEGIN');
-    
-    // Очистить текущих
-    await client.query('DELETE FROM voting_nominees WHERE game_id = $1', [req.params.id]);
-    
-    // Добавить новых
-    if (player_ids && player_ids.length > 0) {
-      for (let index = 0; index < player_ids.length; index++) {
-        await client.query(
-          'INSERT INTO voting_nominees (id, game_id, player_id, position) VALUES ($1, $2, $3, $4)',
-          [uuidv4(), req.params.id, player_ids[index], index + 1]
-        );
-      }
+
+    if (!Array.isArray(player_ids)) {
+      return res.status(400).json({ error: 'player_ids must be an array' });
     }
-    
-    await client.query('COMMIT');
-    res.json({ message: 'Nominees updated' });
+
+    await pool.query('DELETE FROM voting_nominees WHERE game_id = $1', [gameId]);
+
+    for (let index = 0; index < player_ids.length; index++) {
+      const playerId = player_ids[index];
+      await pool.query(
+        `INSERT INTO voting_nominees (id, game_id, player_id, position)
+         VALUES ($1, $2, $3, $4)`,
+        [uuidv4(), gameId, playerId, index + 1]
+      );
+    }
+
+    const nominees = await pool.query(
+      `SELECT vn.*, p.nickname
+       FROM voting_nominees vn
+       INNER JOIN players p ON vn.player_id = p.id
+       WHERE vn.game_id = $1
+       ORDER BY vn.position ASC`,
+      [gameId]
+    );
+
+    res.json(nominees.rows);
   } catch (error) {
-    await client.query('ROLLBACK');
+    console.error('Error updating nominees:', error);
     res.status(500).json({ error: error.message });
-  } finally {
-    client.release();
   }
 });
 
-// POST /api/games/:id/rounds - Добавить круг
+// Добавить круг
 router.post('/:id/rounds', async (req, res) => {
   try {
-    const { 
-      round_number, 
-      mafia_kill_player_id, 
+    const gameId = req.params.id;
+    const {
+      round_number,
+      mafia_kill_player_id,
       mafia_miss,
       don_check_player_id,
       sheriff_check_player_id,
       voted_out_players,
       nobody_voted_out
     } = req.body;
-    
-    await pool.query(
+
+    const result = await pool.query(
       `INSERT INTO game_rounds (
-        id, game_id, round_number, mafia_kill_player_id, mafia_miss,
-        don_check_player_id, sheriff_check_player_id, voted_out_players, nobody_voted_out
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        id, game_id, round_number,
+        mafia_kill_player_id, mafia_miss,
+        don_check_player_id, sheriff_check_player_id,
+        voted_out_players, nobody_voted_out
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      ON CONFLICT (game_id, round_number) DO UPDATE SET
+        mafia_kill_player_id = EXCLUDED.mafia_kill_player_id,
+        mafia_miss = EXCLUDED.mafia_miss,
+        don_check_player_id = EXCLUDED.don_check_player_id,
+        sheriff_check_player_id = EXCLUDED.sheriff_check_player_id,
+        voted_out_players = EXCLUDED.voted_out_players,
+        nobody_voted_out = EXCLUDED.nobody_voted_out
+      RETURNING *`,
       [
-        uuidv4(), req.params.id, round_number, 
-        mafia_kill_player_id || null, mafia_miss || false,
-        don_check_player_id || null, sheriff_check_player_id || null,
-        JSON.stringify(voted_out_players || []), nobody_voted_out || false
+        uuidv4(),
+        gameId,
+        round_number,
+        mafia_kill_player_id,
+        mafia_miss,
+        don_check_player_id,
+        sheriff_check_player_id,
+        JSON.stringify(voted_out_players || []),
+        nobody_voted_out
       ]
     );
-    
-    // ✅ НОВОЕ: Автоматически установить первого убитого в ЛХ для круга 1
-    if (round_number === 1 && mafia_kill_player_id && !mafia_miss) {
-      await pool.query(
-        `INSERT INTO best_move (id, game_id, first_killed_player_id)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (game_id) DO UPDATE SET
-         first_killed_player_id = $3`,
-        [uuidv4(), req.params.id, mafia_kill_player_id]
-      );
+
+    const round = result.rows[0];
+
+    // авто-обновление first_killed в best_move для круга 1
+    if (round.round_number === 1) {
+      let firstKilledPlayerId = null;
+      if (!round.mafia_miss && round.mafia_kill_player_id) {
+        firstKilledPlayerId = round.mafia_kill_player_id;
+      }
+
+      if (firstKilledPlayerId) {
+        await pool.query(
+          `INSERT INTO best_move (id, game_id, first_killed_player_id)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (game_id) DO UPDATE SET
+             first_killed_player_id = EXCLUDED.first_killed_player_id`,
+          [uuidv4(), gameId, firstKilledPlayerId]
+        );
+      }
     }
-    
-    res.json({ message: 'Round added' });
+
+    res.json(round);
   } catch (error) {
     console.error('Error adding round:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// PUT /api/games/:id/rounds/:roundNumber - Обновить круг
+// Обновить круг
 router.put('/:id/rounds/:roundNumber', async (req, res) => {
   try {
-    const { 
-      round_number, 
-      mafia_kill_player_id, 
+    const gameId = req.params.id;
+    const roundNumber = parseInt(req.params.roundNumber, 10);
+    const {
+      mafia_kill_player_id,
       mafia_miss,
       don_check_player_id,
       sheriff_check_player_id,
       voted_out_players,
       nobody_voted_out
     } = req.body;
-    
-    await pool.query(
+
+    const result = await pool.query(
       `UPDATE game_rounds SET
-       mafia_kill_player_id = $1, mafia_miss = $2,
-       don_check_player_id = $3, sheriff_check_player_id = $4,
-       voted_out_players = $5, nobody_voted_out = $6
-       WHERE game_id = $7 AND round_number = $8`,
+        mafia_kill_player_id = $1,
+        mafia_miss = $2,
+        don_check_player_id = $3,
+        sheriff_check_player_id = $4,
+        voted_out_players = $5,
+        nobody_voted_out = $6
+       WHERE game_id = $7 AND round_number = $8
+       RETURNING *`,
       [
-        mafia_kill_player_id || null, mafia_miss || false,
-        don_check_player_id || null, sheriff_check_player_id || null,
-        JSON.stringify(voted_out_players || []), nobody_voted_out || false,
-        req.params.id, parseInt(req.params.roundNumber)
+        mafia_kill_player_id,
+        mafia_miss,
+        don_check_player_id,
+        sheriff_check_player_id,
+        JSON.stringify(voted_out_players || []),
+        nobody_voted_out,
+        gameId,
+        roundNumber
       ]
     );
-    
-    // ✅ НОВОЕ: При редактировании круга 1 обновить первого убитого в ЛХ
-    if (parseInt(req.params.roundNumber) === 1 && mafia_kill_player_id && !mafia_miss) {
-      await pool.query(
-        `INSERT INTO best_move (id, game_id, first_killed_player_id)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (game_id) DO UPDATE SET
-         first_killed_player_id = $3`,
-        [uuidv4(), req.params.id, mafia_kill_player_id]
-      );
+
+    const round = result.rows[0];
+
+    if (round && round.round_number === 1) {
+      let firstKilledPlayerId = null;
+      if (!round.mafia_miss && round.mafia_kill_player_id) {
+        firstKilledPlayerId = round.mafia_kill_player_id;
+      }
+
+      if (firstKilledPlayerId) {
+        await pool.query(
+          `INSERT INTO best_move (id, game_id, first_killed_player_id)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (game_id) DO UPDATE SET
+             first_killed_player_id = EXCLUDED.first_killed_player_id`,
+          [uuidv4(), gameId, firstKilledPlayerId]
+        );
+      }
     }
-    
-    res.json({ message: 'Round updated successfully' });
+
+    res.json(round);
   } catch (error) {
     console.error('Error updating round:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/games/tournaments/:tournamentId/games - Получить игры турнира
-router.get('/tournaments/:tournamentId/games', async (req, res) => {
+// Установить лучший ход
+router.post('/:id/best-move', async (req, res) => {
   try {
+    const gameId = req.params.id;
+    const {
+      first_killed_player_id,
+      suspect_1,
+      suspect_2,
+      suspect_3
+    } = req.body;
+
     const result = await pool.query(
-      `SELECT g.*, 
-       (SELECT COUNT(*) FROM game_seating WHERE game_id = g.id) as seating_count
-       FROM games g
-       WHERE g.tournament_id = $1
-       ORDER BY g.table_number, g.game_number`,
-      [req.params.tournamentId]
+      `INSERT INTO best_move (id, game_id, first_killed_player_id, suspect_1, suspect_2, suspect_3)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (game_id) DO UPDATE SET
+         first_killed_player_id = EXCLUDED.first_killed_player_id,
+         suspect_1 = EXCLUDED.suspect_1,
+         suspect_2 = EXCLUDED.suspect_2,
+         suspect_3 = EXCLUDED.suspect_3
+       RETURNING *`,
+      [uuidv4(), gameId, first_killed_player_id, suspect_1, suspect_2, suspect_3]
     );
-    res.json(result.rows);
+
+    res.json(result.rows[0]);
   } catch (error) {
+    console.error('Error setting best move:', error);
     res.status(500).json({ error: error.message });
   }
 });

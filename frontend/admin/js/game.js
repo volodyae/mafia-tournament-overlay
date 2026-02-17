@@ -1,3 +1,13 @@
+window.UI = window.UI || {
+  showToast(message, type = 'info') {
+    console.log(`[${type}] ${message}`);
+    // сюда потом повесишь нормальные тосты,
+    // пока просто лог в консоль или alert
+    // alert(message);
+  }
+};
+// frontend/admin/js/game.js
+
 // Глобальные переменные
 let gameId = null;
 let gameData = null;
@@ -13,8 +23,6 @@ const gameTitle = document.getElementById('gameTitle');
 const overlayUrl = document.getElementById('overlayUrl');
 const copyOverlayBtn = document.getElementById('copyOverlayBtn');
 const openOverlayBtn = document.getElementById('openOverlayBtn');
-const seatingGrid = document.getElementById('seatingGrid');
-const saveSeatingBtn = document.getElementById('saveSeatingBtn');
 const rolesSection = document.getElementById('rolesSection');
 const rolesGrid = document.getElementById('rolesGrid');
 const applyRolesBtn = document.getElementById('applyRolesBtn');
@@ -27,6 +35,7 @@ const closeRoundModal = document.getElementById('closeRoundModal');
 const cancelRoundBtn = document.getElementById('cancelRoundBtn');
 const addRoundBtn = document.getElementById('addRoundBtn');
 const roundsList = document.getElementById('roundsList');
+const saveSeatingBtn = document.getElementById('saveSeatingBtn');
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', async () => {
@@ -85,25 +94,23 @@ async function loadGameData() {
         renderGameHeader();
         renderOverlayLink();
         
-        // Проверяем наличие рассадки
         if (gameData.seating && gameData.seating.length > 0) {
             console.log('✅ Рассадка найдена:', gameData.seating.length, 'игроков');
-            renderSeatingWithPlayers();
-            rolesSection.style.display = 'block';
-            renderRoles();
-            
-            bestMoveSection.style.display = 'block';
-            nomineesSection.style.display = 'block';
-            roundsSection.style.display = 'block';
-            
-            loadBestMoveData();  // <-- ИЗМЕНЕНО: загружаем данные отдельно
-            renderBestMove();     // <-- А потом рисуем
-            renderNominees();
-            renderRounds();
         } else {
             console.log('⚠️ Рассадка не найдена, показываем пустую форму');
-            renderEmptySeating();
         }
+
+        rolesSection.style.display = 'block';
+        renderRoles();
+
+        bestMoveSection.style.display = 'block';
+        nomineesSection.style.display = 'block';
+        roundsSection.style.display = 'block';
+        
+        loadBestMoveData();
+        renderBestMove();
+        renderNominees();
+        renderRounds();
         
         console.log('✅ Страница игры полностью загружена');
     } catch (error) {
@@ -123,109 +130,49 @@ function renderOverlayLink() {
     overlayUrl.textContent = url;
 }
 
-// === РАССАДКА ===
-
-function renderEmptySeating() {
-  seatingGrid.innerHTML = Array.from({ length: 10 }, (_, i) => {
-    const position = i + 1;
-    return `
-      <div class="seating-item">
-        <div class="position-number">${position}</div>
-        <select class="form-select seating-player-select" data-position="${position}" onchange="updateAvailablePlayers()">
-          <option value="">Выберите игрока</option>
-          ${tournamentPlayers.map(p => `<option value="${p.id}">${p.nickname}</option>`).join('')}
-        </select>
-      </div>
-    `;
-  }).join('');
-  
-  saveSeatingBtn.style.display = 'block';
-}
-
-// ЗАДАЧА 7: Обновить доступных игроков
-window.updateAvailablePlayers = () => {
-  const selects = document.querySelectorAll('.seating-player-select');
-  const selectedPlayerIds = Array.from(selects)
-    .map(s => s.value)
-    .filter(v => v !== '');
-  
-  selects.forEach(select => {
-    const currentValue = select.value;
-    const options = Array.from(select.options);
-    
-    options.forEach(option => {
-      if (option.value === '') return; // Пропустить "Выберите игрока"
-      
-      // Скрыть уже выбранных игроков (кроме текущего значения)
-      if (selectedPlayerIds.includes(option.value) && option.value !== currentValue) {
-        option.disabled = true;
-        option.style.display = 'none';
-      } else {
-        option.disabled = false;
-        option.style.display = '';
-      }
-    });
-  });
-};
-
-function renderSeatingWithPlayers() {
-    seatingGrid.innerHTML = gameData.seating.map(seat => `
-        <div class="seating-item">
-            <div class="position-number">${seat.position}</div>
-            <div style="flex: 1;">
-                <strong>${seat.nickname}</strong>
-                ${seat.role ? ` - ${getRoleLabel(seat.role)}` : ''}
-            </div>
-        </div>
-    `).join('');
-    
-    saveSeatingBtn.style.display = 'none';
-}
-
-saveSeatingBtn.addEventListener('click', async () => {
-    const selects = document.querySelectorAll('.seating-player-select');
-    const seating = [];
-    const usedPlayers = new Set();
-
-    for (const select of selects) {
-        const playerId = select.value;
-        const position = parseInt(select.dataset.position);
-
-        if (!playerId) {
-            UI.showToast(`Выберите игрока для позиции ${position}`, 'error');
-            return;
-        }
-
-        if (usedPlayers.has(playerId)) {
-            UI.showToast('Один игрок выбран дважды!', 'error');
-            return;
-        }
-
-        usedPlayers.add(playerId);
-        seating.push({ position, player_id: playerId });
-    }
-
-    try {
-        await API.createSeating(gameId, seating);
-        UI.showToast('Рассадка сохранена');
-        await loadGameData();
-    } catch (error) {
-        UI.showToast('Ошибка сохранения рассадки', 'error');
-    }
-});
-
-// === РОЛИ ===
+// === РАССАДКА + РОЛИ В ОДНОМ БЛОКЕ ===
 
 function renderRoles() {
+    const hasSeating = gameData.seating && gameData.seating.length > 0;
+
+    if (!hasSeating) {
+        rolesGrid.innerHTML = Array.from({ length: 10 }, (_, i) => {
+            const position = i + 1;
+            return `
+              <div class="seating-item" style="margin-bottom: 16px;">
+                <div class="position-number">${position}</div>
+                <div style="flex: 1;">
+                  <select class="form-select seating-player-select" data-position="${position}" onchange="updateAvailablePlayers()">
+                    <option value="">Выберите игрока</option>
+                    ${tournamentPlayers.map(p => `<option value="${p.id}">${p.nickname}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+            `;
+        }).join('');
+
+        saveSeatingBtn.style.display = 'inline-block';
+        return;
+    }
+
     rolesGrid.innerHTML = gameData.seating.map(seat => `
         <div class="seating-item" style="margin-bottom: 16px;">
             <div class="position-number">${seat.position}</div>
             <div style="flex: 1;">
-                <div style="margin-bottom: 8px;"><strong>${seat.nickname}</strong></div>
+                <div style="margin-bottom: 8px;">
+                    <select class="form-select seating-player-select" data-position="${seat.position}" onchange="updateAvailablePlayers()">
+                        <option value="">Выберите игрока</option>
+                        ${tournamentPlayers.map(p => `
+                            <option value="${p.id}" ${p.id === seat.player_id ? 'selected' : ''}>
+                                ${p.nickname}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
                 <div class="role-buttons">
-                    <button class="role-btn ${!seat.role || seat.role === 'civilian' ? '' : 'active'} ${seat.role === 'mafia' ? 'black' : ''}" 
+                    <button class="role-btn ${!seat.role || seat.role === 'civilian' ? 'active' : ''}" 
                             data-position="${seat.position}" data-role="none">
-                        Мирный (по умолчанию)
+                        Мирный
                     </button>
                     <button class="role-btn black ${seat.role === 'mafia' ? 'active' : ''}" 
                             data-position="${seat.position}" data-role="mafia" data-team="black">
@@ -244,6 +191,8 @@ function renderRoles() {
         </div>
     `).join('');
 
+    saveSeatingBtn.style.display = 'inline-block';
+
     document.querySelectorAll('.role-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const position = btn.dataset.position;
@@ -255,10 +204,81 @@ function renderRoles() {
             btn.classList.add('active');
         });
     });
+
+    updateAvailablePlayers();
 }
 
+// Обновить доступных игроков в селектах рассадки
+window.updateAvailablePlayers = () => {
+    const selects = document.querySelectorAll('.seating-player-select');
+    const selectedPlayerIds = Array.from(selects)
+      .map(s => s.value)
+      .filter(v => v !== '');
+    
+    selects.forEach(select => {
+      const currentValue = select.value;
+      const options = Array.from(select.options);
+      
+      options.forEach(option => {
+        if (option.value === '') return;
+        
+        if (selectedPlayerIds.includes(option.value) && option.value !== currentValue) {
+          option.disabled = true;
+          option.style.display = 'none';
+        } else {
+          option.disabled = false;
+          option.style.display = '';
+        }
+      });
+    });
+};
+
+// Сохранение рассадки (создание или редактирование)
+saveSeatingBtn.addEventListener('click', async () => {
+    const selects = document.querySelectorAll('.seating-player-select');
+    const seating = [];
+    const usedPlayers = new Set();
+
+    for (const select of selects) {
+        const playerId = select.value;
+        const position = parseInt(select.dataset.position, 10);
+
+        if (!playerId) {
+            UI.showToast(`Выберите игрока для позиции ${position}`, 'error');
+            return;
+        }
+
+        if (usedPlayers.has(playerId)) {
+            UI.showToast('Один игрок выбран дважды!', 'error');
+            return;
+        }
+
+        usedPlayers.add(playerId);
+        seating.push({ position, player_id: playerId });
+    }
+
+    try {
+        await API.createSeating(gameId, seating);
+        UI.showToast('Рассадка сохранена');
+
+        // оповещаем overlay
+        socket.emit('game_updated', { gameId });
+
+        await loadGameData();
+    } catch (error) {
+        UI.showToast('Ошибка сохранения рассадки', 'error');
+        console.error(error);
+    }
+});
+
+// === РОЛИ: применение ===
 
 applyRolesBtn.addEventListener('click', async () => {
+    if (!gameData.seating || gameData.seating.length === 0) {
+        UI.showToast('Сначала сохраните рассадку', 'error');
+        return;
+    }
+
     const roles = [];
 
     for (let position = 1; position <= 10; position++) {
@@ -275,7 +295,6 @@ applyRolesBtn.addEventListener('click', async () => {
         roles.push({ position, role, team });
     }
 
-    // Валидация: 1 дон, 1 шериф, 2-3 мафии
     const donCount = roles.filter(r => r.role === 'don').length;
     const sheriffCount = roles.filter(r => r.role === 'sheriff').length;
     const mafiaCount = roles.filter(r => r.role === 'mafia').length;
@@ -304,15 +323,15 @@ applyRolesBtn.addEventListener('click', async () => {
         await loadGameData();
     } catch (error) {
         UI.showToast('Ошибка назначения ролей', 'error');
+        console.error(error);
     }
 });
 
-
 // === ЛУЧШИЙ ХОД ===
+
 function renderBestMove() {
   const aliveSeats = gameData.seating.filter(s => !s.is_eliminated);
   
-  // Показать информацию о первом убитом из круга 1
   const bestMoveInfo = document.getElementById('bestMoveInfo');
   if (gameData.best_move && gameData.best_move.first_killed_player_id) {
     const firstKilledSeat = gameData.seating.find(s => s.player_id === gameData.best_move.first_killed_player_id);
@@ -323,7 +342,6 @@ function renderBestMove() {
     bestMoveInfo.innerHTML = `<p style="color: var(--text-secondary);">Первый убитый будет установлен автоматически после добавления круга 1</p>`;
   }
   
-  // Кнопки для подозреваемых
   const suspectsButtons = document.getElementById('suspectsButtons');
   suspectsButtons.innerHTML = aliveSeats.map(s => `
     <button class="btn ${selectedSuspects.includes(s.player_id) ? 'btn-primary' : 'btn-secondary'}" 
@@ -333,7 +351,6 @@ function renderBestMove() {
     </button>
   `).join('');
   
-  // Обновить отображение выбранных подозреваемых
   const positions = selectedSuspects.map(id => {
     const seat = gameData.seating.find(s => s.player_id === id);
     return seat ? seat.position : '?';
@@ -342,7 +359,6 @@ function renderBestMove() {
     positions.length > 0 ? positions.join(', ') : 'нет';
 }
 
-// Загрузить сохраненные данные ЛХ
 function loadBestMoveData() {
   if (gameData.best_move) {
     selectedSuspects = [
@@ -353,7 +369,6 @@ function loadBestMoveData() {
   }
 }
 
-// Переключить подозреваемого
 window.toggleSuspect = (playerId, position) => {
   const index = selectedSuspects.indexOf(playerId);
   
@@ -367,7 +382,6 @@ window.toggleSuspect = (playerId, position) => {
     selectedSuspects.push(playerId);
   }
   
-  // Сортировать по позициям
   selectedSuspects.sort((a, b) => {
     const posA = gameData.seating.find(s => s.player_id === a).position;
     const posB = gameData.seating.find(s => s.player_id === b).position;
@@ -377,14 +391,12 @@ window.toggleSuspect = (playerId, position) => {
   renderBestMove();
 };
 
-// Сохранить ЛХ
 document.getElementById('applyBestMoveBtn').addEventListener('click', async () => {
   if (selectedSuspects.length !== 3) {
     UI.showToast('Выберите ровно 3 подозреваемых', 'error');
     return;
   }
   
-  // Получить first_killed из best_move или показать ошибку
   let firstKilledPlayerId = gameData.best_move?.first_killed_player_id;
   
   if (!firstKilledPlayerId) {
@@ -407,27 +419,24 @@ document.getElementById('applyBestMoveBtn').addEventListener('click', async () =
     await loadGameData();
   } catch (error) {
     UI.showToast('Ошибка сохранения ЛХ', 'error');
+    console.error(error);
   }
 });
 
 // === ВЫСТАВЛЕНИЕ НА ГОЛОСОВАНИЕ ===
 
 function renderNominees() {
-    // Берём только живых игроков
     const aliveSeats = gameData.seating.filter(s => !s.is_eliminated);
 
-    // Синхронизируем currentNominees с живыми (на случай, если кто-то вылетел)
     currentNominees = (gameData.nominees || []).filter(n =>
         aliveSeats.some(s => s.player_id === n.player_id)
     );
 
-    // Кнопки 1–10
     const nomineeButtons = document.getElementById('nomineeButtons');
     nomineeButtons.innerHTML = Array.from({ length: 10 }, (_, i) => {
         const position = i + 1;
         const seat = aliveSeats.find(s => s.position === position);
 
-        // Если на этой позиции нет живого игрока — кнопка отключена
         if (!seat) {
             return `<button class="nominee-btn" disabled>${position}</button>`;
         }
@@ -444,7 +453,6 @@ function renderNominees() {
         </button>`;
     }).join('');
 
-    // Навешиваем обработчики
     nomineeButtons.querySelectorAll('.nominee-btn').forEach(btn => {
         if (btn.disabled) return;
         btn.addEventListener('click', () => toggleNominee(btn));
@@ -455,7 +463,6 @@ function renderNominees() {
 
 function toggleNominee(button) {
     const playerId = button.dataset.playerId;
-    const position = parseInt(button.dataset.position, 10);
 
     const seat = gameData.seating.find(s => s.player_id === playerId);
     if (!seat || seat.is_eliminated) {
@@ -466,15 +473,11 @@ function toggleNominee(button) {
     const existingIndex = currentNominees.findIndex(n => n.player_id === playerId);
 
     if (existingIndex > -1) {
-        // Убрать из списка
         currentNominees.splice(existingIndex, 1);
     } else {
-        // Добавить
         currentNominees.push({ player_id: playerId, nickname: seat.nickname });
     }
 
-
-    // Сохраняем на сервере
     updateNomineesOnServer();
 }
 
@@ -482,11 +485,10 @@ async function updateNomineesOnServer() {
     try {
         const playerIds = currentNominees.map(n => n.player_id);
         await API.updateNominees(gameId, playerIds);
-
+        
         socket.emit('game_updated', { gameId });
-
+        
         renderNomineesList();
-        // Переотрисуем кнопки, чтобы подсветка совпала
         renderNominees();
     } catch (error) {
         UI.showToast('Ошибка обновления выставленных', 'error');
@@ -524,66 +526,7 @@ document.getElementById('clearNomineesBtn').addEventListener('click', async () =
     UI.showToast('Список очищен');
 });
 
-window.removeNominee = async (playerId) => {
-    currentNominees = currentNominees.filter(n => n.player_id !== playerId);
-    
-    // АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ
-    try {
-        const playerIds = currentNominees.map(n => n.player_id);
-        await API.updateNominees(gameId, playerIds);
-        
-        socket.emit('game_updated', { gameId });
-        
-        renderNomineesList();
-    } catch (error) {
-        UI.showToast('Ошибка удаления', 'error');
-    }
-};
-
-document.getElementById('addNomineeSelect').addEventListener('change', async (e) => {
-    const playerId = e.target.value;
-    if (!playerId) return;
-
-    if (currentNominees.find(n => n.player_id === playerId)) {
-        UI.showToast('Игрок уже в списке', 'error');
-        e.target.value = '';
-        return;
-    }
-
-    const seat = gameData.seating.find(s => s.player_id === playerId);
-    currentNominees.push({ player_id: playerId, nickname: seat.nickname });
-    
-    // АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ
-    try {
-        const playerIds = currentNominees.map(n => n.player_id);
-        await API.updateNominees(gameId, playerIds);
-        
-        socket.emit('game_updated', { gameId });
-        
-        renderNomineesList();
-        e.target.value = '';
-    } catch (error) {
-        UI.showToast('Ошибка добавления', 'error');
-        currentNominees.pop(); // Откатываем если ошибка
-    }
-});
-
-document.getElementById('clearNomineesBtn').addEventListener('click', async () => {
-    currentNominees = [];
-    
-    try {
-        await API.updateNominees(gameId, []);
-        UI.showToast('Список очищен');
-        
-        socket.emit('game_updated', { gameId });
-        
-        renderNomineesList();
-    } catch (error) {
-        UI.showToast('Ошибка очистки', 'error');
-    }
-});
-
-// === КРУГИ ===
+// === КРУГи ===
 
 function renderRounds() {
   if (!gameData.rounds || gameData.rounds.length === 0) {
@@ -595,11 +538,8 @@ function renderRounds() {
     const mafiaKill = round.mafia_miss ? '❌ Промах' : round.mafia_kill_player_id ? getPlayerName(round.mafia_kill_player_id) : '-';
     const donCheck = round.don_check_player_id ? getPlayerName(round.don_check_player_id) : '❌';
     const sheriffCheck = round.sheriff_check_player_id ? getPlayerName(round.sheriff_check_player_id) : '❌';
-    const votedOut = round.nobody_voted_out
-  ? '❌ Никто'
-  : (round.voted_out_players && round.voted_out_players.length > 0
-      ? round.voted_out_players.map(id => getPlayerName(id)).join(', ')
-      : '-');
+    const votedOut = round.nobody_voted_out ? '❌ Никто' : (round.voted_out_players && round.voted_out_players.length > 0
+      ? round.voted_out_players.map(id => getPlayerName(id)).join(', ') : '-');
     
     return `
       <div class="card" style="margin-bottom: 16px;">
@@ -620,7 +560,6 @@ function renderRounds() {
   }).join('');
 }
 
-// Редактировать круг
 window.editRound = async (roundNumber) => {
   const round = gameData.rounds.find(r => r.round_number === roundNumber);
   if (!round) return;
@@ -632,15 +571,12 @@ window.editRound = async (roundNumber) => {
   
   populateRoundSelects();
   
-  // Заполнить текущие значения
   document.getElementById('mafiaKill').value = round.mafia_miss ? 'miss' : (round.mafia_kill_player_id || '');
   document.getElementById('donCheck').value = round.don_check_player_id || 'none';
   document.getElementById('sheriffCheck').value = round.sheriff_check_player_id || 'none';
   
   renderVotedOutList();
   roundModal.classList.add('active');
-  
-  // Изменить форму на режим редактирования
   roundForm.dataset.mode = 'edit';
 };
 
@@ -779,7 +715,7 @@ function setupEventListeners() {
         roundModal.classList.remove('active');
     });
 
-        cancelRoundBtn.addEventListener('click', () => {
+    cancelRoundBtn.addEventListener('click', () => {
         roundModal.classList.remove('active');
     });
 
@@ -814,4 +750,3 @@ function shuffle(array) {
     }
     return array;
 }
-

@@ -48,6 +48,7 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
+            margin-top: 8px;
         }
 
         .role-btn {
@@ -175,6 +176,50 @@
             padding: 0;
         }
 
+        .game-section-row {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .game-section-row {
+                flex-direction: column;
+            }
+        }
+
+        .nominee-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .nominee-btn {
+            min-width: 40px;
+            min-height: 40px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            background: var(--bg-secondary);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .nominee-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+
+        .nominee-btn:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
         @media (max-width: 640px) {
             .best-move-grid {
                 grid-template-columns: 1fr;
@@ -217,22 +262,14 @@
                 <button class="btn btn-secondary" id="openOverlayBtn">👁️ Открыть предпросмотр</button>
             </div>
 
-            <!-- Рассадка игроков -->
-            <div class="game-section" id="seatingSection">
-                <h3>👥 Рассадка игроков</h3>
-                <div class="seating-grid" id="seatingGrid">
-                    <!-- Заполняется через JS -->
-                </div>
-                <button class="btn btn-success" id="saveSeatingBtn" style="display: none;">✅ Сохранить рассадку</button>
-            </div>
-
-            <!-- Раздача ролей -->
+            <!-- Раздача ролей + рассадка -->
             <div class="game-section" id="rolesSection" style="display: none;">
-                <h3>🎭 Раздача ролей</h3>
+                <h3>👥 Рассадка и раздача ролей</h3>
                 <div id="rolesGrid">
                     <!-- Заполняется через JS -->
                 </div>
                 <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+                    <button class="btn btn-success" id="saveSeatingBtn" style="display: none;">✅ Сохранить рассадку</button>
                     <button class="btn btn-success" id="applyRolesBtn">✅ Применить роли на оверлей</button>
                 </div>
             </div>
@@ -264,15 +301,14 @@
                 <div class="game-section" id="nomineesSection" style="display: none; flex: 1;">
                     <h3>🎯 Выставление на голосование</h3>
                     <div class="form-group">
-    <label>Добавить кандидата:</label>
-    <div id="nomineeButtons" class="nominee-buttons">
-        <!-- Кнопки 1–10 создаёт JS -->
-    </div>
-</div>
-<div class="nominees-list" id="nomineesList">
-    <!-- Заполняется через JS -->
-</div>
-
+                        <label>Добавить кандидата:</label>
+                        <div id="nomineeButtons" class="nominee-buttons">
+                            <!-- Кнопки 1–10 создаёт JS -->
+                        </div>
+                    </div>
+                    <div class="nominees-list" id="nomineesList">
+                        <!-- Заполняется через JS -->
+                    </div>
                     <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                         <button class="btn btn-danger" id="clearNomineesBtn">🗑️ Очистить всех</button>
                     </div>

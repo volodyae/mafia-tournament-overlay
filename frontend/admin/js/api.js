@@ -1,206 +1,130 @@
-// Базовый URL API
-const API_URL = 'http://localhost:3000/api';
+// frontend/admin/js/api.js
 
-// Утилита для HTTP-запросов
-class API {
-    static async request(endpoint, options = {}) {
-        try {
-            const response = await fetch(`${API_URL}${endpoint}`, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                },
-                ...options
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Ошибка запроса');
-            }
-            
-            return await response.json();
-        } catch (error) {
-            console.error('API Error:', error);
-            throw error;
-        }
+const API_BASE_URL = 'http://localhost:3000/api';
+
+const API = {
+  async request(path, options = {}) {
+    const url = `${API_BASE_URL}${path}`;
+
+    const defaultHeaders = {
+      'Content-Type': 'application/json'
+    };
+
+    const config = {
+      method: options.method || 'GET',
+      headers: { ...defaultHeaders, ...(options.headers || {}) }
+    };
+
+    if (options.body) {
+      config.body = options.body;
     }
 
-    // === ИГРОКИ ===
-    static async getPlayers() {
-        return this.request('/players');
-    }
+    try {
+      const response = await fetch(url, config);
 
-    static async getPlayer(id) {
-        return this.request(`/players/${id}`);
-    }
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('API Error Response:', text);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
-    static async createPlayer(data) {
-        return this.request('/players', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
+      if (response.status === 204) {
+        return null;
+      }
 
-    static async updatePlayer(id, data) {
-        return this.request(`/players/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(data)
-        });
+      return await response.json();
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
     }
+  },
 
-    static async deletePlayer(id) {
-        return this.request(`/players/${id}`, {
-            method: 'DELETE'
-        });
-    }
+  // Турниры
+  async getTournaments() {
+    return this.request('/tournaments');
+  },
 
-    static async searchPlayers(query) {
-        return this.request(`/players/search?q=${encodeURIComponent(query)}`);
-    }
+  async getTournament(id) {
+    return this.request(`/tournaments/${id}`);
+  },
 
-    // === ТУРНИРЫ ===
-    static async getTournaments() {
-        return this.request('/tournaments');
-    }
+  async createTournament(data) {
+    return this.request('/tournaments', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
 
-    static async getTournament(id) {
-        return this.request(`/tournaments/${id}`);
-    }
+  async updateTournament(id, data) {
+    return this.request(`/tournaments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
 
-    static async createTournament(data) {
-        return this.request('/tournaments', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
+  // Игроки турнира
+  async getTournamentPlayers(tournamentId) {
+    return this.request(`/tournaments/${tournamentId}/players`);
+  },
 
-    static async getTournamentPlayers(id) {
-        return this.request(`/tournaments/${id}/players`);
-    }
+  // Игры
+  async getGame(gameId) {
+    return this.request(`/games/${gameId}`);
+  },
 
-    static async deleteTournament(id) {
-        return this.request(`/tournaments/${id}`, {
-            method: 'DELETE'
-        });
-    }
+  async createGame(data) {
+    return this.request('/games', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
 
-    static async addPlayersToTournament(tournamentId, playerIds) {
-        return this.request(`/tournaments/${tournamentId}/players`, {
-            method: 'POST',
-            body: JSON.stringify({ player_ids: playerIds })
-        });
-    }
+  // Рассадка
+  async createSeating(gameId, seating) {
+    return this.request(`/games/${gameId}/seating`, {
+      method: 'POST',
+      body: JSON.stringify({ seating })
+    });
+  },
 
-    static async removePlayerFromTournament(tournamentId, playerId) {
-        return this.request(`/tournaments/${tournamentId}/players/${playerId}`, {
-            method: 'DELETE'
-        });
-    }
+  // Роли
+  async assignRoles(gameId, roles) {
+    return this.request(`/games/${gameId}/roles`, {
+      method: 'POST',
+      body: JSON.stringify({ roles })
+    });
+  },
 
-    // === ИГРЫ ===
-    static async getGame(id) {
-        return this.request(`/games/${id}`);
-    }
+  // Выставленные на голосование
+  async updateNominees(gameId, player_ids) {
+    return this.request(`/games/${gameId}/nominees`, {
+      method: 'PUT',
+      body: JSON.stringify({ player_ids })
+    });
+  },
 
-    static async createGame(data) {
-        return this.request('/games', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
+  // Круги
+  async addRound(gameId, roundData) {
+    return this.request(`/games/${gameId}/rounds`, {
+      method: 'POST',
+      body: JSON.stringify(roundData)
+    });
+  },
 
-    static async createSeating(gameId, seating) {
-        return this.request(`/games/${gameId}/seating`, {
-            method: 'POST',
-            body: JSON.stringify({ seating })
-        });
-    }
+  async updateRound(gameId, roundNumber, roundData) {
+    return this.request(`/games/${gameId}/rounds/${roundNumber}`, {
+      method: 'PUT',
+      body: JSON.stringify(roundData)
+    });
+  },
 
-    static async assignRoles(gameId, roles) {
-        return this.request(`/games/${gameId}/roles`, {
-            method: 'PUT',
-            body: JSON.stringify({ roles })
-        });
-    }
+  // Лучший ход
+  async setBestMove(gameId, data) {
+    return this.request(`/games/${gameId}/best-move`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+};
 
-    static async setBestMove(gameId, data) {
-        return this.request(`/games/${gameId}/best-move`, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    static async updateNominees(gameId, playerIds) {
-        return this.request(`/games/${gameId}/nominees`, {
-            method: 'POST',
-            body: JSON.stringify({ player_ids: playerIds })
-        });
-    }
-
-    static async addRound(gameId, roundData) {
-        return this.request(`/games/${gameId}/rounds`, {
-            method: 'POST',
-            body: JSON.stringify(roundData)
-        });
-    }
-
-    static async updateRound(gameId, roundNumber, roundData) {
-        return this.request(`/games/${gameId}/rounds/${roundNumber}`, {
-            method: 'PUT',
-            body: JSON.stringify(roundData)
-        });
-    }
-
-    static async getTournamentGames(tournamentId) {
-        return this.request(`/games/tournaments/${tournamentId}/games`);
-    }
-}
-
-// Утилиты UI
-class UI {
-    // Показать уведомление
-    static showToast(message, type = 'success') {
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.remove();
-        }, 3000);
-    }
-
-    // Показать загрузку
-    static showLoading(container) {
-        container.innerHTML = `
-            <div class="loading">
-                <div class="spinner"></div>
-                <p>Загрузка...</p>
-            </div>
-        `;
-    }
-
-    // Показать пустое состояние
-    static showEmpty(container, message) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <h3>${message}</h3>
-            </div>
-        `;
-    }
-
-    // Подтверждение действия
-    static confirm(message) {
-        return window.confirm(message);
-    }
-
-    // Форматирование даты
-    static formatDate(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('ru-RU', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        });
-    }
-}
+window.API = API;
