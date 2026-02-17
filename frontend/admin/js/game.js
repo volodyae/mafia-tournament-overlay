@@ -156,40 +156,39 @@ function renderRoles() {
     }
 
     rolesGrid.innerHTML = gameData.seating.map(seat => `
-        <div class="seating-item" style="margin-bottom: 16px;">
-            <div class="position-number">${seat.position}</div>
-            <div style="flex: 1;">
-                <div style="margin-bottom: 8px;">
-                    <select class="form-select seating-player-select" data-position="${seat.position}" onchange="updateAvailablePlayers()">
-                        <option value="">Выберите игрока</option>
-                        ${tournamentPlayers.map(p => `
-                            <option value="${p.id}" ${p.id === seat.player_id ? 'selected' : ''}>
-                                ${p.nickname}
-                            </option>
-                        `).join('')}
-                    </select>
-                </div>
-                <div class="role-buttons">
-                    <button class="role-btn ${!seat.role || seat.role === 'civilian' ? 'active' : ''}" 
-                            data-position="${seat.position}" data-role="none">
-                        Мирный
-                    </button>
-                    <button class="role-btn black ${seat.role === 'mafia' ? 'active' : ''}" 
-                            data-position="${seat.position}" data-role="mafia" data-team="black">
-                        Мафия
-                    </button>
-                    <button class="role-btn black ${seat.role === 'don' ? 'active' : ''}" 
-                            data-position="${seat.position}" data-role="don" data-team="black">
-                        Дон
-                    </button>
-                    <button class="role-btn yellow ${seat.role === 'sheriff' ? 'active' : ''}" 
-                            data-position="${seat.position}" data-role="sheriff" data-team="red">
-                        Шериф
-                    </button>
-                </div>
-            </div>
+    <div class="seating-item seating-line" style="margin-bottom: 16px;">
+        <div class="position-number">${seat.position}</div>
+        <div class="seating-select-wrapper">
+            <select class="form-select seating-player-select" data-position="${seat.position}" onchange="updateAvailablePlayers()">
+                <option value="">Выберите игрока</option>
+                ${tournamentPlayers.map(p => `
+                    <option value="${p.id}" ${p.id === seat.player_id ? 'selected' : ''}>
+                        ${p.nickname}
+                    </option>
+                `).join('')}
+            </select>
         </div>
-    `).join('');
+        <div class="role-buttons">
+            <button class="role-btn civilian ${!seat.role || seat.role === 'civilian' ? 'active' : ''}" 
+        data-position="${seat.position}" data-role="civilian" data-team="red">
+    Мирный
+</button>
+
+            <button class="role-btn black ${seat.role === 'mafia' ? 'active' : ''}" 
+                    data-position="${seat.position}" data-role="mafia" data-team="black">
+                Мафия
+            </button>
+            <button class="role-btn black ${seat.role === 'don' ? 'active' : ''}" 
+                    data-position="${seat.position}" data-role="don" data-team="black">
+                Дон
+            </button>
+            <button class="role-btn yellow ${seat.role === 'sheriff' ? 'active' : ''}" 
+                    data-position="${seat.position}" data-role="sheriff" data-team="red">
+                Шериф
+            </button>
+        </div>
+    </div>
+`).join('');
 
     saveSeatingBtn.style.display = 'inline-block';
 

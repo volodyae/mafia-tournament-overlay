@@ -65,7 +65,7 @@ CREATE TABLE game_rounds (
     mafia_miss BOOLEAN DEFAULT FALSE,
     don_check_player_id UUID REFERENCES players(id),
     sheriff_check_player_id UUID REFERENCES players(id),
-    voted_out_players JSONB, -- массив player_id
+    voted_out_players JSONB,
     nobody_voted_out BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(game_id, round_number)

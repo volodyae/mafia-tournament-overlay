@@ -26,10 +26,24 @@
         }
 
         .seating-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* новая обёртка для селекта */
+.seating-select-wrapper {
+    flex: 1;
+}
+
+/* кнопки ролей справа в строку */
+.role-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 0; /* раньше было 8px, можно убрать отступ сверху */
+}
+
 
         .position-number {
             width: 32px;
@@ -62,11 +76,23 @@
             font-size: 14px;
         }
 
-        .role-btn.active {
-            border-color: var(--primary);
-            background: var(--primary);
-            color: white;
-        }
+        /* базовое активное состояние для тех, у кого нет цветного класса */
+.role-btn.active {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: white;
+}
+
+/* мирный (красный) */
+.role-btn.civilian {
+    border-color: #DC2626;
+}
+
+.role-btn.civilian.active {
+    background: #DC2626;
+    border-color: #DC2626;
+    color: white;
+}
 
         .role-btn.red {
             border-color: #DC2626;
@@ -381,7 +407,8 @@
         </div>
     </div>
 
-    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+<script src="js/ui.js"></script>    
+<script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="js/api.js"></script>
     <script src="js/game.js"></script>
 </body>

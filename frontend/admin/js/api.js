@@ -39,7 +39,7 @@ const API = {
     }
   },
 
-  // Турниры
+  // ===== Турниры =====
   async getTournaments() {
     return this.request('/tournaments');
   },
@@ -62,12 +62,61 @@ const API = {
     });
   },
 
-  // Игроки турнира
+  async deleteTournament(id) {
+    return this.request(`/tournaments/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  // ===== Игроки =====
+
+  async getPlayers() {
+    return this.request('/players');
+  },
+
+  async searchPlayers(query) {
+    const q = encodeURIComponent(query);
+    return this.request(`/players/search?q=${q}`);
+  },
+
+  async createPlayer(data) {
+    return this.request('/players', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async updatePlayer(id, data) {
+    return this.request(`/players/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deletePlayer(id) {
+    return this.request(`/players/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
   async getTournamentPlayers(tournamentId) {
     return this.request(`/tournaments/${tournamentId}/players`);
   },
 
-  // Игры
+  async addPlayersToTournament(tournamentId, playerIds) {
+    return this.request(`/tournaments/${tournamentId}/players`, {
+      method: 'POST',
+      body: JSON.stringify({ player_ids: playerIds })
+    });
+  },
+
+  async removePlayerFromTournament(tournamentId, playerId) {
+    return this.request(`/tournaments/${tournamentId}/players/${playerId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  // ===== Игры =====
   async getGame(gameId) {
     return this.request(`/games/${gameId}`);
   },
@@ -79,7 +128,11 @@ const API = {
     });
   },
 
-  // Рассадка
+  async getTournamentGames(tournamentId) {
+    return this.request(`/tournaments/${tournamentId}/games`);
+  },
+
+  // ===== Рассадка =====
   async createSeating(gameId, seating) {
     return this.request(`/games/${gameId}/seating`, {
       method: 'POST',
@@ -87,7 +140,7 @@ const API = {
     });
   },
 
-  // Роли
+  // ===== Роли =====
   async assignRoles(gameId, roles) {
     return this.request(`/games/${gameId}/roles`, {
       method: 'POST',
@@ -95,7 +148,7 @@ const API = {
     });
   },
 
-  // Выставленные на голосование
+  // ===== Выставленные на голосование =====
   async updateNominees(gameId, player_ids) {
     return this.request(`/games/${gameId}/nominees`, {
       method: 'PUT',
@@ -103,7 +156,7 @@ const API = {
     });
   },
 
-  // Круги
+  // ===== Круги =====
   async addRound(gameId, roundData) {
     return this.request(`/games/${gameId}/rounds`, {
       method: 'POST',
@@ -118,7 +171,7 @@ const API = {
     });
   },
 
-  // Лучший ход
+  // ===== Лучший ход =====
   async setBestMove(gameId, data) {
     return this.request(`/games/${gameId}/best-move`, {
       method: 'POST',
