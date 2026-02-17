@@ -12,6 +12,7 @@
             --text-primary: #FFFFFF;
             --text-secondary: #E5E7EB;
             --text-muted: #9CA3AF;
+            --overlay-scale: 1;
         }
 
         * {
@@ -34,16 +35,32 @@
             transform-origin: top left;
         }
 
-        @media (min-width: 2560px) and (min-height: 1440px) {
-            .overlay-container {
-                transform: scale(1.333);
-            }
+        .info-block-left,
+        .info-block-right,
+        .bottom-panel {
+            transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out;
         }
 
-        @media (min-width: 3840px) and (min-height: 2160px) {
-            .overlay-container {
-                transform: scale(2);
-            }
+        .overlay-container.visible .info-block-left,
+        .overlay-container.visible .info-block-right,
+        .overlay-container.visible .bottom-panel {
+            opacity: 1;
+            transform: translate(0, 0);
+        }
+
+        .overlay-container.hidden .info-block-left {
+            opacity: 0;
+            transform: translateX(-120%);
+        }
+
+        .overlay-container.hidden .info-block-right {
+            opacity: 0;
+            transform: translateX(120%);
+        }
+
+        .overlay-container.hidden .bottom-panel {
+            opacity: 0;
+            transform: translateY(120%);
         }
 
         .info-block-left {
@@ -226,6 +243,13 @@
             color: white;
         }
 
+        .round-multi {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+        }
+
         .info-block-right {
             position: absolute;
             top: 10px;
@@ -352,24 +376,16 @@
         }
 
         .player-portrait {
-    width: 100%;
-    height: 125%;
-    object-fit: cover;
-    object-position: center top;
-    background-color: transparent;
-
-    /* сглаживание при даунскейле */
-    image-rendering: smooth;
-    image-rendering: high-quality;
-    image-rendering: auto;
-
-    /* опционально лёгкий блюр, если сильно «режет глаз» */
-    /* filter: blur(0.1px); */
-
-    position: relative;
-    z-index: 2;
-}
-
+            width: 100%;
+            height: 125%;
+            object-fit: cover;
+            object-position: center top;
+            background-color: transparent;
+            image-rendering: smooth;
+            image-rendering: high-quality;
+            image-rendering: auto;
+            position: relative;
+            z-index: 2;
         }
 
         .player-placeholder {
@@ -515,10 +531,33 @@
         .animate-in {
             animation: fadeInUp 0.6s ease-out;
         }
+
+        @keyframes role-change-flash {
+            0% {
+                transform: translateY(0) scale(1);
+                box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.0);
+            }
+            30% {
+                transform: translateY(-6px) scale(1.04);
+                box-shadow: 0 0 18px 4px rgba(250, 204, 21, 0.45);
+            }
+            70% {
+                transform: translateY(-2px) scale(1.02);
+                box-shadow: 0 0 10px 2px rgba(250, 204, 21, 0.2);
+            }
+            100% {
+                transform: translateY(0) scale(1);
+                box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.0);
+            }
+        }
+
+        .player-card.role-changed {
+            animation: role-change-flash 0.5s ease-out;
+        }
     </style>
 </head>
 <body>
-    <div class="overlay-container">
+    <div class="overlay-container visible">
         <div class="info-block-left animate-in">
             <div class="top-info-row">
                 <div class="best-move">
@@ -583,21 +622,38 @@
             const scaleX = screenWidth / baseWidth;
             const scaleY = screenHeight / baseHeight;
             const scale = Math.min(scaleX, scaleY);
-            container.style.transform = `scale(${scale})`;
+
+            container.style.setProperty('--overlay-scale', scale);
+
             const scaledWidth = baseWidth * scale;
             const scaledHeight = baseHeight * scale;
             const offsetX = (screenWidth - scaledWidth) / 2;
             const offsetY = (screenHeight - scaledHeight) / 2;
+
             container.style.left = `${offsetX}px`;
             container.style.top = `${offsetY}px`;
+            container.style.transform = `scale(${scale})`;
+        }
+
+        function applyOverlayVisibility() {
+            const container = document.querySelector('.overlay-container');
+            if (!container || !gameData) return;
+
+            if (gameData.overlay_hidden) {
+                container.classList.add('hidden');
+                container.classList.remove('visible');
+            } else {
+                container.classList.remove('hidden');
+                container.classList.add('visible');
+            }
         }
 
         async function loadGameData() {
             try {
                 const response = await fetch(`http://localhost:3000/api/games/${gameId}`);
                 gameData = await response.json();
-                console.log('Game data loaded:', gameData);
                 renderOverlay();
+                applyOverlayVisibility();
             } catch (error) {
                 console.error('Error loading game data:', error);
             }
@@ -661,7 +717,8 @@
                 if (seat.role === 'sheriff') stripClass = 'sheriff-strip';
 
                 return `
-                    <div class="player-card ${isEliminated ? 'eliminated' : ''} ${justEliminated ? 'just-eliminated' : ''}">
+                    <div class="player-card ${isEliminated ? 'eliminated' : ''} ${justEliminated ? 'just-eliminated' : ''}"
+                         data-position="${seat.position}">
                         <div class="player-card-inner">
                             ${isEliminated ? `<div class="elimination-icon">${eliminationIcon}</div>` : ''}
                             ${roleLabel ? `<div class="role-badge ${seat.role === 'sheriff' ? 'role-badge-sheriff' : ''}">${roleLabel}</div>` : ''}
@@ -702,18 +759,25 @@
 
         function renderBestMove() {
             const bm = gameData.best_move;
-            const suspects = [bm.suspect_1, bm.suspect_2, bm.suspect_3];
+            const suspects = [bm?.suspect_1, bm?.suspect_2, bm?.suspect_3];
             const bestMovePlayersDiv = document.querySelector('.best-move-players');
-            bestMovePlayersDiv.innerHTML = suspects.map(playerId => {
-                const seat = gameData.seating.find(s => s.player_id === playerId);
-                if (!seat) return '';
-                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                return `
+            if (!bm) {
+                bestMovePlayersDiv.innerHTML = '';
+                return;
+            }
+
+            bestMovePlayersDiv.innerHTML = suspects
+                .filter(Boolean)
+                .map(playerId => {
+                    const seat = gameData.seating.find(s => s.player_id === playerId);
+                    if (!seat) return '';
+                    const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                    return `
                     <div class="best-move-player">
                         <div class="best-move-number ${teamClass}">${seat.position}</div>
                     </div>
                 `;
-            }).join('');
+                }).join('');
         }
 
         function renderNominees() {
@@ -741,14 +805,17 @@
 
             const rows = actions.map(action => {
                 let cells = `<td class="action-icon">${action}</td>`;
-                for (let i = 0; i < maxRounds; i++) {
-                    const round = gameData.rounds[i];
+
+                for (let col = 1; col <= maxRounds; col++) {
+                    const round = gameData.rounds.find(r => r.round_number === col);
+
                     if (!round) {
                         cells += '<td></td>';
                         continue;
                     }
 
                     let content = '';
+
                     if (action === '🔫') {
                         if (round.mafia_miss) {
                             content = '<div class="round-number">❌</div>';
@@ -780,20 +847,22 @@
                             content = '<div class="round-number">❌</div>';
                         }
                     } else if (action === '👍') {
-                        if (round.nobody_voted_out) {
+                        if (round.nobody_voted_out || !round.voted_out_players || round.voted_out_players.length === 0) {
                             content = '<div class="round-number">❌</div>';
-                        } else if (round.voted_out_players && round.voted_out_players.length > 0) {
-                            const firstId = round.voted_out_players[0];
-                            const seat = gameData.seating.find(s => s.player_id === firstId);
-                            if (seat) {
+                        } else {
+                            const items = round.voted_out_players.map(id => {
+                                const seat = gameData.seating.find(s => s.player_id === id);
+                                if (!seat) return '';
                                 const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                                content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
-                            }
+                                return `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                            }).join('');
+                            content = `<div class="round-multi">${items}</div>`;
                         }
                     }
 
                     cells += `<td><div class="round-cell">${content}</div></td>`;
                 }
+
                 return `<tr>${cells}</tr>`;
             });
 
@@ -805,14 +874,38 @@
             return labels[role] || '';
         }
 
+        function animateRoleChange(positions) {
+            if (!Array.isArray(positions) || positions.length === 0) return;
+
+            requestAnimationFrame(() => {
+                positions.forEach(pos => {
+                    const card = document.querySelector(`.player-card[data-position="${pos}"]`);
+                    if (!card) return;
+
+                    card.classList.remove('role-changed');
+                    void card.offsetWidth;
+                    card.classList.add('role-changed');
+
+                    setTimeout(() => {
+                        card.classList.remove('role-changed');
+                    }, 600);
+                });
+            });
+        }
+
         function connectWebSocket() {
             socket = io('http://localhost:3000');
             socket.on('connect', () => {
-                console.log('WebSocket connected');
                 socket.emit('join_game', gameId);
             });
-            socket.on('game_updated', () => loadGameData());
-            socket.on('disconnect', () => console.log('WebSocket disconnected'));
+            socket.on('game_updated', () => {
+                loadGameData();
+            });
+            socket.on('roles_changed', payload => {
+                if (!payload || payload.gameId !== gameId) return;
+                animateRoleChange(payload.positions || []);
+            });
+            socket.on('disconnect', () => {});
         }
 
         window.addEventListener('load', () => {

@@ -1,12 +1,8 @@
 window.UI = window.UI || {
   showToast(message, type = 'info') {
     console.log(`[${type}] ${message}`);
-    // сюда потом повесишь нормальные тосты,
-    // пока просто лог в консоль или alert
-    // alert(message);
   }
 };
-// frontend/admin/js/game.js
 
 // Глобальные переменные
 let gameId = null;
@@ -23,9 +19,9 @@ const gameTitle = document.getElementById('gameTitle');
 const overlayUrl = document.getElementById('overlayUrl');
 const copyOverlayBtn = document.getElementById('copyOverlayBtn');
 const openOverlayBtn = document.getElementById('openOverlayBtn');
+const toggleOverlayVisibilityBtn = document.getElementById('toggleOverlayVisibilityBtn');
 const rolesSection = document.getElementById('rolesSection');
 const rolesGrid = document.getElementById('rolesGrid');
-const applyRolesBtn = document.getElementById('applyRolesBtn');
 const bestMoveSection = document.getElementById('bestMoveSection');
 const nomineesSection = document.getElementById('nomineesSection');
 const roundsSection = document.getElementById('roundsSection');
@@ -39,13 +35,9 @@ const saveSeatingBtn = document.getElementById('saveSeatingBtn');
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Страница игры загружается...');
-    
     const urlParams = new URLSearchParams(window.location.search);
     gameId = urlParams.get('id');
-    
-    console.log('Game ID:', gameId);
-    
+
     if (!gameId) {
         UI.showToast('Игра не найдена', 'error');
         setTimeout(() => window.location.href = 'index.html', 2000);
@@ -60,19 +52,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Подключение к WebSocket
 function connectWebSocket() {
     try {
-        socket = io('http://localhost:3000');
+        socket = io(window.OVERLAY_CONFIG?.SOCKET_URL || 'http://localhost:3000');
         
         socket.on('connect', () => {
-            console.log('✅ WebSocket connected');
             socket.emit('join_game', gameId);
         });
         
-        socket.on('disconnect', () => {
-            console.log('❌ WebSocket disconnected');
-        });
+        socket.on('disconnect', () => {});
         
-        socket.on('game_updated', (data) => {
-            console.log('Game update received:', data);
+        socket.on('game_updated', () => {
             loadGameData();
         });
     } catch (error) {
@@ -83,23 +71,13 @@ function connectWebSocket() {
 // Загрузка данных игры
 async function loadGameData() {
     try {
-        console.log('📥 Загрузка данных игры...');
-        
         gameData = await API.getGame(gameId);
-        console.log('✅ Данные игры получены:', gameData);
-        
         tournamentPlayers = await API.getTournamentPlayers(gameData.tournament_id);
-        console.log('✅ Игроки турнира получены:', tournamentPlayers.length, 'игроков');
         
         renderGameHeader();
         renderOverlayLink();
+        updateOverlayVisibilityButton();
         
-        if (gameData.seating && gameData.seating.length > 0) {
-            console.log('✅ Рассадка найдена:', gameData.seating.length, 'игроков');
-        } else {
-            console.log('⚠️ Рассадка не найдена, показываем пустую форму');
-        }
-
         rolesSection.style.display = 'block';
         renderRoles();
 
@@ -111,26 +89,30 @@ async function loadGameData() {
         renderBestMove();
         renderNominees();
         renderRounds();
-        
-        console.log('✅ Страница игры полностью загружена');
     } catch (error) {
-        console.error('❌ Ошибка загрузки игры:', error);
+        console.error('Ошибка загрузки игры:', error);
         UI.showToast('Ошибка загрузки игры: ' + error.message, 'error');
     }
 }
 
-// Отрисовка заголовка
+// Заголовок
 function renderGameHeader() {
     gameTitle.textContent = `Игра ${gameData.game_number} ${gameData.series_name ? '- ' + gameData.series_name : ''}`;
 }
 
-// Отрисовка ссылки на оверлей
+// Ссылка на оверлей
 function renderOverlayLink() {
-    const url = `http://localhost:3000/overlay/index.html?gameId=${gameId}`;
+    const base = window.OVERLAY_CONFIG?.BASE_URL || 'http://localhost:3000';
+    const url = `${base}/overlay/index.html?gameId=${gameId}`;
     overlayUrl.textContent = url;
 }
 
-// === РАССАДКА + РОЛИ В ОДНОМ БЛОКЕ ===
+function updateOverlayVisibilityButton() {
+    if (!toggleOverlayVisibilityBtn || !gameData) return;
+    toggleOverlayVisibilityBtn.textContent = gameData.overlay_hidden ? 'Отобразить оверлей' : 'Скрыть оверлей';
+}
+
+// === Рассадка + роли ===
 
 function renderRoles() {
     const hasSeating = gameData.seating && gameData.seating.length > 0;
@@ -170,10 +152,9 @@ function renderRoles() {
         </div>
         <div class="role-buttons">
             <button class="role-btn civilian ${!seat.role || seat.role === 'civilian' ? 'active' : ''}" 
-        data-position="${seat.position}" data-role="civilian" data-team="red">
-    Мирный
-</button>
-
+                data-position="${seat.position}" data-role="civilian" data-team="red">
+                Мирный
+            </button>
             <button class="role-btn black ${seat.role === 'mafia' ? 'active' : ''}" 
                     data-position="${seat.position}" data-role="mafia" data-team="black">
                 Мафия
@@ -193,14 +174,15 @@ function renderRoles() {
     saveSeatingBtn.style.display = 'inline-block';
 
     document.querySelectorAll('.role-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const position = btn.dataset.position;
             
             document.querySelectorAll(`.role-btn[data-position="${position}"]`).forEach(b => {
                 b.classList.remove('active');
             });
-            
             btn.classList.add('active');
+
+            await applyRolesInstant();
         });
     });
 
@@ -232,7 +214,7 @@ window.updateAvailablePlayers = () => {
     });
 };
 
-// Сохранение рассадки (создание или редактирование)
+// Сохранение рассадки
 saveSeatingBtn.addEventListener('click', async () => {
     const selects = document.querySelectorAll('.seating-player-select');
     const seating = [];
@@ -260,7 +242,6 @@ saveSeatingBtn.addEventListener('click', async () => {
         await API.createSeating(gameId, seating);
         UI.showToast('Рассадка сохранена');
 
-        // оповещаем overlay
         socket.emit('game_updated', { gameId });
 
         await loadGameData();
@@ -270,15 +251,15 @@ saveSeatingBtn.addEventListener('click', async () => {
     }
 });
 
-// === РОЛИ: применение ===
-
-applyRolesBtn.addEventListener('click', async () => {
+// Мгновенное применение ролей + отправка изменённых позиций
+async function applyRolesInstant() {
     if (!gameData.seating || gameData.seating.length === 0) {
         UI.showToast('Сначала сохраните рассадку', 'error');
         return;
     }
 
     const roles = [];
+    const changedPositions = [];
 
     for (let position = 1; position <= 10; position++) {
         const activeBtn = document.querySelector(`.role-btn[data-position="${position}"].active`);
@@ -292,39 +273,31 @@ applyRolesBtn.addEventListener('click', async () => {
         }
 
         roles.push({ position, role, team });
+
+        const seat = gameData.seating.find(s => s.position === position);
+        if (seat && (seat.role !== role || seat.team !== team)) {
+            changedPositions.push(position);
+        }
     }
 
     const donCount = roles.filter(r => r.role === 'don').length;
     const sheriffCount = roles.filter(r => r.role === 'sheriff').length;
     const mafiaCount = roles.filter(r => r.role === 'mafia').length;
 
-    if (donCount !== 1) {
-        UI.showToast('Должен быть ровно 1 дон!', 'error');
-        return;
-    }
-
-    if (sheriffCount !== 1) {
-        UI.showToast('Должен быть ровно 1 шериф!', 'error');
-        return;
-    }
-
-    if (mafiaCount < 2 || mafiaCount > 3) {
-        UI.showToast('Должно быть 2-3 мафии!', 'error');
-        return;
+    if (donCount !== 1 || sheriffCount !== 1 || mafiaCount < 2 || mafiaCount > 3) {
+        UI.showToast('Распределение ролей сейчас не соответствует стандарту (1 Дон, 1 Шериф, 2–3 мафии)', 'error');
     }
 
     try {
         await API.assignRoles(gameId, roles);
-        UI.showToast('Роли назначены');
-        
+        // Триггерим обновление данных + отдельное событие для анимации
         socket.emit('game_updated', { gameId });
-        
-        await loadGameData();
+        socket.emit('roles_changed', { gameId, positions: changedPositions });
     } catch (error) {
         UI.showToast('Ошибка назначения ролей', 'error');
         console.error(error);
     }
-});
+}
 
 // === ЛУЧШИЙ ХОД ===
 
@@ -368,7 +341,7 @@ function loadBestMoveData() {
   }
 }
 
-window.toggleSuspect = (playerId, position) => {
+window.toggleSuspect = (playerId) => {
   const index = selectedSuspects.indexOf(playerId);
   
   if (index > -1) {
@@ -525,7 +498,7 @@ document.getElementById('clearNomineesBtn').addEventListener('click', async () =
     UI.showToast('Список очищен');
 });
 
-// === КРУГи ===
+// === Круги ===
 
 function renderRounds() {
   if (!gameData.rounds || gameData.rounds.length === 0) {
@@ -559,7 +532,7 @@ function renderRounds() {
   }).join('');
 }
 
-window.editRound = async (roundNumber) => {
+window.editRound = (roundNumber) => {
   const round = gameData.rounds.find(r => r.round_number === roundNumber);
   if (!round) return;
   
@@ -698,7 +671,7 @@ roundForm.addEventListener('submit', async (e) => {
   }
 });
 
-// === ОБРАБОТЧИКИ ===
+// === Общие обработчики ===
 
 function setupEventListeners() {
     copyOverlayBtn.addEventListener('click', () => {
@@ -709,6 +682,21 @@ function setupEventListeners() {
     openOverlayBtn.addEventListener('click', () => {
         window.open(overlayUrl.textContent, '_blank');
     });
+
+    if (toggleOverlayVisibilityBtn) {
+        toggleOverlayVisibilityBtn.addEventListener('click', async () => {
+            try {
+                const newHidden = !gameData.overlay_hidden;
+                await API.setOverlayVisibility(gameId, newHidden);
+                UI.showToast(newHidden ? 'Оверлей скрыт' : 'Оверлей отображается');
+                socket.emit('game_updated', { gameId });
+                await loadGameData();
+            } catch (error) {
+                UI.showToast('Ошибка переключения видимости оверлея', 'error');
+                console.error(error);
+            }
+        });
+    }
 
     closeRoundModal.addEventListener('click', () => {
         roundModal.classList.remove('active');
@@ -725,27 +713,9 @@ function setupEventListeners() {
     });
 }
 
-// === УТИЛИТЫ ===
-
-function getRoleLabel(role) {
-    const labels = {
-        'civilian': 'Мирный',
-        'mafia': 'Мафия',
-        'don': 'Дон',
-        'sheriff': 'Шериф'
-    };
-    return labels[role] || role;
-}
+// Утилиты
 
 function getPlayerName(playerId) {
     const seat = gameData.seating.find(s => s.player_id === playerId);
     return seat ? `${seat.position}. ${seat.nickname}` : '?';
-}
-
-function shuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
 }

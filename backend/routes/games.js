@@ -30,6 +30,31 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Скрыть / показать оверлей
+router.post('/:id/overlay-visibility', async (req, res) => {
+  try {
+    const gameId = req.params.id;
+    const { overlay_hidden } = req.body;
+
+    const result = await pool.query(
+      `UPDATE games
+       SET overlay_hidden = $1
+       WHERE id = $2
+       RETURNING *`,
+      [overlay_hidden === true, gameId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating overlay visibility:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Создать или обновить рассадку игры, сохраняя роли
 router.post('/:id/seating', async (req, res) => {
   const client = await pool.connect();

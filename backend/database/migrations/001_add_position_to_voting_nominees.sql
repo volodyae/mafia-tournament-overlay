@@ -1,3 +1,8 @@
+-- 002_add_overlay_hidden_to_games.sql
+
+ALTER TABLE games
+ADD COLUMN IF NOT EXISTS overlay_hidden BOOLEAN NOT NULL DEFAULT FALSE;
+
 -- Миграция: добавление колонки position в voting_nominees
 
 -- Добавить колонку position

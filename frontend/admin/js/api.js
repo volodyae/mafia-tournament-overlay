@@ -1,6 +1,6 @@
 // frontend/admin/js/api.js
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = window.OVERLAY_CONFIG?.API_URL || 'http://localhost:3000/api';
 
 const API = {
   async request(path, options = {}) {
@@ -69,7 +69,6 @@ const API = {
   },
 
   // ===== Игроки =====
-
   async getPlayers() {
     return this.request('/players');
   },
@@ -130,6 +129,13 @@ const API = {
 
   async getTournamentGames(tournamentId) {
     return this.request(`/tournaments/${tournamentId}/games`);
+  },
+
+  async setOverlayVisibility(gameId, overlay_hidden) {
+    return this.request(`/games/${gameId}/overlay-visibility`, {
+      method: 'POST',
+      body: JSON.stringify({ overlay_hidden })
+    });
   },
 
   // ===== Рассадка =====

@@ -26,24 +26,21 @@
         }
 
         .seating-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
 
-/* новая обёртка для селекта */
-.seating-select-wrapper {
-    flex: 1;
-}
+        .seating-select-wrapper {
+            flex: 1;
+        }
 
-/* кнопки ролей справа в строку */
-.role-buttons {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-top: 0; /* раньше было 8px, можно убрать отступ сверху */
-}
-
+        .role-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 0;
+        }
 
         .position-number {
             width: 32px;
@@ -76,23 +73,21 @@
             font-size: 14px;
         }
 
-        /* базовое активное состояние для тех, у кого нет цветного класса */
-.role-btn.active {
-    border-color: var(--primary);
-    background: var(--primary);
-    color: white;
-}
+        .role-btn.active {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
 
-/* мирный (красный) */
-.role-btn.civilian {
-    border-color: #DC2626;
-}
+        .role-btn.civilian {
+            border-color: #DC2626;
+        }
 
-.role-btn.civilian.active {
-    background: #DC2626;
-    border-color: #DC2626;
-    color: white;
-}
+        .role-btn.civilian.active {
+            background: #DC2626;
+            border-color: #DC2626;
+            color: white;
+        }
 
         .role-btn.red {
             border-color: #DC2626;
@@ -268,6 +263,8 @@
         <nav class="navbar">
             <h1>🏆 Админ-панель Мафии</h1>
             <div class="nav-links">
+                <a href="index.html" class="nav-link">Турниры</a>
+                <a href="players.html" class="nav-link">Игроки</a>
                 <a href="javascript:history.back()" class="nav-link">← Назад к турниру</a>
             </div>
         </nav>
@@ -285,7 +282,10 @@
                     <div class="overlay-url" id="overlayUrl">http://localhost:3000/overlay/index.html?gameId=...</div>
                     <button class="btn btn-primary" id="copyOverlayBtn">📋 Копировать</button>
                 </div>
-                <button class="btn btn-secondary" id="openOverlayBtn">👁️ Открыть предпросмотр</button>
+                <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" id="openOverlayBtn">👁️ Открыть предпросмотр</button>
+                    <button class="btn btn-secondary" id="toggleOverlayVisibilityBtn">Скрыть оверлей</button>
+                </div>
             </div>
 
             <!-- Раздача ролей + рассадка -->
@@ -296,7 +296,7 @@
                 </div>
                 <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
                     <button class="btn btn-success" id="saveSeatingBtn" style="display: none;">✅ Сохранить рассадку</button>
-                    <button class="btn btn-success" id="applyRolesBtn">✅ Применить роли на оверлей</button>
+                    <!-- Кнопка применения ролей удалена, всё обновляется мгновенно -->
                 </div>
             </div>
 
@@ -407,9 +407,10 @@
         </div>
     </div>
 
-<script src="js/ui.js"></script>    
+<script src="js/ui.js"></script>
+<script src="/config.js"></script>
+<script src="js/api.js"></script>
 <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/game.js"></script>
+<script src="js/game.js"></script>
 </body>
 </html>
