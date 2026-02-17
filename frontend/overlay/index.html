@@ -6,24 +6,12 @@
     <title>Оверлей Спортивной Мафии - Прототип</title>
     <style>
         :root {
-            /* Цвета команд */
-            --red-team-bg: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
-            --black-team-bg: linear-gradient(135deg, #1F2937 0%, #111827 100%);
-            --red-team-solid: #DC2626;
+            --red-team-solid: #EF4444;
             --black-team-solid: #1F2937;
-            --red-underline: #DC2626;
-            --black-underline: #1F2937;
-            
-            /* Цвета текста */
+            --yellow-team-solid: #FACC15;
             --text-primary: #FFFFFF;
             --text-secondary: #E5E7EB;
             --text-muted: #9CA3AF;
-            
-            /* Базовые размеры для 1920x1080 */
-            --base-card-width: 150px;
-            --base-card-height: 180px;
-            --base-font-size: 16px;
-            --base-spacing: 8px;
         }
 
         * {
@@ -39,7 +27,6 @@
             color: var(--text-primary);
         }
 
-        /* Контейнер для масштабирования */
         .overlay-container {
             width: 1920px;
             height: 1080px;
@@ -47,20 +34,18 @@
             transform-origin: top left;
         }
 
-        /* Автоматическое масштабирование */
         @media (min-width: 2560px) and (min-height: 1440px) {
             .overlay-container {
-                transform: scale(1.333); /* 2K: 2560/1920 */
+                transform: scale(1.333);
             }
         }
 
         @media (min-width: 3840px) and (min-height: 2160px) {
             .overlay-container {
-                transform: scale(2); /* 4K: 3840/1920 */
+                transform: scale(2);
             }
         }
 
-        /* Левый верхний блок */
         .info-block-left {
             position: absolute;
             top: 10px;
@@ -123,12 +108,6 @@
             color: white;
         }
 
-        .role-icon {
-            font-size: 16px;
-            font-weight: 600;
-            display: none; /* Скрыты иконки ролей в ЛХ и таблице */
-        }
-
         .nominees {
             display: flex;
             align-items: center;
@@ -177,7 +156,6 @@
             color: white;
         }
 
-        /* Таблица результатов */
         .rounds-table {
             border-collapse: collapse;
             table-layout: fixed;
@@ -248,7 +226,6 @@
             color: white;
         }
 
-        /* Правый верхний блок */
         .info-block-right {
             position: absolute;
             top: 10px;
@@ -259,11 +236,11 @@
         }
 
         .series-info {
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
 
         .series-name {
-            font-size: 30px;
+            font-size: 36px;
             font-weight: 600;
             color: var(--text-primary);
             opacity: 0.7;
@@ -275,7 +252,7 @@
             font-weight: 600;
             text-align: right;
             opacity: 0.7;
-            margin-top: 0px;
+            margin-top: -2px;
             color: var(--text-primary);
         }
 
@@ -285,40 +262,30 @@
             font-weight: 600;
         }
 
-        /* Нижняя панель */
         .bottom-panel {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: flex-end;
             padding: 20px;
             gap: 8px;
         }
 
-        /* Карточка игрока */
         .player-card {
-            width: 150px;
-            height: 180px;
+            width: calc((100% - 9 * 8px) / 10);
             position: relative;
             border-radius: 12px;
             overflow: visible;
+            background: transparent;
             transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
         }
 
-        .player-card.team-red {
-            background: var(--red-team-bg);
-        }
-
-        .player-card.team-black {
-            background: var(--black-team-bg);
-        }
-
-        .player-card.team-red.sheriff {
-            background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%);
+        .player-card-inner {
+            position: relative;
+            width: 100%;
         }
 
         .player-card.eliminated {
@@ -327,7 +294,10 @@
             filter: grayscale(100%);
         }
 
-        /* Роль в правом верхнем углу */
+        .player-card.just-eliminated {
+            animation: eliminate 0.5s ease-out forwards;
+        }
+
         .role-badge {
             position: absolute;
             top: -12px;
@@ -345,10 +315,16 @@
             z-index: 3;
             border: 2px solid rgba(255, 255, 255, 0.3);
             line-height: 1;
+            padding-top: 0;
             padding-bottom: 3px;
         }
 
-        /* Иконка причины выбытия */
+        .role-badge-sheriff {
+            background: var(--yellow-team-solid);
+            border-color: var(--yellow-team-solid);
+            color: #111827;
+        }
+
         .elimination-icon {
             position: absolute;
             top: -12px;
@@ -366,35 +342,131 @@
             border: 2px solid #DC2626;
         }
 
-        /* Портрет игрока */
-        .player-portrait {
+        .player-media {
             width: 100%;
-            height: 130px;
-            object-fit: cover;
-            object-position: center top;
+            aspect-ratio: 3 / 3.2;
+            border-radius: 12px 12px 0 0;
+            overflow: hidden;
+            background: transparent;
+            position: relative;
         }
 
-        /* Информация под портретом */
+        .player-portrait {
+    width: 100%;
+    height: 125%;
+    object-fit: cover;
+    object-position: center top;
+    background-color: transparent;
+
+    /* сглаживание при даунскейле */
+    image-rendering: smooth;
+    image-rendering: high-quality;
+    image-rendering: auto;
+
+    /* опционально лёгкий блюр, если сильно «режет глаз» */
+    /* filter: blur(0.1px); */
+
+    position: relative;
+    z-index: 2;
+}
+
+        }
+
+        .player-placeholder {
+            width: 100%;
+            height: 125%;
+            background: linear-gradient(135deg, #374151 0%, #1F2937 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: #6B7280;
+            position: relative;
+            z-index: 2;
+        }
+
+        .player-role-strip {
+            width: 100%;
+            height: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .player-role-strip-inner {
+            width: 100%;
+            height: 100%;
+        }
+
+        .player-role-strip-inner.red {
+            background: var(--red-team-solid);
+        }
+
+        .player-role-strip-inner.black {
+            background: var(--black-team-solid);
+        }
+
+        .player-role-strip-inner.sheriff-strip {
+            background: var(--yellow-team-solid);
+        }
+
+        .player-role-gradient {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 72px;
+            pointer-events: none;
+            mix-blend-mode: multiply;
+            z-index: 1;
+        }
+
+        .player-role-gradient.red {
+            background: linear-gradient(to top, rgba(239, 68, 68, 0.95) 0%, rgba(239, 68, 68, 0.0) 100%);
+        }
+
+        .player-role-gradient.black {
+            background: linear-gradient(to top, rgba(17, 24, 39, 0.95) 0%, rgba(17, 24, 39, 0.0) 100%);
+        }
+
+        .player-role-gradient.sheriff-strip {
+            background: linear-gradient(to top, rgba(250, 204, 21, 0.7) 0%, rgba(250, 204, 21, 0.0) 100%);
+        }
+
         .player-info {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.8) 70%, transparent 100%);
-            padding: 32px 8px 8px 8px;
-            text-align: center;
+            height: 32px;
+            pointer-events: none;
+        }
+
+        .player-info-gradient {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.4) 100%);
+        }
+
+        .player-info-content {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+            transform: translateY(-2px);
         }
 
         .player-number {
-            font-size: 18px;
+            font-size: 19px;
             font-weight: 700;
-            width: 20px;
+            width: 30px;
             flex-shrink: 0;
             text-align: left;
         }
 
         .player-nickname {
-            font-size: 16px;
+            font-size: 19px;
             font-weight: 600;
             white-space: nowrap;
             overflow: hidden;
@@ -402,6 +474,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            width: 100%;
         }
 
         .player-nickname-text {
@@ -412,12 +485,11 @@
             text-overflow: ellipsis;
         }
 
-        /* Логотип турнира (опционально) */
         .tournament-logo {
             width: 100px;
             height: 100px;
             margin-right: 12px;
-            display: none; /* По умолчанию скрыт */
+            display: none;
         }
 
         .tournament-logo.visible {
@@ -430,64 +502,36 @@
             object-fit: contain;
         }
 
-        /* Анимации */
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+        @keyframes eliminate {
+            from { transform: translateY(0); opacity: 1; filter: grayscale(0%); }
+            to { transform: translateY(20px); opacity: 0.5; filter: grayscale(100%); }
         }
 
         .animate-in {
             animation: fadeInUp 0.6s ease-out;
         }
-
-        /* Заглушка для игроков без фото */
-        .player-placeholder {
-            width: 100%;
-            height: 130px;
-            background: linear-gradient(135deg, #374151 0%, #1F2937 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 48px;
-            color: #6B7280;
-        }
     </style>
 </head>
 <body>
     <div class="overlay-container">
-        <!-- Левый верхний блок -->
         <div class="info-block-left animate-in">
-            <!-- Верхняя строка: ЛХ и Выставлены -->
             <div class="top-info-row">
-                <!-- Лучший ход -->
                 <div class="best-move">
                     <div class="best-move-title">ЛХ:</div>
-                    <div class="best-move-players">
-                        <!-- Заполняется через JS -->
-                    </div>
+                    <div class="best-move-players"></div>
                 </div>
 
-                <!-- Выставлены на голосование -->
                 <div class="nominees">
                     <div class="nominees-title">Выставлены:</div>
-                    <div class="nominees-list">
-                        <!-- Заполняется через JS -->
-                    </div>
+                    <div class="nominees-list"></div>
                 </div>
             </div>
 
-            <!-- Таблица результатов -->
             <table class="rounds-table">
                 <thead>
                     <tr>
@@ -500,13 +544,10 @@
                         <th>6</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <!-- Заполняется через JS -->
-                </tbody>
+                <tbody></tbody>
             </table>
         </div>
 
-        <!-- Правый верхний блок -->
         <div class="info-block-right animate-in">
             <div class="series-info">
                 <div class="series-name">СЕРИЯ</div>
@@ -516,15 +557,11 @@
             </div>
         </div>
 
-        <!-- Нижняя панель с карточками игроков -->
-        <div class="bottom-panel">
-            <!-- Заполняется через JS -->
-        </div>
+        <div class="bottom-panel"></div>
     </div>
 
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script>
-        // Получаем gameId из URL
         const urlParams = new URLSearchParams(window.location.search);
         const gameId = urlParams.get('gameId');
 
@@ -535,37 +572,30 @@
 
         let gameData = null;
         let socket = null;
+        let previousEliminated = new Set();
 
-        // Автоматическое определение разрешения и масштабирование
         function scaleOverlay() {
             const container = document.querySelector('.overlay-container');
             const baseWidth = 1920;
             const baseHeight = 1080;
-            
             const screenWidth = window.innerWidth;
             const screenHeight = window.innerHeight;
-            
             const scaleX = screenWidth / baseWidth;
             const scaleY = screenHeight / baseHeight;
             const scale = Math.min(scaleX, scaleY);
-            
             container.style.transform = `scale(${scale})`;
-            
             const scaledWidth = baseWidth * scale;
             const scaledHeight = baseHeight * scale;
             const offsetX = (screenWidth - scaledWidth) / 2;
             const offsetY = (screenHeight - scaledHeight) / 2;
-            
             container.style.left = `${offsetX}px`;
             container.style.top = `${offsetY}px`;
         }
 
-        // Загрузка данных игры
         async function loadGameData() {
             try {
                 const response = await fetch(`http://localhost:3000/api/games/${gameId}`);
                 gameData = await response.json();
-                
                 console.log('Game data loaded:', gameData);
                 renderOverlay();
             } catch (error) {
@@ -573,69 +603,110 @@
             }
         }
 
-        // Отрисовка оверлея
+        function getEliminationInfo(playerId) {
+            if (!gameData || !gameData.rounds) {
+                return { eliminated: false, reason: null };
+            }
+
+            let eliminated = false;
+            let reason = null;
+            let earliestRound = Infinity;
+
+            for (const round of gameData.rounds) {
+                if (!round) continue;
+                const rn = round.round_number || 0;
+
+                if (!round.mafia_miss && round.mafia_kill_player_id === playerId && rn < earliestRound) {
+                    earliestRound = rn;
+                    eliminated = true;
+                    reason = 'killed';
+                }
+
+                if (
+                    !round.nobody_voted_out &&
+                    Array.isArray(round.voted_out_players) &&
+                    round.voted_out_players.includes(playerId) &&
+                    rn < earliestRound
+                ) {
+                    earliestRound = rn;
+                    eliminated = true;
+                    reason = 'voted';
+                }
+            }
+
+            return { eliminated, reason };
+        }
+
         function renderOverlay() {
             if (!gameData || !gameData.seating) return;
 
-            // Обновляем правый блок (название турнира и номер игры)
-            const seriesEl = document.querySelector('.series-name');
-            seriesEl.textContent = gameData.tournament_name || gameData.series_name || 'СЕРИЯ';
+            document.querySelector('.series-name').textContent =
+                gameData.tournament_name || gameData.series_name || 'СЕРИЯ';
             document.querySelector('.game-current').textContent = gameData.game_number;
             
-            // Отрисовка карточек игроков
             const bottomPanel = document.querySelector('.bottom-panel');
+            const newEliminated = new Set();
+
             bottomPanel.innerHTML = gameData.seating.map(seat => {
-                const isEliminated = seat.is_eliminated;
-                const team = seat.team === 'red' ? 'team-red' : 'team-black';
-                const sheriffClass = seat.role === 'sheriff' ? 'sheriff' : '';
+                const { eliminated, reason } = getEliminationInfo(seat.player_id);
+                const isEliminated = eliminated;
+                if (isEliminated) newEliminated.add(seat.player_id);
+                const justEliminated = isEliminated && !previousEliminated.has(seat.player_id);
+
                 const roleLabel = getRoleLabel(seat.role);
-                const eliminationIcon = seat.elimination_reason === 'voted' ? '👍' : '🔫';
+                const eliminationIcon = reason === 'voted' ? '👍' : '🔫';
+
+                let stripClass = 'red';
+                if (seat.role === 'mafia' || seat.role === 'don') stripClass = 'black';
+                if (seat.role === 'sheriff') stripClass = 'sheriff-strip';
 
                 return `
-                    <div class="player-card ${team} ${sheriffClass} ${isEliminated ? 'eliminated' : ''}">
-                        ${isEliminated ? `<div class="elimination-icon">${eliminationIcon}</div>` : ''}
-                        ${roleLabel ? `<div class="role-badge">${roleLabel}</div>` : ''}
-                        ${seat.photo_url 
-                            ? `<img src="${seat.photo_url}" alt="${seat.nickname}" class="player-portrait" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                               <div class="player-placeholder" style="display:none;">👤</div>`
-                            : `<div class="player-placeholder">👤</div>`
-                        }
-                        <div class="player-info">
-                            <div class="player-nickname">
-                                <span class="player-number">${seat.position}</span>
-                                <span class="player-nickname-text">${seat.nickname}</span>
+                    <div class="player-card ${isEliminated ? 'eliminated' : ''} ${justEliminated ? 'just-eliminated' : ''}">
+                        <div class="player-card-inner">
+                            ${isEliminated ? `<div class="elimination-icon">${eliminationIcon}</div>` : ''}
+                            ${roleLabel ? `<div class="role-badge ${seat.role === 'sheriff' ? 'role-badge-sheriff' : ''}">${roleLabel}</div>` : ''}
+
+                            <div class="player-media">
+                                <div class="player-role-gradient ${stripClass}"></div>
+                                ${seat.photo_url 
+                                    ? `<img src="${seat.photo_url}" alt="${seat.nickname}" class="player-portrait" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                       <div class="player-placeholder" style="display:none;">👤</div>`
+                                    : `<div class="player-placeholder">👤</div>`
+                                }
+                            </div>
+
+                            <div class="player-role-strip">
+                                <div class="player-role-strip-inner ${stripClass}"></div>
+
+                                <div class="player-info">
+                                    <div class="player-info-gradient"></div>
+                                    <div class="player-info-content">
+                                        <div class="player-nickname">
+                                            <span class="player-number">${seat.position}</span>
+                                            <span class="player-nickname-text">${seat.nickname}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
             }).join('');
 
-            // Отрисовка ЛХ
-            if (gameData.best_move) {
-                renderBestMove();
-            }
+            previousEliminated = newEliminated;
 
-            // Отрисовка выставленных
-            if (gameData.nominees) {
-                renderNominees();
-            }
-
-            // Отрисовка таблицы результатов
-            if (gameData.rounds) {
-                renderRounds();
-            }
+            if (gameData.best_move) renderBestMove();
+            if (gameData.nominees) renderNominees();
+            if (gameData.rounds) renderRounds();
         }
 
-        // Отрисовка лучшего хода
         function renderBestMove() {
             const bm = gameData.best_move;
             const suspects = [bm.suspect_1, bm.suspect_2, bm.suspect_3];
-            
             const bestMovePlayersDiv = document.querySelector('.best-move-players');
             bestMovePlayersDiv.innerHTML = suspects.map(playerId => {
                 const seat = gameData.seating.find(s => s.player_id === playerId);
                 if (!seat) return '';
-                
                 const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
                 return `
                     <div class="best-move-player">
@@ -645,19 +716,15 @@
             }).join('');
         }
 
-        // Отрисовка выставленных
         function renderNominees() {
             const nomineesList = document.querySelector('.nominees-list');
-            
             if (!gameData.nominees || gameData.nominees.length === 0) {
                 nomineesList.innerHTML = '';
                 return;
             }
-            
             nomineesList.innerHTML = gameData.nominees.map(nominee => {
                 const seat = gameData.seating.find(s => s.player_id === nominee.player_id);
                 if (!seat) return '';
-                
                 const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
                 return `
                     <div class="nominee-item">
@@ -667,15 +734,13 @@
             }).join('');
         }
 
-        // Отрисовка таблицы результатов
         function renderRounds() {
             const tbody = document.querySelector('.rounds-table tbody');
-            const maxRounds = 6; // Максимум столбцов
-
+            const maxRounds = 6;
             const actions = ['🔫', '🎩', '⭐', '👍'];
+
             const rows = actions.map(action => {
                 let cells = `<td class="action-icon">${action}</td>`;
-                
                 for (let i = 0; i < maxRounds; i++) {
                     const round = gameData.rounds[i];
                     if (!round) {
@@ -729,44 +794,27 @@
 
                     cells += `<td><div class="round-cell">${content}</div></td>`;
                 }
-
                 return `<tr>${cells}</tr>`;
             });
 
             tbody.innerHTML = rows.join('');
         }
 
-        // Получить букву роли
         function getRoleLabel(role) {
-            const labels = {
-                'mafia': 'М',
-                'don': 'Д',
-                'sheriff': 'Ш',
-                'civilian': ''
-            };
+            const labels = { mafia: 'М', don: 'Д', sheriff: 'Ш', civilian: '' };
             return labels[role] || '';
         }
 
-        // Подключение к WebSocket
         function connectWebSocket() {
             socket = io('http://localhost:3000');
-            
             socket.on('connect', () => {
                 console.log('WebSocket connected');
                 socket.emit('join_game', gameId);
             });
-
-            socket.on('game_updated', (data) => {
-                console.log('Game update received:', data);
-                loadGameData();
-            });
-
-            socket.on('disconnect', () => {
-                console.log('WebSocket disconnected');
-            });
+            socket.on('game_updated', () => loadGameData());
+            socket.on('disconnect', () => console.log('WebSocket disconnected'));
         }
 
-        // Инициализация
         window.addEventListener('load', () => {
             scaleOverlay();
             loadGameData();
