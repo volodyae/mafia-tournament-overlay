@@ -69,26 +69,36 @@ router.post('/:id/seating', async (req, res) => {
 
     await client.query('BEGIN');
 
-    // Текущая рассадка с ролями
+    // Текущая рассадка с ролями и статусом
     const currentRes = await client.query(
-      'SELECT player_id, role, team FROM game_seating WHERE game_id = $1',
+      'SELECT player_id, role, team, is_eliminated, elimination_reason FROM game_seating WHERE game_id = $1',
       [gameId]
     );
     const currentMap = new Map(
-      currentRes.rows.map(row => [row.player_id, { role: row.role, team: row.team }])
+      currentRes.rows.map(row => [row.player_id, { 
+        role: row.role, 
+        team: row.team,
+        is_eliminated: row.is_eliminated,
+        elimination_reason: row.elimination_reason
+      }])
     );
 
     // Удаляем старую рассадку
     await client.query('DELETE FROM game_seating WHERE game_id = $1', [gameId]);
 
-    // Вставляем новую, роли сохраняем по player_id
+    // Вставляем новую, роли и статус сохраняем по player_id
     for (const seat of seating) {
-      const prev = currentMap.get(seat.player_id) || { role: 'civilian', team: 'red' };
+      const prev = currentMap.get(seat.player_id) || { 
+        role: 'civilian', 
+        team: 'red',
+        is_eliminated: false,
+        elimination_reason: null
+      };
 
       await client.query(
-        `INSERT INTO game_seating (id, game_id, player_id, position, role, team)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [uuidv4(), gameId, seat.player_id, seat.position, prev.role, prev.team]
+        `INSERT INTO game_seating (id, game_id, player_id, position, role, team, is_eliminated, elimination_reason)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [uuidv4(), gameId, seat.player_id, seat.position, prev.role, prev.team, prev.is_eliminated, prev.elimination_reason]
       );
     }
 
@@ -333,6 +343,41 @@ router.post('/:id/best-move', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error setting best move:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Дисквалификация / восстановление игрока
+router.post('/:id/player-elimination', async (req, res) => {
+  try {
+    const gameId = req.params.id;
+    const { player_id, eliminated } = req.body;
+
+    if (!player_id) {
+      return res.status(400).json({ error: 'player_id is required' });
+    }
+
+    const makeRemoved = eliminated === true;
+
+    const result = await pool.query(
+      `UPDATE game_seating
+       SET is_eliminated = $1,
+           elimination_reason = CASE 
+             WHEN $1 = TRUE THEN 'removed'
+             ELSE NULL
+           END
+       WHERE game_id = $2 AND player_id = $3
+       RETURNING *`,
+      [makeRemoved, gameId, player_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Seating record not found for this player in game' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating player elimination:', error);
     res.status(500).json({ error: error.message });
   }
 });

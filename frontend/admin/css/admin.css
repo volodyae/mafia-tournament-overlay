@@ -505,3 +505,39 @@ body {
     opacity: 0.4;
     cursor: default;
 }
+
+/* Кнопки ролей + "Удален" на странице игры */
+.role-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.role-btn {
+    padding: 8px 16px;
+    border: 2px solid var(--border);
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.2s;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.role-btn.active {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: white;
+}
+
+.role-btn.eliminated-toggle {
+    border-color: var(--primary);
+    color: var(--primary);
+    margin-left: 12px;
+}
+
+.role-btn.eliminated-toggle.active {
+    background: var(--primary);
+    color: #fff;
+}

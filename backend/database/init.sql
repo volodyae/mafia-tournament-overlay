@@ -40,7 +40,7 @@ CREATE TABLE games (
     table_number INTEGER NOT NULL DEFAULT 1,
     series_name VARCHAR(50),
     status VARCHAR(20) DEFAULT 'not_started' CHECK (status IN ('not_started', 'in_progress', 'finished')),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    overlay_hidden BOOLEAN DEFAULT FALSE
 );
 
 -- Рассадка игры (10 игроков)
@@ -52,7 +52,7 @@ CREATE TABLE game_seating (
     role VARCHAR(20) CHECK (role IN ('civilian', 'mafia', 'don', 'sheriff')),
     team VARCHAR(10) CHECK (team IN ('red', 'black')),
     is_eliminated BOOLEAN DEFAULT FALSE,
-    elimination_reason VARCHAR(20) CHECK (elimination_reason IN ('voted', 'killed', 'mafia', 'don')),
+    elimination_reason VARCHAR(20) CHECK (elimination_reason IN ('voted', 'killed', 'mafia', 'don', 'removed')),
     UNIQUE(game_id, position)
 );
 
@@ -86,6 +86,7 @@ CREATE TABLE voting_nominees (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     game_id UUID REFERENCES games(id) ON DELETE CASCADE,
     player_id UUID REFERENCES players(id),
+    position INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(game_id, player_id)
 );

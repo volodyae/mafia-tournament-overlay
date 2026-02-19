@@ -183,6 +183,14 @@ const API = {
       method: 'POST',
       body: JSON.stringify(data)
     });
+  },
+
+  // ===== Дисквалификация игрока в игре =====
+  async setPlayerElimination(gameId, playerId, eliminated) {
+    return this.request(`/games/${gameId}/player-elimination`, {
+      method: 'POST',
+      body: JSON.stringify({ player_id: playerId, eliminated })
+    });
   }
 };
 

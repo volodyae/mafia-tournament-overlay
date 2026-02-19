@@ -167,6 +167,12 @@ function renderRoles() {
                     data-position="${seat.position}" data-role="sheriff" data-team="red">
                 Шериф
             </button>
+            <button 
+                class="role-btn eliminated-toggle ${seat.is_eliminated && seat.elimination_reason === 'removed' ? 'active' : ''}"
+                type="button"
+                data-player-id="${seat.player_id}">
+                Удален
+            </button>
         </div>
     </div>
 `).join('');
@@ -174,16 +180,36 @@ function renderRoles() {
     saveSeatingBtn.style.display = 'inline-block';
 
     document.querySelectorAll('.role-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const position = btn.dataset.position;
-            
-            document.querySelectorAll(`.role-btn[data-position="${position}"]`).forEach(b => {
-                b.classList.remove('active');
-            });
-            btn.classList.add('active');
+        const isEliminateBtn = btn.classList.contains('eliminated-toggle');
+        if (isEliminateBtn) {
+            btn.addEventListener('click', async () => {
+                const playerId = btn.dataset.playerId;
+                const isActive = btn.classList.contains('active');
+                const newEliminated = !isActive;
 
-            await applyRolesInstant();
-        });
+                try {
+                    await API.setPlayerElimination(gameId, playerId, newEliminated);
+                    socket.emit('game_updated', { gameId });
+                    await loadGameData();
+                } catch (error) {
+                    UI.showToast('Ошибка изменения статуса удаления игрока', 'error');
+                    console.error(error);
+                }
+            });
+        } else {
+            btn.addEventListener('click', async () => {
+                const position = btn.dataset.position;
+                
+                document.querySelectorAll(`.role-btn[data-position="${position}"]`).forEach(b => {
+                    if (!b.classList.contains('eliminated-toggle')) {
+                        b.classList.remove('active');
+                    }
+                });
+                btn.classList.add('active');
+
+                await applyRolesInstant();
+            });
+        }
     });
 
     updateAvailablePlayers();

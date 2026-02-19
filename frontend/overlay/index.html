@@ -35,6 +35,56 @@
             transform-origin: top left;
         }
 
+        /* Нижний градиент под карточками */
+        .overlay-background-gradient {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 45%;
+            background: linear-gradient(
+                to top,
+                rgba(0, 0, 0, 0.98) 0%,
+                rgba(0, 0, 0, 0.8) 25%,
+                rgba(0, 0, 0, 0.0) 60%
+            );
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Виньетка (на весь кадр, низ обрезаем маской) */
+        .overlay-vignette {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: 100%;
+            background: radial-gradient(
+                ellipse at center,
+                rgba(0, 0, 0, 0.0) 0%,
+                rgba(0, 0, 0, 0.0) 70%,
+                rgba(0, 0, 0, 0.5) 85%,
+                rgba(0, 0, 0, 0.8) 100%
+            );
+            background-position: center center;
+            z-index: 0;
+            pointer-events: none;
+            -webkit-mask-image: linear-gradient(
+                to bottom,
+                rgba(0, 0, 0, 1) 0%,
+                rgba(0, 0, 0, 1) 55%,
+                rgba(0, 0, 0, 0) 75%,
+                rgba(0, 0, 0, 0) 100%
+            );
+            mask-image: linear-gradient(
+                to bottom,
+                rgba(0, 0, 0, 1) 0%,
+                rgba(0, 0, 0, 1) 55%,
+                rgba(0, 0, 0, 0) 75%,
+                rgba(0, 0, 0, 0) 100%
+            );
+        }
+
         .info-block-left,
         .info-block-right,
         .bottom-panel {
@@ -70,6 +120,7 @@
             background: transparent;
             padding: 16px;
             min-width: 320px;
+            z-index: 1;
         }
 
         .top-info-row {
@@ -82,6 +133,8 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            width: 100px;
+            flex-shrink: 0;
         }
 
         .best-move-title {
@@ -103,26 +156,67 @@
             gap: 4px;
         }
 
-        .best-move-number {
-            font-size: 16px;
-            font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 4px;
-            min-width: 27px;
-            text-align: center;
+        .best-move-number-wrapper,
+        .nominee-number-wrapper,
+        .round-number-wrapper {
+            position: relative;
+            width: 22px;
+            height: 28px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            border-radius: 2px;
+            overflow: hidden;
+            box-sizing: border-box;
         }
 
-        .best-move-number.team-red {
+        .best-move-bg,
+        .nominee-bg,
+        .round-bg {
+            position: absolute;
+            inset: 0;
+        }
+
+        .best-move-bg.team-red,
+        .nominee-bg.team-red,
+        .round-bg.team-red {
             background: var(--red-team-solid);
-            color: white;
         }
 
-        .best-move-number.team-black {
+        .best-move-bg.team-black,
+        .nominee-bg.team-black,
+        .round-bg.team-black {
             background: var(--black-team-solid);
-            color: white;
+        }
+
+        .round-bg.neutral {
+            background: transparent;
+        }
+
+        .best-move-gradient,
+        .nominee-gradient,
+        .round-gradient {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top,
+                rgba(0,0,0,0.55) 0%,
+                rgba(0,0,0,0.0) 100%);
+        }
+
+        .best-move-number,
+        .nominee-number,
+        .round-number {
+            position: relative;
+            z-index: 2;
+            font-size: 17px;
+            font-weight: 700;
+            padding: 1px 8px 0 8px;
+            color: #fff;
+            transform: translateY(-2px);
+        }
+
+        .round-number.cross {
+            font-size: 11px;
         }
 
         .nominees {
@@ -149,28 +243,6 @@
             flex-direction: column;
             align-items: center;
             gap: 4px;
-        }
-
-        .nominee-number {
-            font-size: 16px;
-            font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 4px;
-            min-width: 27px;
-            text-align: center;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .nominee-number.team-red {
-            background: var(--red-team-solid);
-            color: white;
-        }
-
-        .nominee-number.team-black {
-            background: var(--black-team-solid);
-            color: white;
         }
 
         .rounds-table {
@@ -200,6 +272,8 @@
             font-size: 14px;
             font-weight: 600;
             width: 32px;
+            vertical-align: middle;
+            height: 30px;
         }
 
         .rounds-table td:first-child {
@@ -218,29 +292,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: flex-start;
             gap: 2px;
-        }
-
-        .round-number {
-            font-size: 14px;
-            font-weight: 700;
-            padding: 2px 4px;
-            border-radius: 4px;
-            min-width: 20px;
-            text-align: center;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .round-number.team-red {
-            background: var(--red-team-solid);
-            color: white;
-        }
-
-        .round-number.team-black {
-            background: var(--black-team-solid);
-            color: white;
         }
 
         .round-multi {
@@ -250,6 +303,103 @@
             align-items: center;
         }
 
+        /* Общий контейнер для multi-voted с нейтральной подложкой */
+        .voted-multi-container {
+            position: relative;
+            width: 22px;
+            height: 28px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .voted-multi-bg {
+            position: absolute;
+            inset: 0;
+        }
+
+        .voted-multi-bg.neutral {
+            background: transparent;
+        }
+
+        .voted-multi-gradient {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top,
+                rgba(0,0,0,0.55) 0%,
+                rgba(0,0,0,0.0) 100%);
+        }
+
+        .voted-multi-content {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: stretch;
+            justify-content: stretch;
+        }
+
+        .voted-multi-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .voted-small-number {
+            position: absolute;
+            z-index: 2;
+            font-size: 10px;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1;
+        }
+
+        .voted-two-top {
+            top: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .voted-two-bottom {
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .voted-three-top {
+            top: 3px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .voted-three-bottom-left {
+            bottom: 3px;
+            left: 4px;
+        }
+
+        .voted-three-bottom-right {
+            bottom: 3px;
+            right: 4px;
+        }
+
+        .voted-four-top-left {
+            top: 3px;
+            left: 4px;
+        }
+
+        .voted-four-top-right {
+            top: 3px;
+            right: 4px;
+        }
+
+        .voted-four-bottom-left {
+            bottom: 3px;
+            left: 4px;
+        }
+
+        .voted-four-bottom-right {
+            bottom: 3px;
+            right: 4px;
+        }
+
         .info-block-right {
             position: absolute;
             top: 10px;
@@ -257,6 +407,7 @@
             background: transparent;
             padding: 16px;
             text-align: center;
+            z-index: 1;
         }
 
         .series-info {
@@ -296,6 +447,7 @@
             align-items: flex-end;
             padding: 20px;
             gap: 8px;
+            z-index: 1;
         }
 
         .player-card {
@@ -305,6 +457,7 @@
             overflow: visible;
             background: transparent;
             transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 1;
         }
 
         .player-card-inner {
@@ -315,7 +468,6 @@
         .player-card.eliminated {
             transform: translateY(20px);
             opacity: 0.5;
-            filter: grayscale(100%);
         }
 
         .player-card.just-eliminated {
@@ -353,17 +505,15 @@
             position: absolute;
             top: -12px;
             left: 0px;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            font-size: 24px;
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
+            background: none;
+            border: none;
+            width: auto;
+            height: auto;
+            padding: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 3;
-            border: 2px solid #DC2626;
         }
 
         .player-media {
@@ -518,14 +668,73 @@
             object-fit: contain;
         }
 
+        /* Иконки для действий (SVG как background-image) */
+        .icon {
+            display: inline-block;
+            width: 34px;
+            height: 34px;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+        }
+
+        .rounds-table .icon {
+            width: 26px;
+            height: 26px;
+        }
+
+        .rounds-table .icon-none {
+            width: 16px;
+            height: 16px;
+        }
+
+        .icon-kill {
+            background-image: url('./icons/kill.svg');
+        }
+
+        .icon-don-check {
+            background-image: url('./icons/don-check.svg');
+        }
+
+        .icon-sheriff-check {
+            background-image: url('./icons/sheriff-check.svg');
+        }
+
+        .icon-voted {
+            background-image: url('./icons/voted.svg');
+        }
+
+        .icon-none {
+            background-image: url('./icons/none.svg');
+        }
+
+        .icon-removed {
+            background-image: url('./icons/removed.svg');
+        }
+
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes eliminate {
-            from { transform: translateY(0); opacity: 1; filter: grayscale(0%); }
-            to { transform: translateY(20px); opacity: 0.5; filter: grayscale(100%); }
+            from {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateY(20px);
+                opacity: 0.5;
+            }
+        }
+
+        @keyframes entryFade {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .entry-anim {
+            animation: entryFade 0.25s.ease-out;
         }
 
         .animate-in {
@@ -552,12 +761,15 @@
         }
 
         .player-card.role-changed {
-            animation: role-change-flash 0.5s ease-out;
+            animation: role-change-flash 0.5s.ease-out;
         }
     </style>
 </head>
 <body>
     <div class="overlay-container visible">
+        <div class="overlay-background-gradient"></div>
+        <div class="overlay-vignette"></div>
+
         <div class="info-block-left animate-in">
             <div class="top-info-row">
                 <div class="best-move">
@@ -592,7 +804,7 @@
                 <div class="series-name">СЕРИЯ</div>
             </div>
             <div class="game-info">
-                ИГРА <span class="game-current">1</span> / 5
+                ИГРА <span class="game-current">1</span>/5
             </div>
         </div>
 
@@ -605,16 +817,20 @@
         const gameId = urlParams.get('gameId');
 
         if (!gameId) {
-            console.error('gameId not provided in URL');
             document.body.innerHTML = '<div style="color: white; text-align: center; padding: 50px; font-size: 24px;">❌ Game ID not found</div>';
         }
 
         let gameData = null;
         let socket = null;
         let previousEliminated = new Set();
+        let prevBestMoveIds = [];
+        let prevNomineeIds = [];
+        let prevRoundsKey = '';
 
         function scaleOverlay() {
             const container = document.querySelector('.overlay-container');
+            if (!container) return;
+
             const baseWidth = 1920;
             const baseHeight = 1080;
             const screenWidth = window.innerWidth;
@@ -651,7 +867,9 @@
         async function loadGameData() {
             try {
                 const response = await fetch(`http://localhost:3000/api/games/${gameId}`);
-                gameData = await response.json();
+                const newData = await response.json();
+
+                gameData = newData;
                 renderOverlay();
                 applyOverlayVisibility();
             } catch (error) {
@@ -690,6 +908,13 @@
                 }
             }
 
+            // статус "removed" хранится прямо в seating
+            const seat = gameData.seating.find(s => s.player_id === playerId);
+            if (seat && seat.is_eliminated && seat.elimination_reason === 'removed') {
+                eliminated = true;
+                reason = 'removed';
+            }
+
             return { eliminated, reason };
         }
 
@@ -699,7 +924,7 @@
             document.querySelector('.series-name').textContent =
                 gameData.tournament_name || gameData.series_name || 'СЕРИЯ';
             document.querySelector('.game-current').textContent = gameData.game_number;
-            
+
             const bottomPanel = document.querySelector('.bottom-panel');
             const newEliminated = new Set();
 
@@ -710,7 +935,15 @@
                 const justEliminated = isEliminated && !previousEliminated.has(seat.player_id);
 
                 const roleLabel = getRoleLabel(seat.role);
-                const eliminationIcon = reason === 'voted' ? '👍' : '🔫';
+
+                let eliminationIconClass = null;
+                if (reason === 'voted') {
+                    eliminationIconClass = 'icon-voted';
+                } else if (reason === 'killed') {
+                    eliminationIconClass = 'icon-kill';
+                } else if (reason === 'removed') {
+                    eliminationIconClass = 'icon-removed';
+                }
 
                 let stripClass = 'red';
                 if (seat.role === 'mafia' || seat.role === 'don') stripClass = 'black';
@@ -720,7 +953,10 @@
                     <div class="player-card ${isEliminated ? 'eliminated' : ''} ${justEliminated ? 'just-eliminated' : ''}"
                          data-position="${seat.position}">
                         <div class="player-card-inner">
-                            ${isEliminated ? `<div class="elimination-icon">${eliminationIcon}</div>` : ''}
+                            ${isEliminated && eliminationIconClass
+                                ? `<div class="elimination-icon"><span class="icon ${eliminationIconClass}"></span></div>`
+                                : ''
+                            }
                             ${roleLabel ? `<div class="role-badge ${seat.role === 'sheriff' ? 'role-badge-sheriff' : ''}">${roleLabel}</div>` : ''}
 
                             <div class="player-media">
@@ -752,111 +988,149 @@
 
             previousEliminated = newEliminated;
 
-            if (gameData.best_move) renderBestMove();
-            if (gameData.nominees) renderNominees();
-            if (gameData.rounds) renderRounds();
+            renderBestMove();
+            renderNominees();
+            renderRounds();
         }
 
         function renderBestMove() {
             const bm = gameData.best_move;
-            const suspects = [bm?.suspect_1, bm?.suspect_2, bm?.suspect_3];
             const bestMovePlayersDiv = document.querySelector('.best-move-players');
+
             if (!bm) {
                 bestMovePlayersDiv.innerHTML = '';
+                prevBestMoveIds = [];
                 return;
             }
 
-            bestMovePlayersDiv.innerHTML = suspects
-                .filter(Boolean)
-                .map(playerId => {
-                    const seat = gameData.seating.find(s => s.player_id === playerId);
-                    if (!seat) return '';
-                    const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                    return `
-                    <div class="best-move-player">
-                        <div class="best-move-number ${teamClass}">${seat.position}</div>
+            const suspects = [bm.suspect_1, bm.suspect_2, bm.suspect_3].filter(Boolean);
+            const newIds = suspects.slice();
+
+            bestMovePlayersDiv.innerHTML = suspects.map(playerId => {
+                const seat = gameData.seating.find(s => s.player_id === playerId);
+                if (!seat) return '';
+                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+
+                const isNew = !prevBestMoveIds.includes(playerId);
+
+                return `
+                    <div class="best-move-player ${isNew ? 'entry-anim' : ''}">
+                        <div class="best-move-number-wrapper">
+                            <div class="best-move-bg ${teamClass}"></div>
+                            <div class="best-move-gradient"></div>
+                            <div class="best-move-number">${seat.position}</div>
+                        </div>
                     </div>
                 `;
-                }).join('');
+            }).join('');
+
+            prevBestMoveIds = newIds;
         }
 
         function renderNominees() {
             const nomineesList = document.querySelector('.nominees-list');
             if (!gameData.nominees || gameData.nominees.length === 0) {
                 nomineesList.innerHTML = '';
+                prevNomineeIds = [];
                 return;
             }
+
+            const newIds = gameData.nominees.map(n => n.player_id);
+
             nomineesList.innerHTML = gameData.nominees.map(nominee => {
                 const seat = gameData.seating.find(s => s.player_id === nominee.player_id);
                 if (!seat) return '';
                 const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                const isNew = !prevNomineeIds.includes(nominee.player_id);
+
                 return `
-                    <div class="nominee-item">
-                        <div class="nominee-number ${teamClass}">${seat.position}</div>
+                    <div class="nominee-item ${isNew ? 'entry-anim' : ''}">
+                        <div class="nominee-number-wrapper">
+                            <div class="nominee-bg ${teamClass}"></div>
+                            <div class="nominee-gradient"></div>
+                            <div class="nominee-number">${seat.position}</div>
+                        </div>
                     </div>
                 `;
             }).join('');
+
+            prevNomineeIds = newIds;
         }
 
         function renderRounds() {
             const tbody = document.querySelector('.rounds-table tbody');
             const maxRounds = 6;
-            const actions = ['🔫', '🎩', '⭐', '👍'];
+
+            const actions = [
+                { type: 'kill',    iconClass: 'icon-kill' },
+                { type: 'don',     iconClass: 'icon-don-check' },
+                { type: 'sheriff', iconClass: 'icon-sheriff-check' },
+                { type: 'voted',   iconClass: 'icon-voted' }
+            ];
+
+            const roundsKey = JSON.stringify(gameData.rounds || []);
+            const isNewState = roundsKey !== prevRoundsKey;
+            prevRoundsKey = roundsKey;
 
             const rows = actions.map(action => {
-                let cells = `<td class="action-icon">${action}</td>`;
+                let cells = `<td class="action-icon"><span class="icon ${action.iconClass}"></span></td>`;
 
                 for (let col = 1; col <= maxRounds; col++) {
-                    const round = gameData.rounds.find(r => r.round_number === col);
+                    const round = (gameData.rounds || []).find(r => r.round_number === col);
 
                     if (!round) {
-                        cells += '<td></td>';
+                        cells += '<td><div class="round-cell"></div></td>';
                         continue;
                     }
 
                     let content = '';
 
-                    if (action === '🔫') {
+                    if (action.type === 'kill') {
                         if (round.mafia_miss) {
-                            content = '<div class="round-number">❌</div>';
+                            content = wrapRoundSymbol(null, 'neutral', isNewState, true);
                         } else if (round.mafia_kill_player_id) {
                             const seat = gameData.seating.find(s => s.player_id === round.mafia_kill_player_id);
                             if (seat) {
                                 const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                                content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                                content = wrapRoundNumber(seat.position, teamClass, isNewState);
                             }
                         }
-                    } else if (action === '🎩') {
+                    } else if (action.type === 'don') {
                         if (round.don_check_player_id) {
                             const seat = gameData.seating.find(s => s.player_id === round.don_check_player_id);
                             if (seat) {
                                 const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                                content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                                content = wrapRoundNumber(seat.position, teamClass, isNewState);
                             }
                         } else {
-                            content = '<div class="round-number">❌</div>';
+                            content = wrapRoundSymbol(null, 'neutral', isNewState, true);
                         }
-                    } else if (action === '⭐') {
+                    } else if (action.type === 'sheriff') {
                         if (round.sheriff_check_player_id) {
                             const seat = gameData.seating.find(s => s.player_id === round.sheriff_check_player_id);
                             if (seat) {
                                 const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                                content = `<div class="round-number ${teamClass}">${seat.position}</div>`;
+                                content = wrapRoundNumber(seat.position, teamClass, isNewState);
                             }
                         } else {
-                            content = '<div class="round-number">❌</div>';
+                            content = wrapRoundSymbol(null, 'neutral', isNewState, true);
                         }
-                    } else if (action === '👍') {
-                        if (round.nobody_voted_out || !round.voted_out_players || round.voted_out_players.length === 0) {
-                            content = '<div class="round-number">❌</div>';
-                        } else {
-                            const items = round.voted_out_players.map(id => {
-                                const seat = gameData.seating.find(s => s.player_id === id);
-                                if (!seat) return '';
+                    } else if (action.type === 'voted') {
+                        const votedIds = Array.isArray(round.voted_out_players)
+                            ? round.voted_out_players
+                            : [];
+
+                        if (round.nobody_voted_out || votedIds.length === 0) {
+                            content = wrapRoundSymbol(null, 'neutral', isNewState, true);
+                        } else if (votedIds.length === 1) {
+                            const id = votedIds[0];
+                            const seat = gameData.seating.find(s => s.player_id === id);
+                            if (seat) {
                                 const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                                return `<div class="round-number ${teamClass}">${seat.position}</div>`;
-                            }).join('');
-                            content = `<div class="round-multi">${items}</div>`;
+                                content = wrapRoundNumber(seat.position, teamClass, isNewState);
+                            }
+                        } else {
+                            content = renderMultiVoted(votedIds, isNewState);
                         }
                     }
 
@@ -867,6 +1141,77 @@
             });
 
             tbody.innerHTML = rows.join('');
+        }
+
+        function wrapRoundNumber(value, teamClass, animate) {
+            return `
+              <div class="round-number-wrapper ${animate ? 'entry-anim' : ''}">
+                <div class="round-bg ${teamClass}"></div>
+                <div class="round-gradient"></div>
+                <div class="round-number">${value}</div>
+              </div>`;
+        }
+
+        function wrapRoundSymbol(symbol, bgClass, animate, useIconNone) {
+            const inner = useIconNone
+                ? `<span class="icon icon-none"></span>`
+                : `<span class="round-number ${symbol === '❌' ? 'cross' : ''}">${symbol}</span>`;
+
+            return `
+              <div class="round-number-wrapper ${animate ? 'entry-anim' : ''}">
+                <div class="round-bg ${bgClass}"></div>
+                <div class="round-gradient"></div>
+                ${inner}
+              </div>`;
+        }
+
+        function renderMultiVoted(votedIds, animate) {
+            const positions = votedIds
+                .map(id => {
+                    const seat = gameData.seating.find(s => s.player_id === id);
+                    return seat ? seat.position : null;
+                })
+                .filter(v => v !== null)
+                .slice(0, 4);
+
+            const len = positions.length;
+            let numbersHtml = '';
+
+            if (len === 2) {
+                numbersHtml = `
+                    <span class="voted-small-number voted-two-top">${positions[0]}</span>
+                    <span class="voted-small-number voted-two-bottom">${positions[1]}</span>
+                `;
+            } else if (len === 3) {
+                numbersHtml = `
+                    <span class="voted-small-number voted-three-top">${positions[0]}</span>
+                    <span class="voted-small-number voted-three-bottom-left">${positions[1]}</span>
+                    <span class="voted-small-number voted-three-bottom-right">${positions[2]}</span>
+                `;
+            } else if (len >= 4) {
+                numbersHtml = `
+                    <span class="voted-small-number voted-four-top-left">${positions[0]}</span>
+                    <span class="voted-small-number voted-four-top-right">${positions[1]}</span>
+                    <span class="voted-small-number voted-four-bottom-left">${positions[2]}</span>
+                    <span class="voted-small-number voted-four-bottom-right">${positions[3]}</span>
+                `;
+            } else {
+                numbersHtml = positions.map(p =>
+                    `<span class="voted-small-number voted-two-top">${p}</span>`
+                ).join('');
+            }
+
+            return `
+                <div class="voted-multi-container ${animate ? 'entry-anim' : ''}">
+                    <div class="voted-multi-bg neutral"></div>
+                    <div class="voted-multi-gradient"></div>
+                    <div class="voted-multi-content">
+                        <div class="voted-multi-inner">
+                            ${numbersHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         function getRoleLabel(role) {
@@ -905,7 +1250,6 @@
                 if (!payload || payload.gameId !== gameId) return;
                 animateRoleChange(payload.positions || []);
             });
-            socket.on('disconnect', () => {});
         }
 
         window.addEventListener('load', () => {
