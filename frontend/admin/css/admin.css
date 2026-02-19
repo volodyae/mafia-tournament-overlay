@@ -11,6 +11,8 @@
     --border: #E5E7EB;
 }
 
+/* Сброс */
+
 * {
     margin: 0;
     padding: 0;
@@ -30,6 +32,7 @@ body {
 }
 
 /* Навигация */
+
 .navbar {
     background: var(--bg-primary);
     padding: 16px 20px;
@@ -45,6 +48,7 @@ body {
 .nav-links {
     display: flex;
     gap: 12px;
+    flex-wrap: wrap;
 }
 
 .nav-link {
@@ -66,6 +70,7 @@ body {
 }
 
 /* Контент */
+
 .content {
     padding: 0 20px 40px;
 }
@@ -84,6 +89,7 @@ body {
 }
 
 /* Кнопки */
+
 .btn {
     padding: 12px 24px;
     border: none;
@@ -131,7 +137,18 @@ body {
     background: #059669;
 }
 
-/* Карточки турниров */
+.btn-icon {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Карточки турниров / игр */
+
 .tournaments-list {
     display: grid;
     gap: 16px;
@@ -161,7 +178,8 @@ body {
     flex-wrap: wrap;
 }
 
-/* Список игроков */
+/* Игроки */
+
 .search-bar {
     margin-bottom: 16px;
 }
@@ -217,17 +235,8 @@ body {
     gap: 8px;
 }
 
-.btn-icon {
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    font-size: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
 /* Формы */
+
 .form-group {
     margin-bottom: 20px;
 }
@@ -294,6 +303,7 @@ body {
 }
 
 /* Модальные окна */
+
 .modal {
     display: none;
     position: fixed;
@@ -354,6 +364,7 @@ body {
 }
 
 /* Пустое состояние */
+
 .empty-state {
     text-align: center;
     padding: 60px 20px;
@@ -366,6 +377,7 @@ body {
 }
 
 /* Уведомления */
+
 .toast {
     position: fixed;
     bottom: 20px;
@@ -398,30 +410,7 @@ body {
     }
 }
 
-/* Адаптивность */
-@media (max-width: 640px) {
-    .navbar h1 {
-        font-size: 18px;
-    }
-    
-    .page-header {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .page-header h2 {
-        font-size: 20px;
-    }
-    
-    .tournament-actions,
-    .form-actions {
-        flex-direction: column;
-    }
-    
-    .btn {
-        width: 100%;
-    }
-}
+/* Адаптивность сеток */
 
 @media (min-width: 768px) {
     .tournaments-list {
@@ -440,6 +429,7 @@ body {
 }
 
 /* Горизонтальное расположение секций на странице игры */
+
 .game-section-row {
     display: flex;
     gap: 20px;
@@ -447,13 +437,8 @@ body {
     margin-bottom: 20px;
 }
 
-@media (max-width: 900px) {
-    .game-section-row {
-        flex-direction: column;
-    }
-}
-
 /* Загрузка */
+
 .loading {
     text-align: center;
     padding: 40px;
@@ -474,6 +459,8 @@ body {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* Кнопки выставления */
 
 .nominee-buttons {
     display: flex;
@@ -506,7 +493,8 @@ body {
     cursor: default;
 }
 
-/* Кнопки ролей + "Удален" на странице игры */
+/* Кнопки ролей + "Удален" */
+
 .role-buttons {
     display: flex;
     gap: 8px;
@@ -540,4 +528,147 @@ body {
 .role-btn.eliminated-toggle.active {
     background: var(--primary);
     color: #fff;
+}
+
+/* Адаптивность: общие правки для мобильных */
+
+@media (max-width: 768px) {
+    body {
+        background: #F9FAFB;
+    }
+
+    .container {
+        max-width: 100%;
+    }
+
+    .navbar {
+        padding: 12px 14px;
+        margin-bottom: 16px;
+    }
+
+    .navbar h1 {
+        font-size: 18px;
+        margin-bottom: 8px;
+    }
+
+    .content {
+        padding: 0 12px 32px;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .page-header h2 {
+        font-size: 20px;
+    }
+
+    .tournament-card {
+        padding: 14px;
+        border-radius: 10px;
+    }
+
+    .player-card {
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .player-photo,
+    .player-placeholder {
+        width: 48px;
+        height: 48px;
+    }
+
+    .btn {
+        font-size: 14px;
+        padding: 10px 14px;
+        min-height: 40px;
+    }
+
+    .tournament-actions,
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .tournament-actions .btn,
+    .form-actions .btn {
+        width: 100%;
+    }
+
+    .game-section-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .game-section {
+        padding: 14px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+    }
+
+    .role-buttons {
+        gap: 6px;
+    }
+
+    .role-btn {
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+
+    .role-btn.eliminated-toggle {
+        margin-left: 8px;
+    }
+
+    .nominee-btn {
+        min-width: 36px;
+        min-height: 36px;
+        font-size: 13px;
+        padding: 4px 8px;
+    }
+
+    .modal-content {
+        max-width: 100%;
+        border-radius: 10px;
+    }
+
+    /* Рассадка и раздача ролей: вертикальный стэк */
+
+    .seating-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .position-number {
+        align-self: flex-start;
+    }
+
+    .seating-select-wrapper {
+        width: 100%;
+    }
+
+    .seating-select-wrapper .form-select,
+    .seating-player-select {
+        width: 100%;
+    }
+
+    .role-buttons {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 4px;
+    }
+
+    .role-btn {
+        flex: 0 0 auto;
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+
+    .role-btn.eliminated-toggle {
+        margin-left: 0;
+    }
 }

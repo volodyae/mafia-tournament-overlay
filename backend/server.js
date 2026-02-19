@@ -51,10 +51,12 @@ async function startServer() {
     console.log('✅ Database connection verified');
     
     const PORT = process.env.PORT || 3000;
-    server.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`📺 Overlay: http://localhost:${PORT}/overlay/index.html`);
-      console.log(`🎮 Admin: http://localhost:${PORT}/admin/index.html`);
+    const HOST = '0.0.0.0';
+
+    server.listen(PORT, HOST, () => {
+      console.log(`🚀 Server running on http://${HOST}:${PORT}`);
+      console.log(`📺 Overlay: http://<YOUR_LAN_IP>:${PORT}/overlay/index.html`);
+      console.log(`🎮 Admin: http://<YOUR_LAN_IP>:${PORT}/admin/index.html`);
       console.log(`⚡ WebSocket server ready`);
     });
   } catch (error) {

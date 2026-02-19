@@ -153,11 +153,11 @@ function renderRoles() {
         <div class="role-buttons">
             <button class="role-btn civilian ${!seat.role || seat.role === 'civilian' ? 'active' : ''}" 
                 data-position="${seat.position}" data-role="civilian" data-team="red">
-                Мирный
+                Мир
             </button>
             <button class="role-btn black ${seat.role === 'mafia' ? 'active' : ''}" 
                     data-position="${seat.position}" data-role="mafia" data-team="black">
-                Мафия
+                Маф
             </button>
             <button class="role-btn black ${seat.role === 'don' ? 'active' : ''}" 
                     data-position="${seat.position}" data-role="don" data-team="black">
@@ -165,7 +165,7 @@ function renderRoles() {
             </button>
             <button class="role-btn yellow ${seat.role === 'sheriff' ? 'active' : ''}" 
                     data-position="${seat.position}" data-role="sheriff" data-team="red">
-                Шериф
+                Шер
             </button>
             <button 
                 class="role-btn eliminated-toggle ${seat.is_eliminated && seat.elimination_reason === 'removed' ? 'active' : ''}"
@@ -316,7 +316,6 @@ async function applyRolesInstant() {
 
     try {
         await API.assignRoles(gameId, roles);
-        // Триггерим обновление данных + отдельное событие для анимации
         socket.emit('game_updated', { gameId });
         socket.emit('roles_changed', { gameId, positions: changedPositions });
     } catch (error) {
@@ -334,10 +333,10 @@ function renderBestMove() {
   if (gameData.best_move && gameData.best_move.first_killed_player_id) {
     const firstKilledSeat = gameData.seating.find(s => s.player_id === gameData.best_move.first_killed_player_id);
     if (firstKilledSeat) {
-      bestMoveInfo.innerHTML = `<p><strong>Первый убитый (из круга 1):</strong> ${firstKilledSeat.position}. ${firstKilledSeat.nickname}</p>`;
+      bestMoveInfo.innerHTML = `<p><strong>ПУ:</strong> ${firstKilledSeat.position}. ${firstKilledSeat.nickname}</p>`;
     }
   } else {
-    bestMoveInfo.innerHTML = `<p style="color: var(--text-secondary);">Первый убитый будет установлен автоматически после добавления круга 1</p>`;
+    bestMoveInfo.innerHTML = `<p style="color: var(--text-secondary);">ПУ</p>`;
   }
   
   const suspectsButtons = document.getElementById('suspectsButtons');
@@ -348,13 +347,6 @@ function renderBestMove() {
         ${s.position}
     </button>
   `).join('');
-  
-  const positions = selectedSuspects.map(id => {
-    const seat = gameData.seating.find(s => s.player_id === id);
-    return seat ? seat.position : '?';
-  });
-  document.getElementById('suspectsDisplay').textContent = 
-    positions.length > 0 ? positions.join(', ') : 'нет';
 }
 
 function loadBestMoveData() {
@@ -548,7 +540,7 @@ function renderRounds() {
           </button>
         </div>
         <div style="margin-top: 12px;">
-          <p><strong>🔫 Убийство мафии:</strong> ${mafiaKill}</p>
+          <p><strong>убит:</strong> ${mafiaKill}</p>
           <p><strong>🎩 Проверка дона:</strong> ${donCheck}</p>
           <p><strong>⭐ Проверка шерифа:</strong> ${sheriffCheck}</p>
           <p><strong>👍 Голосование:</strong> ${votedOut}</p>
