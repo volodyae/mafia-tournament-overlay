@@ -1,6 +1,6 @@
 // frontend/admin/js/api.js
 
-const API_BASE_URL = window.OVERLAY_CONFIG?.API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = window.OVERLAY_CONFIG?.API_URL || 'https://mafia-tournament-overlay.onrender.com/api';
 
 const API = {
   async request(path, options = {}) {
@@ -202,5 +202,6 @@ const API = {
     });
   }
 };
+
 
 window.API = API;
