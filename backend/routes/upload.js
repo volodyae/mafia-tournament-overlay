@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config();
 const router = express.Router();
 
 const uploadDir = path.join(__dirname, '../../frontend/uploads');
@@ -31,9 +32,11 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+const maxFileSize = parseInt(process.env.MAX_FILE_SIZE || `${5 * 1024 * 1024}`, 10);
+
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: maxFileSize },
   fileFilter: fileFilter
 });
 
@@ -55,7 +58,6 @@ router.post('/player-photo', upload.single('photo'), (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 
 router.delete('/:filename', (req, res) => {
   try {

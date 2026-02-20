@@ -5,7 +5,8 @@ window.UI = window.UI || {
 };
 
 // Глобальные переменные
-let gameId = null;
+let tournamentId = null;
+let gameNumber = null;
 let gameData = null;
 let tournamentPlayers = [];
 let socket = null;
@@ -28,7 +29,7 @@ const roundsSection = document.getElementById('roundsSection');
 const roundModal = document.getElementById('roundModal');
 const roundForm = document.getElementById('roundForm');
 const closeRoundModal = document.getElementById('closeRoundModal');
-const cancelRoundBtn = document.getElementById('cancelRoundBtn');
+const closeRoundBtn = document.getElementById('closeRoundBtn');
 const addRoundBtn = document.getElementById('addRoundBtn');
 const roundsList = document.getElementById('roundsList');
 const saveSeatingBtn = document.getElementById('saveSeatingBtn');
@@ -36,10 +37,11 @@ const saveSeatingBtn = document.getElementById('saveSeatingBtn');
 // Инициализация
 document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
-    gameId = urlParams.get('id');
+    tournamentId = urlParams.get('tournament');
+    gameNumber = parseInt(urlParams.get('game'), 10);
 
-    if (!gameId) {
-        UI.showToast('Игра не найдена', 'error');
+    if (!tournamentId || !gameNumber) {
+        UI.showToast('Игра не найдена (нет tournament или game в URL)', 'error');
         setTimeout(() => window.location.href = 'index.html', 2000);
         return;
     }
@@ -52,10 +54,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Подключение к WebSocket
 function connectWebSocket() {
     try {
-        socket = io(window.OVERLAY_CONFIG?.SOCKET_URL || 'http://localhost:3000');
+        const socketUrl = window.OVERLAY_CONFIG?.SOCKET_URL || 'http://192.168.0.121:3000';
+        socket = io(socketUrl);
         
         socket.on('connect', () => {
-            socket.emit('join_game', gameId);
+            if (gameData?.id) {
+                socket.emit('join_game', gameData.id);
+            }
         });
         
         socket.on('disconnect', () => {});
@@ -63,15 +68,49 @@ function connectWebSocket() {
         socket.on('game_updated', () => {
             loadGameData();
         });
+
+        socket.on('roles_changed', payload => {
+            if (!payload || !gameData || payload.gameId !== gameData.id) return;
+            animateRoleChange(payload.positions || []);
+        });
     } catch (error) {
         console.error('WebSocket connection error:', error);
     }
 }
 
+function isPlayerOut(playerId) {
+    if (!gameData) return false;
+
+    const seat = gameData.seating.find(s => s.player_id === playerId);
+    if (seat && seat.is_eliminated) {
+        return true;
+    }
+
+    if (!gameData.rounds || gameData.rounds.length === 0) {
+        return false;
+    }
+
+    for (const round of gameData.rounds) {
+        if (!round) continue;
+
+        if (!round.mafia_miss && round.mafia_kill_player_id === playerId) {
+            return true;
+        }
+
+        if (!round.nobody_voted_out && Array.isArray(round.voted_out_players)) {
+            if (round.voted_out_players.includes(playerId)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 // Загрузка данных игры
 async function loadGameData() {
     try {
-        gameData = await API.getGame(gameId);
+        gameData = await API.request(`/games/by-number/${tournamentId}/${gameNumber}`);
         tournamentPlayers = await API.getTournamentPlayers(gameData.tournament_id);
         
         renderGameHeader();
@@ -95,6 +134,10 @@ async function loadGameData() {
     }
 }
 
+function gameIdFromData() {
+    return gameData.id;
+}
+
 // Заголовок
 function renderGameHeader() {
     gameTitle.textContent = `Игра ${gameData.game_number} ${gameData.series_name ? '- ' + gameData.series_name : ''}`;
@@ -102,8 +145,8 @@ function renderGameHeader() {
 
 // Ссылка на оверлей
 function renderOverlayLink() {
-    const base = window.OVERLAY_CONFIG?.BASE_URL || 'http://localhost:3000';
-    const url = `${base}/overlay/index.html?gameId=${gameId}`;
+    const base = window.OVERLAY_CONFIG?.BASE_URL || 'http://192.168.0.121:3000';
+    const url = `${base}/overlay/index.html?tournament=${tournamentId}&game=${gameNumber}`;
     overlayUrl.textContent = url;
 }
 
@@ -173,6 +216,18 @@ function renderRoles() {
                 data-player-id="${seat.player_id}">
                 Удален
             </button>
+            <button 
+                class="role-btn card-yellow ${seat.card === 'yellow' ? 'active' : ''}"
+                type="button"
+                data-player-id="${seat.player_id}">
+                ЖК
+            </button>
+            <button 
+                class="role-btn card-red ${seat.card === 'red' ? 'active' : ''}"
+                type="button"
+                data-player-id="${seat.player_id}">
+                КК
+            </button>
         </div>
     </div>
 `).join('');
@@ -181,6 +236,9 @@ function renderRoles() {
 
     document.querySelectorAll('.role-btn').forEach(btn => {
         const isEliminateBtn = btn.classList.contains('eliminated-toggle');
+        const isCardYellow = btn.classList.contains('card-yellow');
+        const isCardRed = btn.classList.contains('card-red');
+
         if (isEliminateBtn) {
             btn.addEventListener('click', async () => {
                 const playerId = btn.dataset.playerId;
@@ -188,11 +246,53 @@ function renderRoles() {
                 const newEliminated = !isActive;
 
                 try {
-                    await API.setPlayerElimination(gameId, playerId, newEliminated);
-                    socket.emit('game_updated', { gameId });
+                    await API.setPlayerElimination(gameIdFromData(), playerId, newEliminated);
+                    socket.emit('game_updated', { gameId: gameIdFromData() });
                     await loadGameData();
                 } catch (error) {
                     UI.showToast('Ошибка изменения статуса удаления игрока', 'error');
+                    console.error(error);
+                }
+            });
+        } else if (isCardYellow || isCardRed) {
+            btn.addEventListener('click', async () => {
+                const playerId = btn.dataset.playerId;
+                const parent = btn.parentElement;
+                const yBtn = parent.querySelector('.card-yellow');
+                const rBtn = parent.querySelector('.card-red');
+                const hasYellow = yBtn.classList.contains('active');
+                const hasRed = rBtn.classList.contains('active');
+
+                let newCard = 'none';
+
+                if (isCardYellow) {
+                    if (hasRed) {
+                        newCard = 'red';
+                    } else if (hasYellow) {
+                        newCard = 'red';
+                    } else {
+                        newCard = 'yellow';
+                    }
+                } else if (isCardRed) {
+                    newCard = hasRed ? 'none' : 'red';
+                }
+
+                try {
+                    await API.setPlayerCard(gameIdFromData(), playerId, newCard);
+
+                    yBtn.classList.remove('active');
+                    rBtn.classList.remove('active');
+
+                    if (newCard === 'yellow') {
+                        yBtn.classList.add('active');
+                    } else if (newCard === 'red') {
+                        rBtn.classList.add('active');
+                    }
+
+                    socket.emit('game_updated', { gameId: gameIdFromData() });
+                    await loadGameData();
+                } catch (error) {
+                    UI.showToast('Ошибка изменения карточки игрока', 'error');
                     console.error(error);
                 }
             });
@@ -201,7 +301,9 @@ function renderRoles() {
                 const position = btn.dataset.position;
                 
                 document.querySelectorAll(`.role-btn[data-position="${position}"]`).forEach(b => {
-                    if (!b.classList.contains('eliminated-toggle')) {
+                    if (!b.classList.contains('eliminated-toggle') &&
+                        !b.classList.contains('card-yellow') &&
+                        !b.classList.contains('card-red')) {
                         b.classList.remove('active');
                     }
                 });
@@ -265,10 +367,10 @@ saveSeatingBtn.addEventListener('click', async () => {
     }
 
     try {
-        await API.createSeating(gameId, seating);
+        await API.createSeating(gameIdFromData(), seating);
         UI.showToast('Рассадка сохранена');
 
-        socket.emit('game_updated', { gameId });
+        socket.emit('game_updated', { gameId: gameIdFromData() });
 
         await loadGameData();
     } catch (error) {
@@ -315,9 +417,9 @@ async function applyRolesInstant() {
     }
 
     try {
-        await API.assignRoles(gameId, roles);
-        socket.emit('game_updated', { gameId });
-        socket.emit('roles_changed', { gameId, positions: changedPositions });
+        await API.assignRoles(gameIdFromData(), roles);
+        socket.emit('game_updated', { gameId: gameIdFromData() });
+        socket.emit('roles_changed', { gameId: gameIdFromData(), positions: changedPositions });
     } catch (error) {
         UI.showToast('Ошибка назначения ролей', 'error');
         console.error(error);
@@ -402,9 +504,9 @@ document.getElementById('applyBestMoveBtn').addEventListener('click', async () =
   };
   
   try {
-    await API.setBestMove(gameId, data);
+    await API.setBestMove(gameIdFromData(), data);
     UI.showToast('ЛХ сохранен');
-    socket.emit('game_updated', { gameId });
+    socket.emit('game_updated', { gameId: gameIdFromData() });
     
     await loadGameData();
   } catch (error) {
@@ -416,7 +518,7 @@ document.getElementById('applyBestMoveBtn').addEventListener('click', async () =
 // === ВЫСТАВЛЕНИЕ НА ГОЛОСОВАНИЕ ===
 
 function renderNominees() {
-    const aliveSeats = gameData.seating.filter(s => !s.is_eliminated);
+    const aliveSeats = gameData.seating.filter(s => !isPlayerOut(s.player_id));
 
     currentNominees = (gameData.nominees || []).filter(n =>
         aliveSeats.some(s => s.player_id === n.player_id)
@@ -455,7 +557,7 @@ function toggleNominee(button) {
     const playerId = button.dataset.playerId;
 
     const seat = gameData.seating.find(s => s.player_id === playerId);
-    if (!seat || seat.is_eliminated) {
+    if (!seat || isPlayerOut(playerId)) {
         UI.showToast('Игрок уже выбыл и не может быть выставлен', 'error');
         return;
     }
@@ -474,9 +576,9 @@ function toggleNominee(button) {
 async function updateNomineesOnServer() {
     try {
         const playerIds = currentNominees.map(n => n.player_id);
-        await API.updateNominees(gameId, playerIds);
+        await API.updateNominees(gameIdFromData(), playerIds);
         
-        socket.emit('game_updated', { gameId });
+        socket.emit('game_updated', { gameId: gameIdFromData() });
         
         renderNomineesList();
         renderNominees();
@@ -540,7 +642,7 @@ function renderRounds() {
           </button>
         </div>
         <div style="margin-top: 12px;">
-          <p><strong>убит:</strong> ${mafiaKill}</p>
+          <p><strong>🔫Убит:</strong> ${mafiaKill}</p>
           <p><strong>🎩 Проверка дона:</strong> ${donCheck}</p>
           <p><strong>⭐ Проверка шерифа:</strong> ${sheriffCheck}</p>
           <p><strong>👍 Голосование:</strong> ${votedOut}</p>
@@ -581,27 +683,32 @@ addRoundBtn.addEventListener('click', () => {
     renderVotedOutList();
     
     roundModal.classList.add('active');
-    roundForm.dataset.mode = '';
+    roundForm.dataset.mode = 'create';
 });
 
 function populateRoundSelects() {
-    const aliveSeats = gameData.seating.filter(s => !s.is_eliminated);
-    
-    const options = aliveSeats.map(s => 
+    const aliveSeats = gameData.seating.filter(s => !isPlayerOut(s.player_id));
+    const allSeats = gameData.seating.slice();
+
+    const aliveOptions = aliveSeats.map(s => 
+        `<option value="${s.player_id}">${s.position}. ${s.nickname}</option>`
+    ).join('');
+
+    const allOptions = allSeats.map(s => 
         `<option value="${s.player_id}">${s.position}. ${s.nickname}</option>`
     ).join('');
 
     document.getElementById('mafiaKill').innerHTML = 
-        '<option value="">Выберите игрока</option><option value="miss">❌ Промах</option>' + options;
+        '<option value="">Выберите игрока</option><option value="miss">❌ Промах</option>' + aliveOptions;
     
     document.getElementById('donCheck').innerHTML = 
-        '<option value="">Выберите игрока</option><option value="none">❌ Не проверял</option>' + options;
+        '<option value="">Выберите игрока</option><option value="none">❌ Не проверял</option>' + allOptions;
     
     document.getElementById('sheriffCheck').innerHTML = 
-        '<option value="">Выберите игрока</option><option value="none">❌ Не проверял</option>' + options;
+        '<option value="">Выберите игрока</option><option value="none">❌ Не проверял</option>' + allOptions;
     
     document.getElementById('addVotedOut').innerHTML = 
-        '<option value="">+ Добавить игрока</option><option value="nobody">❌ Никто не выбыл</option>' + options;
+        '<option value="">+ Добавить игрока</option><option value="nobody">❌ Никто не выбыл</option>' + aliveOptions;
 }
 
 function renderVotedOutList() {
@@ -623,12 +730,13 @@ function renderVotedOutList() {
     }).join('');
 }
 
-window.removeVotedOut = (playerId) => {
+window.removeVotedOut = async (playerId) => {
     votedOutPlayers = votedOutPlayers.filter(id => id !== playerId);
     renderVotedOutList();
+    await saveRound();
 };
 
-document.getElementById('addVotedOut').addEventListener('change', (e) => {
+document.getElementById('addVotedOut').addEventListener('change', async (e) => {
     const value = e.target.value;
     if (!value) return;
 
@@ -636,6 +744,7 @@ document.getElementById('addVotedOut').addEventListener('change', (e) => {
         votedOutPlayers = [];
         renderVotedOutList();
         e.target.value = '';
+        await saveRound();
         return;
     }
 
@@ -648,16 +757,21 @@ document.getElementById('addVotedOut').addEventListener('change', (e) => {
     votedOutPlayers.push(value);
     renderVotedOutList();
     e.target.value = '';
+    await saveRound();
 });
 
-roundForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  
+['mafiaKill', 'donCheck', 'sheriffCheck'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => {
+        saveRound();
+    });
+});
+
+async function saveRound() {
   const mafiaKillValue = document.getElementById('mafiaKill').value;
   const donCheckValue = document.getElementById('donCheck').value;
   const sheriffCheckValue = document.getElementById('sheriffCheck').value;
   const roundNumber = parseInt(document.getElementById('roundNumber').value);
-  
+
   const roundData = {
     round_number: roundNumber,
     mafia_kill_player_id: mafiaKillValue === 'miss' ? null : (mafiaKillValue || null),
@@ -667,27 +781,24 @@ roundForm.addEventListener('submit', async (e) => {
     voted_out_players: votedOutPlayers.length > 0 ? votedOutPlayers : [],
     nobody_voted_out: votedOutPlayers.length === 0
   };
-  
+
   try {
     const isEdit = roundForm.dataset.mode === 'edit';
-    
+
     if (isEdit) {
-      await API.updateRound(gameId, roundNumber, roundData);
-      UI.showToast('Круг обновлен');
+      await API.updateRound(gameIdFromData(), roundNumber, roundData);
     } else {
-      await API.addRound(gameId, roundData);
-      UI.showToast('Круг добавлен');
+      await API.addRound(gameIdFromData(), roundData);
+      roundForm.dataset.mode = 'edit';
     }
-    
-    socket.emit('game_updated', { gameId });
-    roundModal.classList.remove('active');
-    roundForm.dataset.mode = '';
+
+    socket.emit('game_updated', { gameId: gameIdFromData() });
     await loadGameData();
   } catch (error) {
-    UI.showToast(isEdit ? 'Ошибка обновления круга' : 'Ошибка добавления круга', 'error');
+    UI.showToast('Ошибка сохранения круга', 'error');
     console.error(error);
   }
-});
+}
 
 // === Общие обработчики ===
 
@@ -705,9 +816,9 @@ function setupEventListeners() {
         toggleOverlayVisibilityBtn.addEventListener('click', async () => {
             try {
                 const newHidden = !gameData.overlay_hidden;
-                await API.setOverlayVisibility(gameId, newHidden);
+                await API.setOverlayVisibility(gameIdFromData(), newHidden);
                 UI.showToast(newHidden ? 'Оверлей скрыт' : 'Оверлей отображается');
-                socket.emit('game_updated', { gameId });
+                socket.emit('game_updated', { gameId: gameIdFromData() });
                 await loadGameData();
             } catch (error) {
                 UI.showToast('Ошибка переключения видимости оверлея', 'error');
@@ -720,7 +831,7 @@ function setupEventListeners() {
         roundModal.classList.remove('active');
     });
 
-    cancelRoundBtn.addEventListener('click', () => {
+    closeRoundBtn.addEventListener('click', () => {
         roundModal.classList.remove('active');
     });
 
@@ -736,4 +847,23 @@ function setupEventListeners() {
 function getPlayerName(playerId) {
     const seat = gameData.seating.find(s => s.player_id === playerId);
     return seat ? `${seat.position}. ${seat.nickname}` : '?';
+}
+
+function animateRoleChange(positions) {
+    if (!Array.isArray(positions) || positions.length === 0) return;
+
+    requestAnimationFrame(() => {
+        positions.forEach(pos => {
+            const card = document.querySelector(`.player-card[data-position="${pos}"]`);
+            if (!card) return;
+
+            card.classList.remove('role-changed');
+            void card.offsetWidth;
+            card.classList.add('role-changed');
+
+            setTimeout(() => {
+                card.classList.remove('role-changed');
+            }, 600);
+        });
+    });
 }

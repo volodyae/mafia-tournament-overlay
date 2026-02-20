@@ -55,16 +55,17 @@
             flex-shrink: 0;
         }
 
-        .role-btn {
-            padding: 8px 16px;
-            border: 2px solid var(--border);
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: 0.2s;
-            font-weight: 600;
-            font-size: 14px;
-        }
+.role-btn {
+    padding: 8px 16px;
+    border: 2px solid var(--border);
+    background: white;        /* можно оставить белый фон */
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.2s;
+    font-weight: 600;
+    font-size: 14px;
+    color: #000000;           /* ЧЁРНЫЙ текст в НЕактивном состоянии */
+}
 
         .role-btn.active {
             border-color: var(--primary);
@@ -342,60 +343,59 @@
         </div>
     </div>
 
-    <!-- Модальное окно добавления/редактирования круга -->
-    <div id="roundModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="roundModalTitle">Круг 1</h3>
-                <button class="close-btn" id="closeRoundModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="roundForm">
-                    <input type="hidden" id="roundNumber">
+   <!-- Модальное окно добавления/редактирования круга -->
+<div id="roundModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="roundModalTitle">Круг 1</h3>
+            <button class="close-btn" id="closeRoundModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="roundForm">
+                <input type="hidden" id="roundNumber">
 
-                    <div class="form-group">
-                        <label>убит:</label>
-                        <select id="mafiaKill" class="form-select">
-                            <option value="">Выберите игрока</option>
-                            <option value="miss">❌ Промах</option>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label>🔫Убит:</label>
+                    <select id="mafiaKill" class="form-select">
+                        <option value="">Выберите игрока</option>
+                        <option value="miss">❌ Промах</option>
+                    </select>
+                </div>
 
-                    <div class="form-group">
-                        <label>🎩 Проверка дона:</label>
-                        <select id="donCheck" class="form-select">
-                            <option value="">Выберите игрока</option>
-                            <option value="none">❌ Не проверял</option>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label>🎩 Проверка дона:</label>
+                    <select id="donCheck" class="form-select">
+                        <option value="">Выберите игрока</option>
+                        <option value="none">❌ Не проверял</option>
+                    </select>
+                </div>
 
-                    <div class="form-group">
-                        <label>⭐ Проверка шерифа:</label>
-                        <select id="sheriffCheck" class="form-select">
-                            <option value="">Выберите игрока</option>
-                            <option value="none">❌ Не проверял</option>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label>⭐ Проверка шерифа:</label>
+                    <select id="sheriffCheck" class="form-select">
+                        <option value="">Выберите игрока</option>
+                        <option value="none">❌ Не проверял</option>
+                    </select>
+                </div>
 
-                    <div class="form-group">
-                        <label>👍 Голосование (выбывшие):</label>
-                        <div id="votedOutList" style="margin-bottom: 8px;">
-                            <!-- Заполняется через JS -->
-                        </div>
-                        <select id="addVotedOut" class="form-select">
-                            <option value="">+ Добавить игрока</option>
-                            <option value="nobody">❌ Никто не выбыл</option>
-                        </select>
+                <div class="form-group">
+                    <label>👍 Голосование:</label>
+                    <div id="votedOutList" style="margin-bottom: 8px;">
+                        <!-- Заполняется через JS -->
                     </div>
+                    <select id="addVotedOut" class="form-select">
+                        <option value="">+ Добавить игрока</option>
+                        <option value="nobody">❌ Никто не выбыл</option>
+                    </select>
+                </div>
 
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" id="cancelRoundBtn">Отмена</button>
-                        <button type="submit" class="btn btn-success">✅ Применить на оверлей</button>
-                    </div>
-                </form>
-            </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="closeRoundBtn">Закрыть</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
 <script src="js/ui.js"></script>
 <script src="/config.js"></script>

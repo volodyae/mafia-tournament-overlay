@@ -191,6 +191,15 @@ const API = {
       method: 'POST',
       body: JSON.stringify({ player_id: playerId, eliminated })
     });
+  },
+
+  // ===== Карточки игроков в игре =====
+  async setPlayerCard(gameId, playerId, card) {
+    // card: 'yellow' | 'red' | 'none'
+    return this.request(`/games/${gameId}/player-card`, {
+      method: 'POST',
+      body: JSON.stringify({ player_id: playerId, card })
+    });
   }
 };
 

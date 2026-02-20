@@ -97,35 +97,37 @@ function renderGames() {
         return;
     }
 
-    gamesList.innerHTML = games.map(game => {
-        const hasSeating = game.seating_count && game.seating_count > 0;
-        const statusText = game.status === 'in_progress' 
-            ? '<span style="color: var(--success);">В процессе</span>'
-            : game.status === 'finished'
-            ? '<span style="color: var(--text-secondary);">Завершена</span>'
-            : 'Не начата';
+gamesList.innerHTML = games.map(game => {
+    const hasSeating = game.seating_count && game.seating_count > 0;
+    const statusText = game.status === 'in_progress' 
+        ? '<span style="color: var(--success);">В процессе</span>'
+        : game.status === 'finished'
+        ? '<span style="color: var(--text-secondary);">Завершена</span>'
+        : 'Не начата';
 
-        return `
-            <div class="tournament-card">
-                <h3>🎮 ИГРА ${game.game_number}/${tournament.total_games}, стол ${game.table_number}</h3>
-                <div class="tournament-meta">
-                    ${game.series_name ? `📺 ${game.series_name}<br>` : ''}
-                    ${statusText}<br>
-                    ${hasSeating ? `✅ Рассадка создана (${game.seating_count}/10)` : '⚠️ Рассадка не создана'}
-                </div>
-                <button class="btn btn-primary open-game" data-id="${game.id}">
-                    ⚙️ ${hasSeating ? 'Управлять игрой' : 'Создать рассадку'}
-                </button>
+    return `
+        <div class="tournament-card">
+            <h3>🎮 ИГРА ${game.game_number}/${tournament.total_games}, стол ${game.table_number}</h3>
+            <div class="tournament-meta">
+                ${game.series_name ? `📺 ${game.series_name}<br>` : ''}
+                ${statusText}<br>
+                ${hasSeating ? `✅ Рассадка создана (${game.seating_count}/10)` : '⚠️ Рассадка не создана'}
             </div>
-        `;
-    }).join('');
+            <button class="btn btn-primary open-game" data-id="${game.id}" data-game-number="${game.game_number}">
+                ⚙️ ${hasSeating ? 'Управлять игрой' : 'Создать рассадку'}
+            </button>
+        </div>
+    `;
+}).join('');
+
 
     // Обработчики кнопок
-    document.querySelectorAll('.open-game').forEach(btn => {
-        btn.addEventListener('click', () => {
-            window.location.href = `game.html?id=${btn.dataset.id}`;
-        });
+document.querySelectorAll('.open-game').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const gameNum = btn.dataset.gameNumber;
+        window.location.href = `game.html?tournament=${tournamentId}&game=${gameNum}`;
     });
+});
 }
 
 // Обработчики событий

@@ -35,7 +35,6 @@
             transform-origin: top left;
         }
 
-        /* Нижний градиент под карточками */
         .overlay-background-gradient {
             position: absolute;
             left: 0;
@@ -52,7 +51,6 @@
             pointer-events: none;
         }
 
-        /* Виньетка (на весь кадр, низ обрезаем маской) */
         .overlay-vignette {
             position: absolute;
             left: 0;
@@ -303,7 +301,6 @@
             align-items: center;
         }
 
-        /* Общий контейнер для multi-voted с нейтральной подложкой */
         .voted-multi-container {
             position: relative;
             width: 22px;
@@ -668,7 +665,6 @@
             object-fit: contain;
         }
 
-        /* Иконки для действий (SVG как background-image) */
         .icon {
             display: inline-block;
             width: 34px;
@@ -734,11 +730,30 @@
         }
 
         .entry-anim {
-            animation: entryFade 0.25s.ease-out;
+            animation: entryFade 0.25s ease-out;
         }
 
         .animate-in {
             animation: fadeInUp 0.6s ease-out;
+        }
+
+        .player-card-badge {
+            position: absolute;
+            right: 6px;
+            bottom: 2px;
+            width: 26px;
+            height: 36px;
+            border-radius: 3px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.7);
+            z-index: 4;
+        }
+
+        .player-card-badge.yellow-card {
+            background: #FACC15;
+        }
+
+        .player-card-badge.red-card {
+            background: #EF4444;
         }
 
         @keyframes role-change-flash {
@@ -761,7 +776,7 @@
         }
 
         .player-card.role-changed {
-            animation: role-change-flash 0.5s.ease-out;
+            animation: role-change-flash 0.5s ease-out;
         }
     </style>
 </head>
@@ -811,233 +826,261 @@
         <div class="bottom-panel"></div>
     </div>
 
-    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const gameId = urlParams.get('gameId');
+<script src="/config.js"></script>
+<script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const tournamentId = urlParams.get('tournament');
+    const gameNumber = parseInt(urlParams.get('game'), 10);
 
-        if (!gameId) {
-            document.body.innerHTML = '<div style="color: white; text-align: center; padding: 50px; font-size: 24px;">❌ Game ID not found</div>';
+    if (!tournamentId || !gameNumber) {
+        document.body.innerHTML = '<div style="color: white; text-align: center; padding: 50px; font-size: 24px;">❌ tournament или game не указаны в URL</div>';
+    }
+
+    const API_BASE_URL = window.OVERLAY_CONFIG?.API_URL || 'http://192.168.0.121:3000/api';
+    const SOCKET_URL = window.OVERLAY_CONFIG?.SOCKET_URL || 'http://192.168.0.121:3000';
+
+    let gameData = null;
+    let socket = null;
+    let socketConnected = false;
+    let previousEliminated = new Set();
+    let prevBestMoveIds = [];
+    let prevNomineeIds = [];
+    let prevRoundsKey = '';
+
+    function scaleOverlay() {
+        const container = document.querySelector('.overlay-container');
+        if (!container) return;
+
+        const baseWidth = 1920;
+        const baseHeight = 1080;
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const scaleX = screenWidth / baseWidth;
+        const scaleY = screenHeight / baseHeight;
+        const scale = Math.min(scaleX, scaleY);
+
+        container.style.setProperty('--overlay-scale', scale);
+
+        const scaledWidth = baseWidth * scale;
+        const scaledHeight = baseHeight * scale;
+        const offsetX = (screenWidth - scaledWidth) / 2;
+        const offsetY = (screenHeight - scaledHeight) / 2;
+
+        container.style.left = `${offsetX}px`;
+        container.style.top = `${offsetY}px`;
+        container.style.transform = `scale(${scale})`;
+    }
+
+    function applyOverlayVisibility() {
+        const container = document.querySelector('.overlay-container');
+        if (!container || !gameData) return;
+
+        if (gameData.overlay_hidden) {
+            container.classList.add('hidden');
+            container.classList.remove('visible');
+        } else {
+            container.classList.remove('hidden');
+            container.classList.add('visible');
         }
+    }
 
-        let gameData = null;
-        let socket = null;
-        let previousEliminated = new Set();
-        let prevBestMoveIds = [];
-        let prevNomineeIds = [];
-        let prevRoundsKey = '';
-
-        function scaleOverlay() {
-            const container = document.querySelector('.overlay-container');
-            if (!container) return;
-
-            const baseWidth = 1920;
-            const baseHeight = 1080;
-            const screenWidth = window.innerWidth;
-            const screenHeight = window.innerHeight;
-            const scaleX = screenWidth / baseWidth;
-            const scaleY = screenHeight / baseHeight;
-            const scale = Math.min(scaleX, scaleY);
-
-            container.style.setProperty('--overlay-scale', scale);
-
-            const scaledWidth = baseWidth * scale;
-            const scaledHeight = baseHeight * scale;
-            const offsetX = (screenWidth - scaledWidth) / 2;
-            const offsetY = (screenHeight - scaledHeight) / 2;
-
-            container.style.left = `${offsetX}px`;
-            container.style.top = `${offsetY}px`;
-            container.style.transform = `scale(${scale})`;
-        }
-
-        function applyOverlayVisibility() {
-            const container = document.querySelector('.overlay-container');
-            if (!container || !gameData) return;
-
-            if (gameData.overlay_hidden) {
-                container.classList.add('hidden');
-                container.classList.remove('visible');
-            } else {
-                container.classList.remove('hidden');
-                container.classList.add('visible');
+    async function loadGameData() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/games/by-number/${tournamentId}/${gameNumber}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
             }
-        }
+            const newData = await response.json();
 
-        async function loadGameData() {
-            try {
-                const response = await fetch(`http://localhost:3000/api/games/${gameId}`);
-                const newData = await response.json();
+            const prevGameId = gameData?.id;
+            gameData = newData;
 
-                gameData = newData;
-                renderOverlay();
-                applyOverlayVisibility();
-            } catch (error) {
-                console.error('Error loading game data:', error);
-            }
-        }
-
-        function getEliminationInfo(playerId) {
-            if (!gameData || !gameData.rounds) {
-                return { eliminated: false, reason: null };
-            }
-
-            let eliminated = false;
-            let reason = null;
-            let earliestRound = Infinity;
-
-            for (const round of gameData.rounds) {
-                if (!round) continue;
-                const rn = round.round_number || 0;
-
-                if (!round.mafia_miss && round.mafia_kill_player_id === playerId && rn < earliestRound) {
-                    earliestRound = rn;
-                    eliminated = true;
-                    reason = 'killed';
-                }
-
-                if (
-                    !round.nobody_voted_out &&
-                    Array.isArray(round.voted_out_players) &&
-                    round.voted_out_players.includes(playerId) &&
-                    rn < earliestRound
-                ) {
-                    earliestRound = rn;
-                    eliminated = true;
-                    reason = 'voted';
-                }
+            if (socketConnected && gameData?.id && gameData.id !== prevGameId) {
+                socket.emit('join_game', gameData.id);
             }
 
-            // статус "removed" хранится прямо в seating
-            const seat = gameData.seating.find(s => s.player_id === playerId);
-            if (seat && seat.is_eliminated && seat.elimination_reason === 'removed') {
+            renderOverlay();
+            applyOverlayVisibility();
+        } catch (error) {
+            console.error('Error loading game data:', error);
+        }
+    }
+
+    function getEliminationInfo(playerId) {
+        if (!gameData || !gameData.rounds) {
+            return { eliminated: false, reason: null };
+        }
+
+        let eliminated = false;
+               let reason = null;
+        let earliestRound = Infinity;
+
+        for (const round of gameData.rounds) {
+            if (!round) continue;
+            const rn = round.round_number || 0;
+
+            if (!round.mafia_miss && round.mafia_kill_player_id === playerId && rn < earliestRound) {
+                earliestRound = rn;
                 eliminated = true;
-                reason = 'removed';
+                reason = 'killed';
             }
 
-            return { eliminated, reason };
+            if (
+                !round.nobody_voted_out &&
+                Array.isArray(round.voted_out_players) &&
+                round.voted_out_players.includes(playerId) &&
+                rn < earliestRound
+            ) {
+                earliestRound = rn;
+                eliminated = true;
+                reason = 'voted';
+            }
         }
 
-        function renderOverlay() {
-            if (!gameData || !gameData.seating) return;
+        const seat = gameData.seating.find(s => s.player_id === playerId);
+        if (seat && seat.is_eliminated && seat.elimination_reason === 'removed') {
+            eliminated = true;
+            reason = 'removed';
+        }
 
-            document.querySelector('.series-name').textContent =
-                gameData.tournament_name || gameData.series_name || 'СЕРИЯ';
-            document.querySelector('.game-current').textContent = gameData.game_number;
+        return { eliminated, reason };
+    }
 
-            const bottomPanel = document.querySelector('.bottom-panel');
-            const newEliminated = new Set();
+    function renderOverlay() {
+        if (!gameData || !gameData.seating) return;
 
-            bottomPanel.innerHTML = gameData.seating.map(seat => {
-                const { eliminated, reason } = getEliminationInfo(seat.player_id);
-                const isEliminated = eliminated;
-                if (isEliminated) newEliminated.add(seat.player_id);
-                const justEliminated = isEliminated && !previousEliminated.has(seat.player_id);
+        document.querySelector('.series-name').textContent =
+            gameData.tournament_name || gameData.series_name || 'СЕРИЯ';
+        document.querySelector('.game-current').textContent = gameData.game_number;
 
-                const roleLabel = getRoleLabel(seat.role);
+        const bottomPanel = document.querySelector('.bottom-panel');
+        const newEliminated = new Set();
 
-                let eliminationIconClass = null;
-                if (reason === 'voted') {
-                    eliminationIconClass = 'icon-voted';
-                } else if (reason === 'killed') {
-                    eliminationIconClass = 'icon-kill';
-                } else if (reason === 'removed') {
-                    eliminationIconClass = 'icon-removed';
-                }
+        bottomPanel.innerHTML = gameData.seating.map(seat => {
+            const { eliminated, reason } = getEliminationInfo(seat.player_id);
+            const isEliminated = eliminated;
+            if (isEliminated) newEliminated.add(seat.player_id);
+            const justEliminated = isEliminated && !previousEliminated.has(seat.player_id);
 
-                let stripClass = 'red';
-                if (seat.role === 'mafia' || seat.role === 'don') stripClass = 'black';
-                if (seat.role === 'sheriff') stripClass = 'sheriff-strip';
+            const roleLabel = getRoleLabel(seat.role);
 
-                return `
-                    <div class="player-card ${isEliminated ? 'eliminated' : ''} ${justEliminated ? 'just-eliminated' : ''}"
-                         data-position="${seat.position}">
-                        <div class="player-card-inner">
-                            ${isEliminated && eliminationIconClass
-                                ? `<div class="elimination-icon"><span class="icon ${eliminationIconClass}"></span></div>`
-                                : ''
+            let eliminationIconClass = null;
+            if (reason === 'voted') {
+                eliminationIconClass = 'icon-voted';
+            } else if (reason === 'killed') {
+                eliminationIconClass = 'icon-kill';
+            } else if (reason === 'removed') {
+                eliminationIconClass = 'icon-removed';
+            }
+
+            let stripClass = 'red';
+            if (seat.role === 'mafia' || seat.role === 'don') stripClass = 'black';
+            if (seat.role === 'sheriff') stripClass = 'sheriff-strip';
+
+            let cardBadgeHtml = '';
+            if (seat.card === 'yellow') {
+                cardBadgeHtml = `<div class="player-card-badge yellow-card"></div>`;
+            } else if (seat.card === 'red') {
+                cardBadgeHtml = `<div class="player-card-badge red-card"></div>`;
+            }
+
+            return `
+                <div class="player-card ${isEliminated ? 'eliminated' : ''} ${justEliminated ? 'just-eliminated' : ''}"
+                     data-position="${seat.position}">
+                    <div class="player-card-inner">
+                        ${isEliminated && eliminationIconClass
+                            ? `<div class="elimination-icon"><span class="icon ${eliminationIconClass}"></span></div>`
+                            : ''
+                        }
+                        ${roleLabel ? `<div class="role-badge ${seat.role === 'sheriff' ? 'role-badge-sheriff' : ''}">${roleLabel}</div>` : ''}
+
+                        <div class="player-media">
+                            <div class="player-role-gradient ${stripClass}"></div>
+                            ${seat.photo_url 
+                                ? `<img src="${seat.photo_url}" alt="${seat.nickname}" class="player-portrait" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                   <div class="player-placeholder" style="display:none;">👤</div>`
+                                : `<div class="player-placeholder">👤</div>`
                             }
-                            ${roleLabel ? `<div class="role-badge ${seat.role === 'sheriff' ? 'role-badge-sheriff' : ''}">${roleLabel}</div>` : ''}
+                            ${cardBadgeHtml}
+                        </div>
 
-                            <div class="player-media">
-                                <div class="player-role-gradient ${stripClass}"></div>
-                                ${seat.photo_url 
-                                    ? `<img src="${seat.photo_url}" alt="${seat.nickname}" class="player-portrait" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                       <div class="player-placeholder" style="display:none;">👤</div>`
-                                    : `<div class="player-placeholder">👤</div>`
-                                }
-                            </div>
+                        <div class="player-role-strip">
+                            <div class="player-role-strip-inner ${stripClass}"></div>
 
-                            <div class="player-role-strip">
-                                <div class="player-role-strip-inner ${stripClass}"></div>
-
-                                <div class="player-info">
-                                    <div class="player-info-gradient"></div>
-                                    <div class="player-info-content">
-                                        <div class="player-nickname">
-                                            <span class="player-number">${seat.position}</span>
-                                            <span class="player-nickname-text">${seat.nickname}</span>
-                                        </div>
+                            <div class="player-info">
+                                <div class="player-info-gradient"></div>
+                                <div class="player-info-content">
+                                    <div class="player-nickname">
+                                        <span class="player-number">${seat.position}</span>
+                                        <span class="player-nickname-text">${seat.nickname}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                `;
-            }).join('');
+                </div>
+            `;
+        }).join('');
 
-            previousEliminated = newEliminated;
+        previousEliminated = newEliminated;
 
-            renderBestMove();
-            renderNominees();
-            renderRounds();
+        renderBestMove();
+        renderNominees();
+        renderRounds();
+    }
+
+    function renderBestMove() {
+        const bm = gameData.best_move;
+        const bestMovePlayersDiv = document.querySelector('.best-move-players');
+
+        if (!bm) {
+            bestMovePlayersDiv.innerHTML = '';
+            prevBestMoveIds = [];
+            return;
         }
 
-        function renderBestMove() {
-            const bm = gameData.best_move;
-            const bestMovePlayersDiv = document.querySelector('.best-move-players');
+        const suspects = [bm.suspect_1, bm.suspect_2, bm.suspect_3].filter(Boolean);
+        const newIds = suspects.slice();
 
-            if (!bm) {
-                bestMovePlayersDiv.innerHTML = '';
-                prevBestMoveIds = [];
-                return;
-            }
+        bestMovePlayersDiv.innerHTML = suspects.map(playerId => {
+            const seat = gameData.seating.find(s => s.player_id === playerId);
+            if (!seat) return '';
+            const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
 
-            const suspects = [bm.suspect_1, bm.suspect_2, bm.suspect_3].filter(Boolean);
-            const newIds = suspects.slice();
+            const isNew = !prevBestMoveIds.includes(playerId);
 
-            bestMovePlayersDiv.innerHTML = suspects.map(playerId => {
-                const seat = gameData.seating.find(s => s.player_id === playerId);
-                if (!seat) return '';
-                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-
-                const isNew = !prevBestMoveIds.includes(playerId);
-
-                return `
-                    <div class="best-move-player ${isNew ? 'entry-anim' : ''}">
-                        <div class="best-move-number-wrapper">
-                            <div class="best-move-bg ${teamClass}"></div>
-                            <div class="best-move-gradient"></div>
-                            <div class="best-move-number">${seat.position}</div>
-                        </div>
+            return `
+                <div class="best-move-player ${isNew ? 'entry-anim' : ''}">
+                    <div class="best-move-number-wrapper">
+                        <div class="best-move-bg ${teamClass}"></div>
+                        <div class="best-move-gradient"></div>
+                        <div class="best-move-number">${seat.position}</div>
                     </div>
-                `;
-            }).join('');
+                </div>
+            `;
+        }).join('');
 
-            prevBestMoveIds = newIds;
+        prevBestMoveIds = newIds;
+    }
+
+    function renderNominees() {
+        const nomineesWrapper = document.querySelector('.nominees');
+        const nomineesList = document.querySelector('.nominees-list');
+
+        if (!gameData.nominees || gameData.nominees.length === 0) {
+            if (nomineesWrapper) nomineesWrapper.style.display = 'none';
+            if (nomineesList) nomineesList.innerHTML = '';
+            prevNomineeIds = [];
+            return;
         }
 
-        function renderNominees() {
-            const nomineesList = document.querySelector('.nominees-list');
-            if (!gameData.nominees || gameData.nominees.length === 0) {
-                nomineesList.innerHTML = '';
-                prevNomineeIds = [];
-                return;
-            }
+        if (nomineesWrapper) nomineesWrapper.style.display = 'flex';
 
-            const newIds = gameData.nominees.map(n => n.player_id);
+        const newIds = gameData.nominees.map(n => n.player_id);
 
-            nomineesList.innerHTML = gameData.nominees.map(nominee => {
+        nomineesList.innerHTML = gameData.nominees
+            .map(nominee => {
                 const seat = gameData.seating.find(s => s.player_id === nominee.player_id);
                 if (!seat) return '';
                 const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
@@ -1052,213 +1095,220 @@
                         </div>
                     </div>
                 `;
-            }).join('');
+            })
+            .join('');
 
-            prevNomineeIds = newIds;
-        }
+        prevNomineeIds = newIds;
+    }
 
-        function renderRounds() {
-            const tbody = document.querySelector('.rounds-table tbody');
-            const maxRounds = 6;
+    function renderRounds() {
+        const tbody = document.querySelector('.rounds-table tbody');
+        const maxRounds = 6;
 
-            const actions = [
-                { type: 'kill',    iconClass: 'icon-kill' },
-                { type: 'don',     iconClass: 'icon-don-check' },
-                { type: 'sheriff', iconClass: 'icon-sheriff-check' },
-                { type: 'voted',   iconClass: 'icon-voted' }
-            ];
+        const actions = [
+            { type: 'kill',    iconClass: 'icon-kill' },
+            { type: 'don',     iconClass: 'icon-don-check' },
+            { type: 'sheriff', iconClass: 'icon-sheriff-check' },
+            { type: 'voted',   iconClass: 'icon-voted' }
+        ];
 
-            const roundsKey = JSON.stringify(gameData.rounds || []);
-            const isNewState = roundsKey !== prevRoundsKey;
-            prevRoundsKey = roundsKey;
+        const roundsKey = JSON.stringify(gameData.rounds || []);
+        const isNewState = roundsKey !== prevRoundsKey;
+        prevRoundsKey = roundsKey;
 
-            const rows = actions.map(action => {
-                let cells = `<td class="action-icon"><span class="icon ${action.iconClass}"></span></td>`;
+        const rows = actions.map(action => {
+            let cells = `<td class="action-icon"><span class="icon ${action.iconClass}"></span></td>`;
 
-                for (let col = 1; col <= maxRounds; col++) {
-                    const round = (gameData.rounds || []).find(r => r.round_number === col);
+            for (let col = 1; col <= maxRounds; col++) {
+                const round = (gameData.rounds || []).find(r => r.round_number === col);
 
-                    if (!round) {
-                        cells += '<td><div class="round-cell"></div></td>';
-                        continue;
-                    }
-
-                    let content = '';
-
-                    if (action.type === 'kill') {
-                        if (round.mafia_miss) {
-                            content = wrapRoundSymbol(null, 'neutral', isNewState, true);
-                        } else if (round.mafia_kill_player_id) {
-                            const seat = gameData.seating.find(s => s.player_id === round.mafia_kill_player_id);
-                            if (seat) {
-                                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                                content = wrapRoundNumber(seat.position, teamClass, isNewState);
-                            }
-                        }
-                    } else if (action.type === 'don') {
-                        if (round.don_check_player_id) {
-                            const seat = gameData.seating.find(s => s.player_id === round.don_check_player_id);
-                            if (seat) {
-                                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                                content = wrapRoundNumber(seat.position, teamClass, isNewState);
-                            }
-                        } else {
-                            content = wrapRoundSymbol(null, 'neutral', isNewState, true);
-                        }
-                    } else if (action.type === 'sheriff') {
-                        if (round.sheriff_check_player_id) {
-                            const seat = gameData.seating.find(s => s.player_id === round.sheriff_check_player_id);
-                            if (seat) {
-                                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                                content = wrapRoundNumber(seat.position, teamClass, isNewState);
-                            }
-                        } else {
-                            content = wrapRoundSymbol(null, 'neutral', isNewState, true);
-                        }
-                    } else if (action.type === 'voted') {
-                        const votedIds = Array.isArray(round.voted_out_players)
-                            ? round.voted_out_players
-                            : [];
-
-                        if (round.nobody_voted_out || votedIds.length === 0) {
-                            content = wrapRoundSymbol(null, 'neutral', isNewState, true);
-                        } else if (votedIds.length === 1) {
-                            const id = votedIds[0];
-                            const seat = gameData.seating.find(s => s.player_id === id);
-                            if (seat) {
-                                const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
-                                content = wrapRoundNumber(seat.position, teamClass, isNewState);
-                            }
-                        } else {
-                            content = renderMultiVoted(votedIds, isNewState);
-                        }
-                    }
-
-                    cells += `<td><div class="round-cell">${content}</div></td>`;
+                if (!round) {
+                    cells += '<td><div class="round-cell"></div></td>';
+                    continue;
                 }
 
-                return `<tr>${cells}</tr>`;
-            });
+                let content = '';
 
-            tbody.innerHTML = rows.join('');
-        }
+                if (action.type === 'kill') {
+                    if (round.mafia_miss) {
+                        content = wrapRoundSymbol(null, 'neutral', isNewState, true);
+                    } else if (round.mafia_kill_player_id) {
+                        const seat = gameData.seating.find(s => s.player_id === round.mafia_kill_player_id);
+                        if (seat) {
+                            const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                            content = wrapRoundNumber(seat.position, teamClass, isNewState);
+                        }
+                    }
+                } else if (action.type === 'don') {
+                    if (round.don_check_player_id) {
+                        const seat = gameData.seating.find(s => s.player_id === round.don_check_player_id);
+                        if (seat) {
+                            const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                            content = wrapRoundNumber(seat.position, teamClass, isNewState);
+                        }
+                    } else {
+                        content = wrapRoundSymbol(null, 'neutral', isNewState, true);
+                    }
+                } else if (action.type === 'sheriff') {
+                    if (round.sheriff_check_player_id) {
+                        const seat = gameData.seating.find(s => s.player_id === round.sheriff_check_player_id);
+                        if (seat) {
+                            const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                            content = wrapRoundNumber(seat.position, teamClass, isNewState);
+                        }
+                    } else {
+                        content = wrapRoundSymbol(null, 'neutral', isNewState, true);
+                    }
+                } else if (action.type === 'voted') {
+                    const votedIds = Array.isArray(round.voted_out_players)
+                        ? round.voted_out_players
+                        : [];
 
-        function wrapRoundNumber(value, teamClass, animate) {
-            return `
-              <div class="round-number-wrapper ${animate ? 'entry-anim' : ''}">
-                <div class="round-bg ${teamClass}"></div>
-                <div class="round-gradient"></div>
-                <div class="round-number">${value}</div>
-              </div>`;
-        }
+                    if (round.nobody_voted_out || votedIds.length === 0) {
+                        content = wrapRoundSymbol(null, 'neutral', isNewState, true);
+                    } else if (votedIds.length === 1) {
+                        const id = votedIds[0];
+                        const seat = gameData.seating.find(s => s.player_id === id);
+                        if (seat) {
+                            const teamClass = seat.team === 'red' ? 'team-red' : 'team-black';
+                            content = wrapRoundNumber(seat.position, teamClass, isNewState);
+                        }
+                    } else {
+                        content = renderMultiVoted(votedIds, isNewState);
+                    }
+                }
 
-        function wrapRoundSymbol(symbol, bgClass, animate, useIconNone) {
-            const inner = useIconNone
-                ? `<span class="icon icon-none"></span>`
-                : `<span class="round-number ${symbol === '❌' ? 'cross' : ''}">${symbol}</span>`;
-
-            return `
-              <div class="round-number-wrapper ${animate ? 'entry-anim' : ''}">
-                <div class="round-bg ${bgClass}"></div>
-                <div class="round-gradient"></div>
-                ${inner}
-              </div>`;
-        }
-
-        function renderMultiVoted(votedIds, animate) {
-            const positions = votedIds
-                .map(id => {
-                    const seat = gameData.seating.find(s => s.player_id === id);
-                    return seat ? seat.position : null;
-                })
-                .filter(v => v !== null)
-                .slice(0, 4);
-
-            const len = positions.length;
-            let numbersHtml = '';
-
-            if (len === 2) {
-                numbersHtml = `
-                    <span class="voted-small-number voted-two-top">${positions[0]}</span>
-                    <span class="voted-small-number voted-two-bottom">${positions[1]}</span>
-                `;
-            } else if (len === 3) {
-                numbersHtml = `
-                    <span class="voted-small-number voted-three-top">${positions[0]}</span>
-                    <span class="voted-small-number voted-three-bottom-left">${positions[1]}</span>
-                    <span class="voted-small-number voted-three-bottom-right">${positions[2]}</span>
-                `;
-            } else if (len >= 4) {
-                numbersHtml = `
-                    <span class="voted-small-number voted-four-top-left">${positions[0]}</span>
-                    <span class="voted-small-number voted-four-top-right">${positions[1]}</span>
-                    <span class="voted-small-number voted-four-bottom-left">${positions[2]}</span>
-                    <span class="voted-small-number voted-four-bottom-right">${positions[3]}</span>
-                `;
-            } else {
-                numbersHtml = positions.map(p =>
-                    `<span class="voted-small-number voted-two-top">${p}</span>`
-                ).join('');
+                cells += `<td><div class="round-cell">${content}</div></td>`;
             }
 
-            return `
-                <div class="voted-multi-container ${animate ? 'entry-anim' : ''}">
-                    <div class="voted-multi-bg neutral"></div>
-                    <div class="voted-multi-gradient"></div>
-                    <div class="voted-multi-content">
-                        <div class="voted-multi-inner">
-                            ${numbersHtml}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function getRoleLabel(role) {
-            const labels = { mafia: 'М', don: 'Д', sheriff: 'Ш', civilian: '' };
-            return labels[role] || '';
-        }
-
-        function animateRoleChange(positions) {
-            if (!Array.isArray(positions) || positions.length === 0) return;
-
-            requestAnimationFrame(() => {
-                positions.forEach(pos => {
-                    const card = document.querySelector(`.player-card[data-position="${pos}"]`);
-                    if (!card) return;
-
-                    card.classList.remove('role-changed');
-                    void card.offsetWidth;
-                    card.classList.add('role-changed');
-
-                    setTimeout(() => {
-                        card.classList.remove('role-changed');
-                    }, 600);
-                });
-            });
-        }
-
-        function connectWebSocket() {
-            socket = io('http://localhost:3000');
-            socket.on('connect', () => {
-                socket.emit('join_game', gameId);
-            });
-            socket.on('game_updated', () => {
-                loadGameData();
-            });
-            socket.on('roles_changed', payload => {
-                if (!payload || payload.gameId !== gameId) return;
-                animateRoleChange(payload.positions || []);
-            });
-        }
-
-        window.addEventListener('load', () => {
-            scaleOverlay();
-            loadGameData();
-            connectWebSocket();
+            return `<tr>${cells}</tr>`;
         });
 
-        window.addEventListener('resize', scaleOverlay);
-    </script>
+        tbody.innerHTML = rows.join('');
+    }
+
+    function wrapRoundNumber(value, teamClass, animate) {
+        return `
+          <div class="round-number-wrapper ${animate ? 'entry-anim' : ''}">
+            <div class="round-bg ${teamClass}"></div>
+            <div class="round-gradient"></div>
+            <div class="round-number">${value}</div>
+          </div>`;
+    }
+
+    function wrapRoundSymbol(symbol, bgClass, animate, useIconNone) {
+        const inner = useIconNone
+            ? `<span class="icon icon-none"></span>`
+            : `<span class="round-number ${symbol === '❌' ? 'cross' : ''}">${symbol}</span>`;
+
+        return `
+          <div class="round-number-wrapper ${animate ? 'entry-anim' : ''}">
+            <div class="round-bg ${bgClass}"></div>
+            <div class="round-gradient"></div>
+            ${inner}
+          </div>`;
+    }
+
+    function renderMultiVoted(votedIds, animate) {
+        const positions = votedIds
+            .map(id => {
+                const seat = gameData.seating.find(s => s.player_id === id);
+                return seat ? seat.position : null;
+            })
+            .filter(v => v !== null)
+            .slice(0, 4);
+
+        const len = positions.length;
+        let numbersHtml = '';
+
+        if (len === 2) {
+            numbersHtml = `
+                <span class="voted-small-number voted-two-top">${positions[0]}</span>
+                <span class="voted-small-number voted-two-bottom">${positions[1]}</span>
+            `;
+        } else if (len === 3) {
+            numbersHtml = `
+                <span class="voted-small-number voted-three-top">${positions[0]}</span>
+                <span class="voted-small-number voted-three-bottom-left">${positions[1]}</span>
+                <span class="voted-small-number voted-three-bottom-right">${positions[2]}</span>
+            `;
+        } else if (len >= 4) {
+            numbersHtml = `
+                <span class="voted-small-number voted-four-top-left">${positions[0]}</span>
+                <span class="voted-small-number voted-four-top-right">${positions[1]}</span>
+                <span class="voted-small-number voted-four-bottom-left">${positions[2]}</span>
+                <span class="voted-small-number voted-four-bottom-right">${positions[3]}</span>
+            `;
+        } else {
+            numbersHtml = positions.map(p =>
+                `<span class="voted-small-number voted-two-top">${p}</span>`
+            ).join('');
+        }
+
+        return `
+            <div class="voted-multi-container ${animate ? 'entry-anim' : ''}">
+                <div class="voted-multi-bg neutral"></div>
+                <div class="voted-multi-gradient"></div>
+                <div class="voted-multi-content">
+                    <div class="voted-multi-inner">
+                        ${numbersHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function getRoleLabel(role) {
+        const labels = { mafia: 'М', don: 'Д', sheriff: 'Ш', civilian: '' };
+        return labels[role] || '';
+    }
+
+    function animateRoleChange(positions) {
+        if (!Array.isArray(positions) || positions.length === 0) return;
+
+        requestAnimationFrame(() => {
+            positions.forEach(pos => {
+                const card = document.querySelector(`.player-card[data-position="${pos}"]`);
+                if (!card) return;
+
+                card.classList.remove('role-changed');
+                void card.offsetWidth;
+                card.classList.add('role-changed');
+
+                setTimeout(() => {
+                    card.classList.remove('role-changed');
+                }, 600);
+            });
+        });
+    }
+
+    function connectWebSocket() {
+        socket = io(SOCKET_URL);
+
+        socket.on('connect', () => {
+            socketConnected = true;
+            if (gameData?.id) {
+                socket.emit('join_game', gameData.id);
+            }
+        });
+
+        socket.on('game_updated', () => {
+            loadGameData();
+        });
+
+        socket.on('roles_changed', payload => {
+            if (!payload || !gameData || payload.gameId !== gameData.id) return;
+            animateRoleChange(payload.positions || []);
+        });
+    }
+
+    window.addEventListener('load', () => {
+        scaleOverlay();
+        connectWebSocket();
+        loadGameData();
+    });
+
+    window.addEventListener('resize', scaleOverlay);
+</script>
 </body>
 </html>

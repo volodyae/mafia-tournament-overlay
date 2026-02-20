@@ -4,6 +4,31 @@ const pool = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const Game = require('../models/Game');
 
+// Получить игру по номеру внутри турнира
+router.get('/by-number/:tournamentId/:gameNumber', async (req, res) => {
+  try {
+    const { tournamentId, gameNumber } = req.params;
+    const result = await pool.query(
+      'SELECT id FROM games WHERE tournament_id = $1 AND game_number = $2',
+      [tournamentId, gameNumber]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    const game = await Game.getFullData(result.rows[0].id);
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    res.json(game);
+  } catch (error) {
+    console.error('Error getting game by number:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Получить игру с полными данными
 router.get('/:id', async (req, res) => {
   try {
@@ -381,5 +406,51 @@ router.post('/:id/player-elimination', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Установить карточку игроку (yellow/red/none)
+router.post('/:id/player-card', async (req, res) => {
+  try {
+    const gameId = req.params.id;
+    const { player_id, card } = req.body; // 'yellow' | 'red' | 'none'
+
+    if (!player_id) {
+      return res.status(400).json({ error: 'player_id is required' });
+    }
+
+    let finalCard = 'none';
+    if (card === 'yellow') finalCard = 'yellow';
+    if (card === 'red') finalCard = 'red';
+
+    // обновляем card
+    const result = await pool.query(
+      `UPDATE game_seating
+       SET card = $1
+       WHERE game_id = $2 AND player_id = $3
+       RETURNING *`,
+      [finalCard, gameId, player_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Seating record not found for this player in game' });
+    }
+
+    // если красная карточка — помечаем как удалённого
+    if (finalCard === 'red') {
+      await pool.query(
+        `UPDATE game_seating
+         SET is_eliminated = TRUE,
+             elimination_reason = 'removed'
+         WHERE game_id = $1 AND player_id = $2`,
+        [gameId, player_id]
+      );
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating player card:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 module.exports = router;

@@ -1,14 +1,16 @@
 :root {
     --primary: #3B82F6;
     --primary-hover: #2563EB;
-    --secondary: #6B7280;
+    --secondary: #9CA3AF;
     --success: #10B981;
     --danger: #EF4444;
-    --bg-primary: #FFFFFF;
-    --bg-secondary: #F3F4F6;
-    --text-primary: #111827;
-    --text-secondary: #6B7280;
-    --border: #E5E7EB;
+
+    /* тёмная палитра */
+    --bg-primary: #111827;       /* карточки, navbar */
+    --bg-secondary: #020617;     /* фон страницы */
+    --text-primary: #F9FAFB;
+    --text-secondary: #9CA3AF;
+    --border: #1F2937;
 }
 
 /* Сброс */
@@ -36,13 +38,14 @@ body {
 .navbar {
     background: var(--bg-primary);
     padding: 16px 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.6);
     margin-bottom: 24px;
 }
 
 .navbar h1 {
     font-size: 20px;
     margin-bottom: 12px;
+    color: var(--text-primary);
 }
 
 .nav-links {
@@ -61,7 +64,7 @@ body {
 }
 
 .nav-link:hover {
-    background: var(--bg-secondary);
+    background: #0B1120;
 }
 
 .nav-link.active {
@@ -86,6 +89,7 @@ body {
 
 .page-header h2 {
     font-size: 24px;
+    color: var(--text-primary);
 }
 
 /* Кнопки */
@@ -111,12 +115,13 @@ body {
 }
 
 .btn-secondary {
-    background: var(--bg-secondary);
+    background: #020617;
     color: var(--text-primary);
+    border: 1px solid var(--border);
 }
 
 .btn-secondary:hover {
-    background: var(--border);
+    background: #0B1120;
 }
 
 .btn-danger {
@@ -158,12 +163,14 @@ body {
     background: var(--bg-primary);
     padding: 20px;
     border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.7);
+    border: 1px solid var(--border);
 }
 
 .tournament-card h3 {
     font-size: 18px;
     margin-bottom: 8px;
+    color: var(--text-primary);
 }
 
 .tournament-meta {
@@ -193,10 +200,11 @@ body {
     background: var(--bg-primary);
     padding: 16px;
     border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.7);
     display: flex;
     align-items: center;
     gap: 16px;
+    border: 1px solid var(--border);
 }
 
 .player-photo {
@@ -204,7 +212,7 @@ body {
     height: 60px;
     border-radius: 50%;
     object-fit: cover;
-    background: var(--bg-secondary);
+    background: #020617;
     flex-shrink: 0;
 }
 
@@ -212,7 +220,7 @@ body {
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background: var(--bg-secondary);
+    background: #020617;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -228,6 +236,7 @@ body {
 .player-info h4 {
     font-size: 16px;
     margin-bottom: 4px;
+    color: var(--text-primary);
 }
 
 .player-actions {
@@ -245,6 +254,7 @@ body {
     display: block;
     margin-bottom: 8px;
     font-weight: 500;
+    color: var(--text-primary);
 }
 
 .form-input,
@@ -256,6 +266,12 @@ body {
     font-size: 16px;
     min-height: 44px;
     font-family: inherit;
+    background: #020617;
+    color: var(--text-primary);
+}
+
+.form-input::placeholder {
+    color: var(--text-secondary);
 }
 
 .form-input:focus,
@@ -275,17 +291,18 @@ body {
     width: 44px;
     height: 44px;
     border: 2px solid var(--border);
-    background: white;
+    background: #020617;
     border-radius: 8px;
     font-size: 20px;
     cursor: pointer;
     transition: 0.2s;
     flex-shrink: 0;
+    color: var(--text-primary);
 }
 
 .btn-minus:hover,
 .btn-plus:hover {
-    background: var(--bg-secondary);
+    background: #0B1120;
 }
 
 .number-input input {
@@ -311,7 +328,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(15, 23, 42, 0.75);
     z-index: 1000;
     align-items: center;
     justify-content: center;
@@ -323,12 +340,13 @@ body {
 }
 
 .modal-content {
-    background: white;
+    background: #020617;
     border-radius: 12px;
     max-width: 500px;
     width: 100%;
     max-height: 90vh;
     overflow-y: auto;
+    border: 1px solid var(--border);
 }
 
 .modal-header {
@@ -341,6 +359,7 @@ body {
 
 .modal-header h3 {
     font-size: 20px;
+    color: var(--text-primary);
 }
 
 .close-btn {
@@ -382,13 +401,14 @@ body {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    background: var(--text-primary);
-    color: white;
+    background: #020617;
+    color: var(--text-primary);
     padding: 16px 24px;
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.7);
     z-index: 2000;
     animation: slideIn 0.3s ease-out;
+    border: 1px solid var(--border);
 }
 
 .toast.success {
@@ -475,11 +495,12 @@ body {
     padding: 6px 10px;
     border-radius: 8px;
     border: 2px solid var(--border);
-    background: var(--bg-secondary);
+    background: #020617;
     cursor: pointer;
     font-weight: 600;
     font-size: 14px;
     transition: 0.2s;
+    color: var(--text-primary);
 }
 
 .nominee-btn.active {
@@ -504,29 +525,94 @@ body {
 
 .role-btn {
     padding: 8px 16px;
-    border: 2px solid var(--border);
-    background: white;
     border-radius: 8px;
     cursor: pointer;
     transition: 0.2s;
     font-weight: 600;
     font-size: 14px;
+    border: 2px solid var(--border);
+    background: #020617;              /* тёмный фон по умолчанию */
+    color: var(--text-primary);       /* светлый текст по умолчанию */
 }
 
-.role-btn.active {
-    border-color: var(--primary);
-    background: var(--primary);
-    color: white;
+/* Мир (красная команда) */
+.role-btn.civilian {
+    border-color: #F87171;            /* светло‑красный бордер */
+}
+.role-btn.civilian.active {
+    background: #EF4444;              /* насыщенный красный фон */
+    border-color: #EF4444;
+    color: #fff;
 }
 
+/* Мафия / Дон (чёрная команда) */
+.role-btn.black {
+    border-color: #4B5563;            /* серый бордер */
+}
+.role-btn.black.active {
+    background: #111827;              /* тёмный фон мафии */
+    border-color: #111827;
+    color: #fff;
+}
+
+/* Шериф (жёлтая команда) */
+.role-btn.yellow {
+    border-color: #FACC15;            /* жёлтый бордер */
+}
+.role-btn.yellow.active {
+    background: #FACC15;
+    border-color: #FACC15;
+    color: #111827;                   /* тёмный текст по жёлтому */
+}
+
+/* Базовый стиль кнопки роли уже есть; ниже только спецстили для ЖК/КК */
+
+/* ЖК и КК — квадратные, светлые */
+.role-btn.card-yellow,
+.role-btn.card-red {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 4px;             /* почти квадрат */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+/* Желтая карточка */
+.role-btn.card-yellow {
+    background: #FEF3C7;            /* светло‑жёлтый фон */
+    border-color: #FACC15;
+    color: #92400E;
+}
+.role-btn.card-yellow.active {
+    background: #FACC15;            /* более яркий */
+    border-color: #FACC15;
+    color: #1F2937;
+}
+
+/* Красная карточка */
+.role-btn.card-red {
+    background: #FEE2E2;            /* светло‑красный фон */
+    border-color: #F87171;
+    color: #7F1D1D;
+}
+.role-btn.card-red.active {
+    background: #EF4444;
+    border-color: #EF4444;
+    color: #F9FAFB;
+}
+
+/* Удалён */
 .role-btn.eliminated-toggle {
-    border-color: var(--primary);
-    color: var(--primary);
+    border-color: var(--danger);
+    color: var(--danger);
     margin-left: 12px;
+    background: #020617;
 }
-
 .role-btn.eliminated-toggle.active {
-    background: var(--primary);
+    background: var(--danger);
     color: #fff;
 }
 
@@ -534,7 +620,7 @@ body {
 
 @media (max-width: 768px) {
     body {
-        background: #F9FAFB;
+        background: #020617;
     }
 
     .container {
@@ -632,8 +718,6 @@ body {
         max-width: 100%;
         border-radius: 10px;
     }
-
-    /* Рассадка и раздача ролей: вертикальный стэк */
 
     .seating-item {
         flex-direction: column;
