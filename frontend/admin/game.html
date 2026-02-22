@@ -55,17 +55,17 @@
             flex-shrink: 0;
         }
 
-.role-btn {
-    padding: 8px 16px;
-    border: 2px solid var(--border);
-    background: white;        /* можно оставить белый фон */
-    border-radius: 8px;
-    cursor: pointer;
-    transition: 0.2s;
-    font-weight: 600;
-    font-size: 14px;
-    color: #000000;           /* ЧЁРНЫЙ текст в НЕактивном состоянии */
-}
+        .role-btn {
+            padding: 8px 16px;
+            border: 2px solid var(--border);
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 600;
+            font-size: 14px;
+            color: #000000;
+        }
 
         .role-btn.active {
             border-color: var(--primary);
@@ -249,6 +249,139 @@
 
             .action-label {
                 min-width: auto;
+            }
+        }
+
+        /* Мобильные правки */
+        @media (max-width: 768px) {
+            body {
+                background: #020617;
+            }
+
+            .container {
+                max-width: 100%;
+            }
+
+            .navbar {
+                padding: 12px 14px;
+                margin-bottom: 16px;
+            }
+
+            .navbar h1 {
+                font-size: 18px;
+                margin-bottom: 8px;
+            }
+
+            .content {
+                padding: 0 12px 32px;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .page-header h2 {
+                font-size: 20px;
+            }
+
+            .tournament-card {
+                padding: 14px;
+                border-radius: 10px;
+            }
+
+            .player-card {
+                padding: 12px;
+                gap: 12px;
+            }
+
+            .player-photo,
+            .player-placeholder {
+                width: 48px;
+                height: 48px;
+            }
+
+            .btn {
+                font-size: 14px;
+                padding: 10px 14px;
+                min-height: 40px;
+            }
+
+            .tournament-actions,
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .tournament-actions .btn,
+            .form-actions .btn {
+                width: 100%;
+            }
+
+            .game-section-row {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .game-section {
+                padding: 14px;
+                border-radius: 10px;
+                margin-bottom: 12px;
+            }
+
+            .nominee-btn {
+                min-width: 36px;
+                min-height: 36px;
+                font-size: 13px;
+                padding: 4px 8px;
+            }
+
+            .modal-content {
+                max-width: 100%;
+                border-radius: 10px;
+            }
+
+            /* Строка: кружок + селект */
+            .seating-item {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;          /* позволяет ролям уйти на следующую строку */
+            }
+
+            .position-number {
+                align-self: center;
+            }
+
+            .seating-select-wrapper {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .seating-select-wrapper .form-select,
+            .seating-player-select {
+                width: 100%;
+            }
+
+            /* Кнопки ролей и карточек — ниже, во всю ширину */
+            .role-buttons {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: flex-start;
+                gap: 6px;
+                margin-top: 4px;
+            }
+
+            .role-btn {
+                flex: 0 0 auto;
+                padding: 6px 10px;
+                font-size: 13px;
+            }
+
+            .role-btn.eliminated-toggle {
+                margin-left: 0;
             }
         }
     </style>

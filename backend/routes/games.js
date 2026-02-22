@@ -1,3 +1,4 @@
+// c:\mafia-overlay\backend\routes\games.js
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
@@ -186,8 +187,11 @@ router.put('/:id/nominees', async (req, res) => {
 
     await pool.query('DELETE FROM voting_nominees WHERE game_id = $1', [gameId]);
 
-    for (let index = 0; index < player_ids.length; index++) {
-      const playerId = player_ids[index];
+    // гарантируем, что нет дубликатов по player_id
+    const uniqueIds = [...new Set(player_ids)];
+
+    for (let index = 0; index < uniqueIds.length; index++) {
+      const playerId = uniqueIds[index];
       await pool.query(
         `INSERT INTO voting_nominees (id, game_id, player_id, position)
          VALUES ($1, $2, $3, $4)`,
@@ -225,6 +229,8 @@ router.post('/:id/rounds', async (req, res) => {
       nobody_voted_out
     } = req.body;
 
+    const votedOutArray = Array.isArray(voted_out_players) ? voted_out_players : [];
+
     const result = await pool.query(
       `INSERT INTO game_rounds (
         id, game_id, round_number,
@@ -244,12 +250,12 @@ router.post('/:id/rounds', async (req, res) => {
         uuidv4(),
         gameId,
         round_number,
-        mafia_kill_player_id,
-        mafia_miss,
-        don_check_player_id,
-        sheriff_check_player_id,
-        JSON.stringify(voted_out_players || []),
-        nobody_voted_out
+        mafia_kill_player_id || null,
+        mafia_miss === true,
+        don_check_player_id || null,
+        sheriff_check_player_id || null,
+        JSON.stringify(votedOutArray),      // ← пишем как JSON-строку
+        nobody_voted_out === true
       ]
     );
 
@@ -294,6 +300,8 @@ router.put('/:id/rounds/:roundNumber', async (req, res) => {
       nobody_voted_out
     } = req.body;
 
+    const votedOutArray = Array.isArray(voted_out_players) ? voted_out_players : [];
+
     const result = await pool.query(
       `UPDATE game_rounds SET
         mafia_kill_player_id = $1,
@@ -305,12 +313,12 @@ router.put('/:id/rounds/:roundNumber', async (req, res) => {
        WHERE game_id = $7 AND round_number = $8
        RETURNING *`,
       [
-        mafia_kill_player_id,
-        mafia_miss,
-        don_check_player_id,
-        sheriff_check_player_id,
-        JSON.stringify(voted_out_players || []),
-        nobody_voted_out,
+        mafia_kill_player_id || null,
+        mafia_miss === true,
+        don_check_player_id || null,
+        sheriff_check_player_id || null,
+        JSON.stringify(votedOutArray),      // ← тоже пишем как JSON-строку
+        nobody_voted_out === true,
         gameId,
         roundNumber
       ]
@@ -451,6 +459,5 @@ router.post('/:id/player-card', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 
 module.exports = router;

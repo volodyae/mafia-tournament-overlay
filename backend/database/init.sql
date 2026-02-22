@@ -1,3 +1,5 @@
+-- c:\mafia-overlay\backend\database\init.sql
+
 -- Создание базы данных (выполнить отдельно)
 CREATE DATABASE mafia_overlay;
 
@@ -53,6 +55,7 @@ CREATE TABLE game_seating (
     team VARCHAR(10) CHECK (team IN ('red', 'black')),
     is_eliminated BOOLEAN DEFAULT FALSE,
     elimination_reason VARCHAR(20) CHECK (elimination_reason IN ('voted', 'killed', 'mafia', 'don', 'removed')),
+    card VARCHAR(10) CHECK (card IN ('none', 'yellow', 'red')) DEFAULT 'none',
     UNIQUE(game_id, position)
 );
 
@@ -65,7 +68,7 @@ CREATE TABLE game_rounds (
     mafia_miss BOOLEAN DEFAULT FALSE,
     don_check_player_id UUID REFERENCES players(id),
     sheriff_check_player_id UUID REFERENCES players(id),
-    voted_out_players JSONB,
+    voted_out_players JSONB,          -- массив UUID-ов, например ['uuid1','uuid2']
     nobody_voted_out BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(game_id, round_number)
@@ -98,3 +101,4 @@ CREATE INDEX idx_games_tournament ON games(tournament_id);
 CREATE INDEX idx_game_seating_game ON game_seating(game_id);
 CREATE INDEX idx_game_rounds_game ON game_rounds(game_id);
 CREATE INDEX idx_voting_nominees_game ON voting_nominees(game_id);
+CREATE INDEX idx_voting_nominees_position ON voting_nominees(game_id, position);

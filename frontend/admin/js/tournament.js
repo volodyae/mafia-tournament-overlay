@@ -1,3 +1,4 @@
+// c:\mafia-overlay\frontend\admin\js\tournament.js
 let tournamentId = null;
 let tournament = null;
 let games = [];
@@ -11,9 +12,17 @@ const gamesList = document.getElementById('gamesList');
 const tournamentPlayers = document.getElementById('tournamentPlayers');
 const playersCount = document.getElementById('playersCount');
 
+// элементы модалки управления игроками
+const managePlayersModal = document.getElementById('managePlayersModal');
+const managePlayersBtn = document.getElementById('managePlayers');
+const closePlayersModalBtn = document.getElementById('closePlayersModal');
+const playerSearchInput = document.getElementById('playerSearchInput');
+const playerSearchResults = document.getElementById('playerSearchResults');
+const modalPlayersList = document.getElementById('modalPlayersList');
+const modalPlayersCount = document.getElementById('modalPlayersCount');
+
 // Инициализация
 document.addEventListener('DOMContentLoaded', () => {
-    // Получить ID турнира из URL
     const urlParams = new URLSearchParams(window.location.search);
     tournamentId = urlParams.get('id');
     
@@ -34,7 +43,6 @@ async function loadTournamentData() {
         players = await API.getTournamentPlayers(tournamentId);
         allPlayers = await API.getPlayers();
         
-        // Загружаем игры турнира
         games = await loadGames();
         
         renderTournamentHeader();
@@ -67,7 +75,7 @@ function renderTournamentHeader() {
     `;
 }
 
-// Отрисовка игроков
+// Отрисовка игроков (основной список)
 function renderPlayers() {
     playersCount.textContent = players.length;
     
@@ -97,76 +105,34 @@ function renderGames() {
         return;
     }
 
-gamesList.innerHTML = games.map(game => {
-    const hasSeating = game.seating_count && game.seating_count > 0;
-    const statusText = game.status === 'in_progress' 
-        ? '<span style="color: var(--success);">В процессе</span>'
-        : game.status === 'finished'
-        ? '<span style="color: var(--text-secondary);">Завершена</span>'
-        : 'Не начата';
+    gamesList.innerHTML = games.map(game => {
+        const hasSeating = game.seating_count && game.seating_count > 0;
+        const statusText = game.status === 'in_progress' 
+            ? '<span style="color: var(--success);">В процессе</span>'
+            : game.status === 'finished'
+            ? '<span style="color: var(--text-secondary);">Завершена</span>'
+            : 'Не начата';
 
-    return `
-        <div class="tournament-card">
-            <h3>🎮 ИГРА ${game.game_number}/${tournament.total_games}, стол ${game.table_number}</h3>
-            <div class="tournament-meta">
-                ${game.series_name ? `📺 ${game.series_name}<br>` : ''}
-                ${statusText}<br>
-                ${hasSeating ? `✅ Рассадка создана (${game.seating_count}/10)` : '⚠️ Рассадка не создана'}
+        return `
+            <div class="tournament-card">
+                <h3>🎮 ИГРА ${game.game_number}/${tournament.total_games}, стол ${game.table_number}</h3>
+                <div class="tournament-meta">
+                    ${game.series_name ? `📺 ${game.series_name}<br>` : ''}
+                    ${statusText}<br>
+                    ${hasSeating ? `✅ Рассадка создана (${game.seating_count}/10)` : '⚠️ Рассадка не создана'}
+                </div>
+                <button class="btn btn-primary open-game" data-id="${game.id}" data-game-number="${game.game_number}">
+                    ⚙️ ${hasSeating ? 'Управлять игрой' : 'Создать рассадку'}
+                </button>
             </div>
-            <button class="btn btn-primary open-game" data-id="${game.id}" data-game-number="${game.game_number}">
-                ⚙️ ${hasSeating ? 'Управлять игрой' : 'Создать рассадку'}
-            </button>
-        </div>
-    `;
-}).join('');
+        `;
+    }).join('');
 
-
-    // Обработчики кнопок
-document.querySelectorAll('.open-game').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const gameNum = btn.dataset.gameNumber;
-        window.location.href = `game.html?tournament=${tournamentId}&game=${gameNum}`;
-    });
-});
-}
-
-// Обработчики событий
-function setupEventListeners() {
-    // Управление игроками
-    document.getElementById('managePlayers').addEventListener('click', async () => {
-        await openManagePlayersModal();
-    });
-    
-    // Закрытие модального окна управления игроками
-    document.getElementById('closePlayersModal').addEventListener('click', () => {
-        document.getElementById('managePlayersModal').classList.remove('active');
-    });
-    
-    document.getElementById('managePlayersModal').addEventListener('click', (e) => {
-        if (e.target.id === 'managePlayersModal') {
-            e.target.classList.remove('active');
-        }
-    });
-    
-    // Добавление игрока в турнир
-    document.getElementById('addPlayerSelect').addEventListener('change', async (e) => {
-        const playerId = e.target.value;
-        if (!playerId) return;
-        
-        try {
-            const response = await API.addPlayersToTournament(tournamentId, [playerId]);
-            players = response.players;
-            UI.showToast('Игрок добавлен');
-            
-            // Обновить отображение
-            renderPlayers();
-            renderModalPlayersList();
-            await populateAvailablePlayers();
-            e.target.value = '';
-        } catch (error) {
-            UI.showToast('Ошибка добавления игрока', 'error');
-            console.error(error);
-        }
+    document.querySelectorAll('.open-game').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const gameNum = btn.dataset.gameNumber;
+            window.location.href = `game.html?tournament=${tournamentId}&game=${gameNum}`;
+        });
     });
 }
 
@@ -174,33 +140,61 @@ function setupEventListeners() {
 
 // Открыть модальное окно управления игроками
 async function openManagePlayersModal() {
-    const modal = document.getElementById('managePlayersModal');
-    await populateAvailablePlayers();
+    await populateAvailablePlayersBySearch(''); // показать первых кандидатов
     renderModalPlayersList();
-    modal.classList.add('active');
+    managePlayersModal.classList.add('active');
+    if (playerSearchInput) {
+        playerSearchInput.value = '';
+        playerSearchInput.focus();
+    }
 }
 
-// Заполнить список доступных игроков
-async function populateAvailablePlayers() {
-    const select = document.getElementById('addPlayerSelect');
+// Список доступных игроков по строке поиска
+async function populateAvailablePlayersBySearch(query) {
+    if (!playerSearchResults) return;
+
+    const q = (query || '').trim().toLowerCase();
+
+    // ID игроков, уже в турнире
     const playerIds = players.map(p => p.id);
-    const availablePlayers = allPlayers.filter(p => !playerIds.includes(p.id));
-    
-    select.innerHTML = '<option value="">Выберите игрока</option>' + 
-        availablePlayers.map(p => `<option value="${p.id}">${p.nickname}</option>`).join('');
+    const inTournament = new Set(playerIds);
+
+    let availablePlayers = allPlayers.filter(p => !inTournament.has(p.id));
+
+    if (q) {
+        availablePlayers = availablePlayers.filter(p =>
+            (p.nickname && p.nickname.toLowerCase().includes(q)) ||
+            (p.id && p.id.toLowerCase().includes(q))
+        );
+    }
+
+    availablePlayers = availablePlayers.slice(0, 20);
+
+    if (availablePlayers.length === 0) {
+        playerSearchResults.innerHTML = '<div class="player-search-empty">Ничего не найдено</div>';
+        return;
+    }
+
+playerSearchResults.innerHTML = availablePlayers.map(p => `
+    <div class="player-search-item" onclick="addPlayerToTournament('${p.id}')">
+        <div>
+            <span class="player-search-name">${p.nickname}</span>
+        </div>
+    </div>
+`).join('');
+
 }
 
 // Отрисовать список игроков в модальном окне
 function renderModalPlayersList() {
-    const list = document.getElementById('modalPlayersList');
-    document.getElementById('modalPlayersCount').textContent = players.length;
+    modalPlayersCount.textContent = players.length;
     
     if (players.length === 0) {
-        list.innerHTML = '<div class="empty-state"><p>Нет участников</p></div>';
+        modalPlayersList.innerHTML = '<div class="empty-state"><p>Нет участников</p></div>';
         return;
     }
     
-    list.innerHTML = players.map(player => `
+    modalPlayersList.innerHTML = players.map(player => `
         <div class="player-card" style="display: flex; align-items: center; padding: 12px; margin-bottom: 8px; background: var(--card-bg); border-radius: 8px;">
             ${player.photo_url 
                 ? `<img src="${player.photo_url}" alt="${player.nickname}" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 12px; object-fit: cover;" onerror="this.style.display='none';">`
@@ -216,21 +210,59 @@ function renderModalPlayersList() {
     `).join('');
 }
 
-// Удалить игрока из турнира
+// Добавить игрока в турнир
+window.addPlayerToTournament = async (playerId) => {
+    try {
+        const response = await API.addPlayersToTournament(tournamentId, [playerId]);
+        players = response.players;
+        UI.showToast('Игрок добавлен');
+        
+        renderPlayers();
+        renderModalPlayersList();
+        await populateAvailablePlayersBySearch(playerSearchInput.value);
+    } catch (error) {
+        UI.showToast('Ошибка добавления игрока', 'error');
+        console.error(error);
+    }
+};
+
+// Удалить игрока из турнира (без window.confirm)
 window.removePlayerFromTournament = async (playerId) => {
-    if (!confirm('Удалить игрока из турнира?')) return;
-    
     try {
         const response = await API.removePlayerFromTournament(tournamentId, playerId);
         players = response.players;
         UI.showToast('Игрок удален');
         
-        // Обновить отображение
         renderPlayers();
         renderModalPlayersList();
-        await populateAvailablePlayers();
     } catch (error) {
         UI.showToast('Ошибка удаления игрока', 'error');
         console.error(error);
     }
 };
+
+
+// Обработчики событий
+// Обработчики событий
+function setupEventListeners() {
+    // Управление игроками
+    if (managePlayersBtn) {
+        managePlayersBtn.addEventListener('click', async () => {
+            await openManagePlayersModal();
+        });
+    }
+    
+    // Закрытие модального окна управления игроками только по крестику
+    if (closePlayersModalBtn) {
+        closePlayersModalBtn.addEventListener('click', () => {
+            managePlayersModal.classList.remove('active');
+        });
+    }
+
+    // Живой поиск по игрокам
+    if (playerSearchInput) {
+        playerSearchInput.addEventListener('input', () => {
+            populateAvailablePlayersBySearch(playerSearchInput.value);
+        });
+    }
+}
