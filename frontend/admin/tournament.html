@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление турниром</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <style>
+        .player-tag {
+            background: var(--bg-secondary);
+            padding: 6px 10px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+        }
+
+        .player-tag button {
+            background: none;
+            border: none;
+            color: #EF4444;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(148,163,184,0.5);
+            background: #020617;
+            color: #E5E7EB;
+            font-size: 14px;
+        }
+
+        .form-input::placeholder {
+            color: #6B7280;
+        }
+
+        .player-search-results {
+            max-height: 260px;
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid rgba(148,163,184,0.4);
+            background: #020617;
+            margin-top: 6px;
+        }
+
+        .player-search-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(31,41,55,0.8);
+        }
+
+        .player-search-item:last-child {
+            border-bottom: none;
+        }
+
+        .player-search-name {
+            color: #E5E7EB;
+        }
+
+        .player-search-meta {
+            color: #9CA3AF;
+            font-size: 12px;
+            margin-left: 6px;
+        }
+
+        .player-search-add {
+            border: none;
+            border-radius: 6px;
+            background: #22C55E;
+            color: #0F172A;
+            font-weight: 600;
+            font-size: 13px;
+            padding: 4px 10px;
+            cursor: pointer;
+        }
+
+        .player-search-empty {
+            padding: 8px 10px;
+            font-size: 13px;
+            color: #9CA3AF;
+        }
+
+        .players-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 16px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #0f172a;
+            border-radius: 12px;
+            max-width: 520px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(15,23,42,0.5);
+            border: 1px solid rgba(148,163,184,0.2);
+        }
+
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(148,163,184,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .modal-body {
+            padding: 16px 20px 20px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #9CA3AF;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        @media (max-width: 640px) {
+            .modal-content {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Навигация -->
+        <nav class="navbar">
+            <h1>🏆 Админ-панель Мафии</h1>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Турниры</a>
+                <a href="players.html" class="nav-link">Игроки</a>
+            </div>
+        </nav>
+
+        <!-- Главный контент -->
+        <div class="content">
+            <div class="page-header">
+                <div>
+                    <h2 id="tournamentName">Загрузка...</h2>
+                    <p id="tournamentMeta" style="color: var(--text-secondary); margin-top: 4px;"></p>
+                </div>
+            </div>
+
+            <!-- Список игр турнира -->
+            <div class="section">
+                <h3 style="margin-bottom: 16px;">📊 Игры турнира</h3>
+                <div id="gamesList" class="tournaments-list">
+                    <!-- Заполняется через JS -->
+                </div>
+            </div>
+
+            <!-- Участники турнира -->
+            <div class="section" style="margin-top: 32px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3>👥 Участники турнира (<span id="playersCount">0</span>)</h3>
+                    <button class="btn btn-primary" id="managePlayers">Управление игроками</button>
+                </div>
+                <div id="tournamentPlayers" class="players-list">
+                    <!-- Заполняется через JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно управления игроками -->
+    <div id="managePlayersModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>👥 Управление игроками турнира</h3>
+          <button class="close-btn" id="closePlayersModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <!-- Поиск и добавление игроков -->
+          <div style="margin-bottom: 24px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Добавить игрока:</label>
+            <input
+              type="text"
+              id="playerSearchInput"
+              class="form-input"
+              placeholder="Начните вводить ник или часть ника..."
+              autocomplete="off">
+            <div id="playerSearchResults" class="player-search-results">
+              <!-- Строки поиска -->
+            </div>
+          </div>
+          
+          <!-- Список игроков турнира -->
+          <div>
+            <h4 style="margin-bottom: 12px;">Участники турнира (<span id="modalPlayersCount">0</span>)</h4>
+            <div id="modalPlayersList" class="players-list">
+              <!-- Список игроков -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+<script src="js/ui.js"></script>    
+<script src="js/api.js"></script>
+<script src="js/tournament.js"></script>
+</body>
+</html>

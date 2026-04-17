@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админка игры</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <style>
+        .game-section {
+            background: var(--bg-primary);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .game-section h3 {
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .seating-grid {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .seating-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .seating-select-wrapper {
+            flex: 1;
+        }
+
+        .role-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .position-number {
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .role-btn {
+            padding: 8px 16px;
+            border: 2px solid var(--border);
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 600;
+            font-size: 14px;
+            color: #000000;
+        }
+
+        .role-btn.active {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
+
+        .role-btn.civilian {
+            border-color: #DC2626;
+        }
+
+        .role-btn.civilian.active {
+            background: #DC2626;
+            border-color: #DC2626;
+            color: white;
+        }
+
+        .role-btn.black {
+            border-color: #1F2937;
+        }
+
+        .role-btn.black.active {
+            background: #1F2937;
+            border-color: #1F2937;
+        }
+
+        .role-btn.yellow {
+            border-color: #EAB308;
+        }
+
+        .role-btn.yellow.active {
+            background: #EAB308;
+            border-color: #EAB308;
+            color: white;
+        }
+
+        .role-btn.eliminated-toggle {
+            border-color: var(--primary);
+            color: var(--primary);
+            margin-left: 12px;
+        }
+
+        .role-btn.eliminated-toggle.active {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .best-move-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .round-card {
+            background: var(--bg-secondary);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .round-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .round-actions {
+            display: grid;
+            gap: 12px;
+        }
+
+        .action-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .action-label {
+            min-width: 80px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .overlay-link {
+            background: var(--bg-secondary);
+            padding: 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .overlay-url {
+            flex: 1;
+            font-family: monospace;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        .nominees-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .nominee-tag {
+            background: var(--primary);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nominee-tag button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+        }
+
+        .game-section-row {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .game-section-row {
+                flex-direction: column;
+            }
+        }
+
+        .nominee-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .nominee-btn {
+            min-width: 40px;
+            min-height: 40px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            background: var(--bg-secondary);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .nominee-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+
+        .nominee-btn:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        @media (max-width: 640px) {
+            .best-move-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .action-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .action-label {
+                min-width: auto;
+            }
+        }
+
+        /* Мобильные правки */
+        @media (max-width: 768px) {
+            body {
+                background: #020617;
+            }
+
+            .container {
+                max-width: 100%;
+            }
+
+            .navbar {
+                padding: 12px 14px;
+                margin-bottom: 16px;
+            }
+
+            .navbar h1 {
+                font-size: 18px;
+                margin-bottom: 8px;
+            }
+
+            .content {
+                padding: 0 12px 32px;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .page-header h2 {
+                font-size: 20px;
+            }
+
+            .tournament-card {
+                padding: 14px;
+                border-radius: 10px;
+            }
+
+            .player-card {
+                padding: 12px;
+                gap: 12px;
+            }
+
+            .player-photo,
+            .player-placeholder {
+                width: 48px;
+                height: 48px;
+            }
+
+            .btn {
+                font-size: 14px;
+                padding: 10px 14px;
+                min-height: 40px;
+            }
+
+            .tournament-actions,
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .tournament-actions .btn,
+            .form-actions .btn {
+                width: 100%;
+            }
+
+            .game-section-row {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .game-section {
+                padding: 14px;
+                border-radius: 10px;
+                margin-bottom: 12px;
+            }
+
+            .nominee-btn {
+                min-width: 36px;
+                min-height: 36px;
+                font-size: 13px;
+                padding: 4px 8px;
+            }
+
+            .modal-content {
+                max-width: 100%;
+                border-radius: 10px;
+            }
+
+            /* Строка: кружок + селект */
+            .seating-item {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+
+            .position-number {
+                align-self: center;
+            }
+
+            .seating-select-wrapper {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .seating-select-wrapper .form-select,
+            .seating-player-select {
+                width: 100%;
+            }
+
+            /* Кнопки ролей и карточек — ниже, во всю ширину */
+            .role-buttons {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: flex-start;
+                gap: 6px;
+                margin-top: 4px;
+            }
+
+            .role-btn {
+                flex: 0 0 auto;
+                padding: 6px 10px;
+                font-size: 13px;
+            }
+
+            .role-btn.eliminated-toggle {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Навигация -->
+        <nav class="navbar">
+            <h1>🏆 Админ-панель Мафии</h1>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Турниры</a>
+                <a href="players.html" class="nav-link">Игроки</a>
+                <a href="javascript:history.back()" class="nav-link">← Назад к турниру</a>
+            </div>
+        </nav>
+
+        <!-- Главный контент -->
+        <div class="content">
+            <div class="page-header">
+                <h2 id="gameTitle">Загрузка...</h2>
+            </div>
+
+            <!-- Ссылка на оверлей -->
+            <div class="game-section">
+                <h3>📺 Оверлей для OBS</h3>
+                <div class="overlay-link">
+                    <div class="overlay-url" id="overlayUrl">http://localhost:3000/overlay/index.html?gameId=...</div>
+                    <button class="btn btn-primary" id="copyOverlayBtn">📋 Копировать</button>
+                </div>
+                <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" id="openOverlayBtn">👁️ Открыть предпросмотр</button>
+                    <button class="btn btn-secondary" id="toggleOverlayVisibilityBtn">Скрыть оверлей</button>
+                </div>
+            </div>
+
+            <!-- Раздача ролей + рассадка -->
+            <div class="game-section" id="rolesSection" style="display: none;">
+                <h3>👥 Рассадка и раздача ролей</h3>
+                <div id="rolesGrid">
+                    <!-- Заполняется через JS -->
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+                    <button class="btn btn-success" id="saveSeatingBtn" style="display: none;">✅ Сохранить рассадку</button>
+                </div>
+            </div>
+
+            <!-- Лучший ход -->
+            <div class="game-section" id="bestMoveSection" style="display: none;">
+              <h3>⭐ Лучший ход</h3>
+              
+              <div id="bestMoveInfo" style="margin-bottom: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
+                <p style="color: var(--text-secondary);">ПУ</p>
+              </div>
+              
+              <div class="form-group">
+                <div id="suspectsButtons" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+                  <!-- Заполняется через JS -->
+                </div>
+              </div>
+              
+              <button class="btn btn-success" id="applyBestMoveBtn">✅ Сохранить ЛХ</button>
+            </div>
+
+            <!-- Блоки Круги + Выставление рядом -->
+            <div class="game-section-row">
+                <!-- Круги игры -->
+                <div class="game-section" id="roundsSection" style="display: none; flex: 1;">
+                    <h3>🌙 Управление кругами</h3>
+                    <div id="roundsList">
+                        <!-- Заполняется через JS -->
+                    </div>
+                    <button class="btn btn-primary" id="addRoundBtn">➕ Добавить следующий круг</button>
+                </div>
+
+                <!-- Выставление на голосование -->
+                <div class="game-section" id="nomineesSection" style="display: none; flex: 1;">
+                    <h3>🎯 Выставление на голосование</h3>
+                    <div class="form-group">
+                        <label>Добавить кандидата:</label>
+                        <div id="nomineeButtons" class="nominee-buttons">
+                            <!-- Кнопки 1–10 создаёт JS -->
+                        </div>
+                    </div>
+                    <div class="nominees-list" id="nomineesList">
+                        <!-- Заполняется через JS -->
+                    </div>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button class="btn btn-danger" id="clearNomineesBtn">🗑️ Очистить всех</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Результат игры и промежуточный итог -->
+            <div class="game-section" id="resultSection">
+                <h3>🏁 Результат игры</h3>
+                <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+                    <button class="btn btn-success" id="winRedBtn">Победа МИР</button>
+                    <button class="btn btn-danger" id="winBlackBtn">Победа МАФ</button>
+                </div>
+                <button class="btn btn-secondary" id="showStandingsBtn" disabled>
+                    Промежуточный итог
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления/редактирования круга -->
+    <div id="roundModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="roundModalTitle">Круг 1</h3>
+                <button class="close-btn" id="closeRoundModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="roundForm">
+                    <input type="hidden" id="roundNumber">
+
+                    <div class="form-group">
+                        <label>🔫Убит:</label>
+                        <select id="mafiaKill" class="form-select">
+                            <option value="">Выберите игрока</option>
+                            <option value="miss">❌ Промах</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>🎩 Проверка дона:</label>
+                        <select id="donCheck" class="form-select">
+                            <option value="">Выберите игрока</option>
+                            <option value="none">❌ Не проверял</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>⭐ Проверка шерифа:</label>
+                        <select id="sheriffCheck" class="form-select">
+                            <option value="">Выберите игрока</option>
+                            <option value="none">❌ Не проверял</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>👍 Голосование:</label>
+                        <div id="votedOutList" style="margin-bottom: 8px;">
+                            <!-- Заполняется через JS -->
+                        </div>
+                        <select id="addVotedOut" class="form-select">
+                            <option value="">+ Добавить игрока</option>
+                            <option value="nobody">❌ Никто не выбыл</option>
+                        </select>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="closeRoundBtn">Закрыть</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно доп. баллов судьи -->
+    <div id="scoresModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Дополнительные баллы судьи</h3>
+                <button class="close-btn" id="closeScoresModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left; padding:4px 8px;">№</th>
+                            <th style="text-align:left; padding:4px 8px;">Игрок</th>
+                            <th style="text-align:left; padding:4px 8px;">Доп. балл</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scoresTableBody">
+                        <!-- строки создаёт JS -->
+                    </tbody>
+                </table>
+                <div class="form-actions" style="margin-top:16px;">
+                    <button type="button" class="btn btn-secondary" id="cancelScoresBtn">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="confirmScoresBtn">Подтвердить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/ui.js"></script>
+    <script src="/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>

@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оверлей Спортивной Мафии</title>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --red-team-solid: #EF4444;
+            --black-team-solid: #1F2937;
+            --yellow-team-solid: #FACC15;
+            --text-primary: #FFFFFF;
+            --text-secondary: #E5E7EB;
+            --text-muted: #9CA3AF;
+            --overlay-scale: 1;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Oswald', -apple-system, sans-serif;
+            background: transparent;
+            overflow: hidden;
+            color: var(--text-primary);
+        }
+
+        .overlay-container {
+            width: 1920px;
+            height: 1080px;
+            position: relative;
+            transform-origin: top left;
+        }
+
+        /* ===== ГРАДИЕНТЫ / ФОНЫ ===== */
+        .overlay-background-gradient {
+            position: absolute; left: 0; right: 0; bottom: 0; height: 45%;
+            background: linear-gradient(to top, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.8) 25%, rgba(0,0,0,0.0) 60%);
+            z-index: 0; pointer-events: none;
+        }
+
+        .overlay-vignette {
+            position: absolute; left: 0; right: 0; top: 0; height: 100%;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.0) 70%, rgba(0,0,0,0.5) 85%, rgba(0,0,0,0.8) 100%);
+            z-index: 0; pointer-events: none;
+            -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 75%, rgba(0,0,0,0) 100%);
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 75%, rgba(0,0,0,0) 100%);
+        }
+
+        /* ===== АНИМАЦИИ ПАНЕЛЕЙ ===== */
+        .info-block-left, .info-block-right, .bottom-panel {
+            transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out;
+        }
+
+        .overlay-container.visible .info-block-left,
+        .overlay-container.visible .info-block-right,
+        .overlay-container.visible .bottom-panel { opacity: 1; transform: translate(0,0); }
+
+        .overlay-container.hidden .info-block-left { opacity: 0; transform: translateX(-120%); }
+        .overlay-container.hidden .info-block-right { opacity: 0; transform: translateX(120%); }
+        .overlay-container.hidden .bottom-panel { opacity: 0; transform: translateY(120%); }
+
+        /* ===== LEFT INFO ===== */
+        .info-block-left {
+            position: absolute; top: 10px; left: 20px;
+            background: transparent; padding: 16px; min-width: 320px; z-index: 1;
+        }
+
+        .top-info-row { display: flex; gap: 120px; margin-bottom: 11px; }
+        .best-move { display: flex; align-items: center; gap: 8px; width: 100px; flex-shrink: 0; }
+        .best-move-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+        .best-move-players { display: flex; gap: 11px; align-items: center; }
+        .best-move-player { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+
+        .best-move-number-wrapper, .nominee-number-wrapper, .round-number-wrapper {
+            position: relative; width: 22px; height: 28px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 2px; overflow: hidden;
+        }
+
+        .best-move-bg, .nominee-bg, .round-bg { position: absolute; inset: 0; }
+        .best-move-bg.team-red, .nominee-bg.team-red, .round-bg.team-red { background: var(--red-team-solid); }
+        .best-move-bg.team-black, .nominee-bg.team-black, .round-bg.team-black { background: var(--black-team-solid); }
+        .round-bg.neutral { background: transparent; }
+
+        .best-move-gradient, .nominee-gradient, .round-gradient {
+            position: absolute; inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.0) 100%);
+        }
+
+        .best-move-number, .nominee-number, .round-number {
+            position: relative; z-index: 2; font-size: 17px; font-weight: 700;
+            padding: 1px 8px 0 8px; color: #fff; transform: translateY(-2px);
+        }
+
+        .round-number.cross { font-size: 11px; }
+        .nominees { display: flex; align-items: center; gap: 8px; }
+        .nominees-title { font-size: 16px; font-weight: 600; color: var(--text-primary); text-transform: uppercase; }
+        .nominees-list { display: flex; gap: 11px; align-items: center; }
+        .nominee-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+
+        /* ===== ROUNDS TABLE ===== */
+        .rounds-table { border-collapse: collapse; table-layout: fixed; width: auto; }
+        .rounds-table th { padding: 2px 0; text-align: center; font-size: 11px; font-weight: 600; color: var(--text-primary); opacity: 0.6; width: 32px; }
+        .rounds-table th:first-child { width: 28px; padding-right: 8px; }
+        .rounds-table td { padding: 3px 0; text-align: center; font-size: 14px; font-weight: 600; width: 32px; vertical-align: middle; height: 30px; }
+        .rounds-table td:first-child { width: 28px; padding-right: 8px; }
+        .rounds-table .action-icon { font-size: 16px; display: flex; align-items: center; justify-content: center; }
+        .round-cell { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; }
+
+        /* ===== MULTI VOTED ===== */
+        .voted-multi-container { position: relative; width: 22px; height: 28px; border-radius: 4px; overflow: hidden; }
+        .voted-multi-bg { position: absolute; inset: 0; }
+        .voted-multi-bg.neutral { background: transparent; }
+        .voted-multi-gradient { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.0) 100%); }
+        .voted-multi-content { position: absolute; inset: 0; display: flex; align-items: stretch; justify-content: stretch; }
+        .voted-multi-inner { position: relative; width: 100%; height: 100%; }
+        .voted-small-number { position: absolute; z-index: 2; font-size: 10px; font-weight: 700; color: #ffffff; line-height: 1; }
+        .voted-two-top { top: 4px; left: 50%; transform: translateX(-50%); }
+        .voted-two-bottom { bottom: 4px; left: 50%; transform: translateX(-50%); }
+        .voted-three-top { top: 3px; left: 50%; transform: translateX(-50%); }
+        .voted-three-bottom-left { bottom: 3px; left: 4px; }
+        .voted-three-bottom-right { bottom: 3px; right: 4px; }
+        .voted-four-top-left { top: 3px; left: 4px; }
+        .voted-four-top-right { top: 3px; right: 4px; }
+        .voted-four-bottom-left { bottom: 3px; left: 4px; }
+        .voted-four-bottom-right { bottom: 3px; right: 4px; }
+
+        /* ===== RIGHT INFO ===== */
+        .info-block-right {
+            position: absolute; top: 10px; right: 20px;
+            background: transparent; padding: 16px; text-align: center; z-index: 1;
+        }
+        .series-info { margin-bottom: 4px; }
+        .series-name { font-size: 36px; font-weight: 600; color: var(--text-primary); opacity: 0.7; text-transform: uppercase; }
+        .game-info { font-size: 30px; font-weight: 600; text-align: right; opacity: 0.7; margin-top: -2px; color: var(--text-primary); }
+        .game-current { color: var(--text-primary); font-size: 30px; font-weight: 600; }
+
+        /* ===== BOTTOM PANEL ===== */
+        .bottom-panel {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            display: flex; justify-content: space-between; align-items: flex-end;
+            padding: 20px; gap: 8px; z-index: 1;
+        }
+
+        /* ===== PLAYER CARDS ===== */
+        .player-card {
+            width: calc((100% - 9 * 8px) / 10); position: relative;
+            border-radius: 12px; overflow: visible; background: transparent;
+            transition: all 0.6s cubic-bezier(0.4,0,0.2,1); opacity: 1;
+        }
+        .player-card-inner { position: relative; width: 100%; }
+        .player-card.eliminated { transform: translateY(20px); opacity: 0.5; }
+        .player-card.just-eliminated { animation: eliminate 0.5s ease-out forwards; }
+
+        .role-badge {
+            position: absolute; top: -12px; right: 0px;
+            background: rgba(0,0,0,0.8); color: white;
+            font-size: 23px; font-weight: 700; width: 35px; height: 44px;
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            z-index: 3; border: 2px solid rgba(255,255,255,0.3);
+            line-height: 1; padding-bottom: 3px;
+        }
+        .role-badge-sheriff { background: var(--yellow-team-solid); border-color: var(--yellow-team-solid); color: #111827; }
+
+        .elimination-icon {
+            position: absolute; top: -12px; left: 0px;
+            background: none; border: none; width: auto; height: auto; padding: 0;
+            display: flex; align-items: center; justify-content: center; z-index: 3;
+        }
+
+        .player-media {
+            width: 100%; aspect-ratio: 3 / 3.2;
+            border-radius: 12px 12px 0 0; overflow: hidden;
+            background: transparent; position: relative;
+        }
+        .player-portrait {
+            width: 100%; height: 125%; object-fit: cover; object-position: center top;
+            background-color: transparent; position: relative; z-index: 2;
+        }
+        .player-placeholder {
+            width: 100%; height: 125%;
+            background: linear-gradient(135deg, #374151 0%, #1F2937 100%);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 48px; color: #6B7280; position: relative; z-index: 2;
+        }
+
+        .player-role-strip { width: 100%; height: 32px; position: relative; overflow: hidden; }
+        .player-role-strip-inner { width: 100%; height: 100%; }
+        .player-role-strip-inner.red { background: var(--red-team-solid); }
+        .player-role-strip-inner.black { background: var(--black-team-solid); }
+        .player-role-strip-inner.sheriff-strip { background: var(--yellow-team-solid); }
+
+        .player-role-gradient { position: absolute; left: 0; right: 0; bottom: 0; height: 72px; pointer-events: none; mix-blend-mode: multiply; z-index: 1; }
+        .player-role-gradient.red { background: linear-gradient(to top, rgba(239,68,68,0.95) 0%, rgba(239,68,68,0.0) 100%); }
+        .player-role-gradient.black { background: linear-gradient(to top, rgba(17,24,39,0.95) 0%, rgba(17,24,39,0.0) 100%); }
+        .player-role-gradient.sheriff-strip { background: linear-gradient(to top, rgba(250,204,21,0.7) 0%, rgba(250,204,21,0.0) 100%); }
+
+        .player-info { position: absolute; bottom: 0; left: 0; right: 0; height: 32px; pointer-events: none; }
+        .player-info-gradient { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 100%); }
+        .player-info-content { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 10px; transform: translateY(-2px); }
+        .player-number { font-size: 19px; font-weight: 700; width: 30px; flex-shrink: 0; text-align: left; }
+        .player-nickname { font-size: 19px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: space-between; width: 100%; }
+        .player-nickname-text { flex: 1; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .player-card-badge {
+            position: absolute; right: 6px; bottom: 2px;
+            width: 26px; height: 36px; border-radius: 3px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.7); z-index: 4;
+        }
+        .player-card-badge.yellow-card { background: #FACC15; }
+        .player-card-badge.red-card { background: #EF4444; }
+
+        /* ===== ICONS ===== */
+        .icon { display: inline-block; width: 34px; height: 34px; background-repeat: no-repeat; background-position: center; background-size: contain; }
+        .rounds-table .icon { width: 26px; height: 26px; }
+        .rounds-table .icon-none { width: 16px; height: 16px; }
+        .icon-kill { background-image: url('./icons/kill.svg'); }
+        .icon-don-check { background-image: url('./icons/don-check.svg'); }
+        .icon-sheriff-check { background-image: url('./icons/sheriff-check.svg'); }
+        .icon-voted { background-image: url('./icons/voted.svg'); }
+        .icon-none { background-image: url('./icons/none.svg'); }
+        .icon-removed { background-image: url('./icons/removed.svg'); }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes eliminate { from { transform: translateY(0); opacity: 1; } to { transform: translateY(20px); opacity: 0.5; } }
+        @keyframes entryFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .entry-anim { animation: entryFade 0.25s ease-out; }
+        .animate-in { animation: fadeInUp 0.6s ease-out; }
+
+        @keyframes role-change-flash {
+            0% { transform: translateY(0) scale(1); box-shadow: 0 0 0 0 rgba(250,204,21,0.0); }
+            30% { transform: translateY(-6px) scale(1.04); box-shadow: 0 0 18px 4px rgba(250,204,21,0.45); }
+            70% { transform: translateY(-2px) scale(1.02); box-shadow: 0 0 10px 2px rgba(250,204,21,0.2); }
+            100% { transform: translateY(0) scale(1); box-shadow: 0 0 0 0 rgba(250,204,21,0.0); }
+        }
+        .player-card.role-changed { animation: role-change-flash 0.5s ease-out; }
+
+        /* ================================================= */
+        /* ========== РЕЗУЛЬТАТЫ / STANDINGS OVERLAY ======== */
+        /* ================================================= */
+
+        .results-overlay {
+            position: absolute;
+            inset: 0;
+            width: 1920px;
+            height: 1080px;
+            z-index: 50;
+            display: none;
+            background: rgba(0, 0, 0, 0.95);
+        }
+
+        .results-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .results-overlay.fade-in { animation: resultsFadeIn 0.6s ease-out; }
+        .results-overlay.fade-out { animation: resultsFadeOut 0.4s ease-in forwards; }
+        @keyframes resultsFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes resultsFadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+        .results-content {
+            display: flex;
+            align-items: stretch;
+            gap: 0px;
+            width: 1400px;
+            height: 820px;
+            padding: 0;
+        }
+
+        /* Фото лидера — левая часть */
+        .results-leader-photo {
+            flex-shrink: 0;
+            width: 500px;
+            height: 100%;
+            overflow: visible;
+            position: relative;
+            background: transparent;
+            z-index: 1;
+        }
+
+        .results-leader-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center center;
+            display: block;
+        }
+
+        .results-leader-photo .leader-placeholder {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #374151, #1F2937);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 120px;
+            color: #6B7280;
+            border-radius: 16px;
+        }
+
+        .results-leader-name-strip {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            padding: 24px 20px;
+            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.0) 100%);
+        }
+
+        .results-leader-name {
+            font-size: 42px;
+            font-weight: 700;
+            color: #fff;
+            text-align: center;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+        }
+
+        /* Правая часть — заголовок + таблица */
+        .results-table-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            overflow: hidden;
+            position: relative;
+            z-index: 5;
+            animation: resultTableSlideIn 1s ease-out 0.3s both;
+        }
+
+        @keyframes resultTableSlideIn {
+            from { opacity: 0; transform: translateX(40px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .results-title {
+            text-align: center;
+            margin-bottom: 24px;
+            flex-shrink: 0;
+        }
+
+        .results-title h2 {
+            font-size: 48px;
+            font-weight: 700;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .results-title .subtitle {
+            font-size: 28px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* ===== SCORES TABLE (итоги игры) ===== */
+        .scores-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 22px;
+        }
+
+        .scores-table thead th {
+            padding: 10px 8px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid rgba(255,255,255,0.15);
+        }
+
+        .scores-table thead th.col-nick { text-align: left; }
+
+        .scores-table tbody tr {
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .scores-table tbody tr:nth-child(1) { background: rgba(250,204,21,0.1); }
+        .scores-table tbody tr:nth-child(2) { background: rgba(192,192,192,0.07); }
+        .scores-table tbody tr:nth-child(3) { background: rgba(205,127,50,0.07); }
+
+        .scores-table tbody td {
+            padding: 8px 8px;
+            text-align: center;
+            vertical-align: middle;
+            font-weight: 500;
+        }
+
+        .scores-table tbody td.col-nick { text-align: left; }
+
+        .scores-table .col-pos { width: 50px; font-weight: 700; font-size: 24px; }
+        .scores-table .col-avatar { width: 52px; }
+        .scores-table .col-role { width: 44px; }
+        .scores-table .col-nick { min-width: 160px; font-size: 22px; }
+        .scores-table .col-num { width: 80px; font-size: 22px; }
+        .scores-table .col-total { width: 90px; font-weight: 700; font-size: 26px; color: var(--yellow-team-solid); }
+
+        .scores-table .mini-avatar {
+            width: 42px; height: 42px; border-radius: 4px;
+            object-fit: cover; object-position: center top; display: block; margin: 0 auto;
+        }
+
+        .scores-table .mini-avatar-placeholder {
+            width: 42px; height: 42px; border-radius: 4px;
+            background: #374151; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; color: #6B7280; margin: 0 auto;
+        }
+
+        .role-chip {
+            display: inline-block;
+            width: 10px; height: 36px;
+            border-radius: 1px;
+            border: 2px solid rgba(255,255,255,0.3);
+            vertical-align: middle;
+        }
+
+        .role-chip.chip-red { background: var(--red-team-solid); border-color: var(--red-team-solid); }
+        .role-chip.chip-black { background: var(--black-team-solid); border-color: #4B5563; }
+        .role-chip.chip-sheriff { background: var(--yellow-team-solid); border-color: var(--yellow-team-solid); }
+
+        /* ===== STANDINGS TABLE (промежуточный итог) ===== */
+        .standings-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 22px;
+        }
+
+        .standings-table thead th {
+            padding: 10px 8px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid rgba(255,255,255,0.15);
+        }
+
+        .standings-table thead th.col-nick { text-align: left; }
+
+        .standings-table tbody tr {
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .standings-table tbody tr:nth-child(1) { background: rgba(250,204,21,0.1); }
+        .standings-table tbody tr:nth-child(2) { background: rgba(192,192,192,0.07); }
+        .standings-table tbody tr:nth-child(3) { background: rgba(205,127,50,0.07); }
+
+        .standings-table tbody td {
+            padding: 8px 8px;
+            text-align: center;
+            vertical-align: middle;
+            font-weight: 500;
+        }
+
+        .standings-table tbody td.col-nick { text-align: left; font-size: 22px; }
+
+        .standings-table .col-pos { width: 50px; font-weight: 700; font-size: 24px; }
+        .standings-table .col-avatar { width: 52px; }
+        .standings-table .col-nick { min-width: 180px; }
+        .standings-table .col-num { width: 90px; font-size: 22px; }
+        .standings-table .col-total { width: 100px; font-weight: 700; font-size: 26px; color: var(--yellow-team-solid); }
+        .standings-table .mini-avatar {
+            width: 42px; height: 42px; border-radius: 50%;
+            object-fit: cover; display: block; margin: 0 auto;
+        }
+
+        .standings-table .mini-avatar-placeholder {
+            width: 42px; height: 42px; border-radius: 50%;
+            background: #374151; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; color: #6B7280; margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay-container visible">
+        <div class="overlay-background-gradient"></div>
+        <div class="overlay-vignette"></div>
+
+        <div class="info-block-left animate-in">
+            <div class="top-info-row">
+                <div class="best-move">
+                    <div class="best-move-title">ЛХ:</div>
+                    <div class="best-move-players"></div>
+                </div>
+                <div class="nominees">
+                    <div class="nominees-title">Выставлены:</div>
+                    <div class="nominees-list"></div>
+                </div>
+            </div>
+            <table class="rounds-table">
+                <thead><tr><th></th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div class="info-block-right animate-in">
+            <div class="series-info"><div class="series-name">СЕРИЯ</div></div>
+            <div class="game-info">ИГРА <span class="game-current">1</span>/5</div>
+        </div>
+
+        <div class="bottom-panel"></div>
+
+        <!-- Результаты игры / промежуточный итог -->
+        <div class="results-overlay" id="resultsOverlay">
+            <div class="results-content" id="resultsContent"></div>
+        </div>
+    </div>
+
+<script src="/config.js"></script>
+<script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const tournamentId = urlParams.get('tournament');
+    const gameNumber = parseInt(urlParams.get('game'), 10);
+
+    if (!tournamentId || !gameNumber) {
+        document.body.innerHTML = '<div style="color: white; text-align: center; padding: 50px; font-size: 24px;">❌ tournament или game не указаны в URL</div>';
+    }
+
+    const API_BASE_URL = window.OVERLAY_CONFIG?.API_URL || 'http://192.168.0.121:3000/api';
+    const SOCKET_URL = window.OVERLAY_CONFIG?.SOCKET_URL || 'http://192.168.0.121:3000';
+
+    let gameData = null;
+    let socket = null;
+    let socketConnected = false;
+    let previousEliminated = new Set();
+    let prevBestMoveIds = [];
+    let prevNomineeIds = [];
+    let prevRoundsKey = '';
+
+    function scaleOverlay() {
+        const container = document.querySelector('.overlay-container');
+        if (!container) return;
+        const baseWidth = 1920, baseHeight = 1080;
+        const scaleX = window.innerWidth / baseWidth;
+        const scaleY = window.innerHeight / baseHeight;
+        const scale = Math.min(scaleX, scaleY);
+        const scaledWidth = baseWidth * scale;
+        const scaledHeight = baseHeight * scale;
+        container.style.left = `${(window.innerWidth - scaledWidth) / 2}px`;
+        container.style.top = `${(window.innerHeight - scaledHeight) / 2}px`;
+        container.style.transform = `scale(${scale})`;
+    }
+
+    function applyOverlayVisibility() {
+        const container = document.querySelector('.overlay-container');
+        if (!container || !gameData) return;
+        if (gameData.overlay_hidden) {
+            container.classList.add('hidden');
+            container.classList.remove('visible');
+        } else {
+            container.classList.remove('hidden');
+            container.classList.add('visible');
+        }
+    }
+
+    async function loadGameData() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/games/by-number/${tournamentId}/${gameNumber}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const newData = await response.json();
+            const prevGameId = gameData?.id;
+            gameData = newData;
+            if (socketConnected && gameData?.id && gameData.id !== prevGameId) {
+                socket.emit('join_game', gameData.id);
+            }
+            renderOverlay();
+            applyOverlayVisibility();
+        } catch (error) {
+            console.error('Error loading game data:', error);
+        }
+    }
+
+    function getEliminationInfo(playerId) {
+        if (!gameData || !gameData.rounds) return { eliminated: false, reason: null };
+        let eliminated = false, reason = null, earliestRound = Infinity;
+        for (const round of gameData.rounds) {
+            if (!round) continue;
+            const rn = round.round_number || 0;
+            if (!round.mafia_miss && round.mafia_kill_player_id === playerId && rn < earliestRound) {
+                earliestRound = rn; eliminated = true; reason = 'killed';
+            }
+            if (!round.nobody_voted_out && Array.isArray(round.voted_out_players) && round.voted_out_players.includes(playerId) && rn < earliestRound) {
+                earliestRound = rn; eliminated = true; reason = 'voted';
+            }
+        }
+        const seat = gameData.seating.find(s => s.player_id === playerId);
+        if (seat && seat.is_eliminated && seat.elimination_reason === 'removed') {
+            eliminated = true; reason = 'removed';
+        }
+        return { eliminated, reason };
+    }
+
+    function renderOverlay() {
+        if (!gameData || !gameData.seating) return;
+
+        document.querySelector('.series-name').textContent = gameData.tournament_name || gameData.series_name || 'СЕРИЯ';
+        document.querySelector('.game-current').textContent = gameData.game_number;
+
+        const bottomPanel = document.querySelector('.bottom-panel');
+        const newEliminated = new Set();
+
+        bottomPanel.innerHTML = gameData.seating.map(seat => {
+            const { eliminated, reason } = getEliminationInfo(seat.player_id);
+            if (eliminated) newEliminated.add(seat.player_id);
+            const justEliminated = eliminated && !previousEliminated.has(seat.player_id);
+            const roleLabel = getRoleLabel(seat.role);
+            let eliminationIconClass = null;
+            if (reason === 'voted') eliminationIconClass = 'icon-voted';
+            else if (reason === 'killed') eliminationIconClass = 'icon-kill';
+            else if (reason === 'removed') eliminationIconClass = 'icon-removed';
+            let stripClass = 'red';
+            if (seat.role === 'mafia' || seat.role === 'don') stripClass = 'black';
+            if (seat.role === 'sheriff') stripClass = 'sheriff-strip';
+            let cardBadgeHtml = '';
+            if (seat.card === 'yellow') cardBadgeHtml = `<div class="player-card-badge yellow-card"></div>`;
+            else if (seat.card === 'red') cardBadgeHtml = `<div class="player-card-badge red-card"></div>`;
+            return `
+                <div class="player-card ${eliminated ? 'eliminated' : ''} ${justEliminated ? 'just-eliminated' : ''}" data-position="${seat.position}">
+                    <div class="player-card-inner">
+                        ${eliminated && eliminationIconClass ? `<div class="elimination-icon"><span class="icon ${eliminationIconClass}"></span></div>` : ''}
+                        ${roleLabel ? `<div class="role-badge ${seat.role === 'sheriff' ? 'role-badge-sheriff' : ''}">${roleLabel}</div>` : ''}
+                        <div class="player-media">
+                            <div class="player-role-gradient ${stripClass}"></div>
+                            ${seat.photo_url
+                                ? `<img src="${seat.photo_url}" alt="${seat.nickname}" class="player-portrait" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div class="player-placeholder" style="display:none;">👤</div>`
+                                : `<div class="player-placeholder">👤</div>`}
+                            ${cardBadgeHtml}
+                        </div>
+                        <div class="player-role-strip">
+                            <div class="player-role-strip-inner ${stripClass}"></div>
+                            <div class="player-info">
+                                <div class="player-info-gradient"></div>
+                                <div class="player-info-content">
+                                    <div class="player-nickname">
+                                        <span class="player-number">${seat.position}</span>
+                                        <span class="player-nickname-text">${seat.nickname}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
+
+        previousEliminated = newEliminated;
+        renderBestMove();
+        renderNominees();
+        renderRounds();
+    }
+
+    function renderBestMove() {
+        const bm = gameData.best_move;
+        const div = document.querySelector('.best-move-players');
+        if (!bm) { div.innerHTML = ''; prevBestMoveIds = []; return; }
+        const suspects = [bm.suspect_1, bm.suspect_2, bm.suspect_3].filter(Boolean);
+        div.innerHTML = suspects.map(pid => {
+            const seat = gameData.seating.find(s => s.player_id === pid);
+            if (!seat) return '';
+            const tc = seat.team === 'red' ? 'team-red' : 'team-black';
+            const isNew = !prevBestMoveIds.includes(pid);
+            return `<div class="best-move-player ${isNew ? 'entry-anim' : ''}"><div class="best-move-number-wrapper"><div class="best-move-bg ${tc}"></div><div class="best-move-gradient"></div><div class="best-move-number">${seat.position}</div></div></div>`;
+        }).join('');
+        prevBestMoveIds = suspects.slice();
+    }
+
+    function renderNominees() {
+        const wrapper = document.querySelector('.nominees');
+        const list = document.querySelector('.nominees-list');
+        if (!gameData.nominees || gameData.nominees.length === 0) {
+            if (wrapper) wrapper.style.display = 'none';
+            if (list) list.innerHTML = '';
+            prevNomineeIds = []; return;
+        }
+        if (wrapper) wrapper.style.display = 'flex';
+        const newIds = gameData.nominees.map(n => n.player_id);
+        list.innerHTML = gameData.nominees.map(n => {
+            const seat = gameData.seating.find(s => s.player_id === n.player_id);
+            if (!seat) return '';
+            const tc = seat.team === 'red' ? 'team-red' : 'team-black';
+            const isNew = !prevNomineeIds.includes(n.player_id);
+            return `<div class="nominee-item ${isNew ? 'entry-anim' : ''}"><div class="nominee-number-wrapper"><div class="nominee-bg ${tc}"></div><div class="nominee-gradient"></div><div class="nominee-number">${seat.position}</div></div></div>`;
+        }).join('');
+        prevNomineeIds = newIds;
+    }
+
+    function renderRounds() {
+        const tbody = document.querySelector('.rounds-table tbody');
+        const maxRounds = 6;
+        const actions = [
+            { type: 'kill', iconClass: 'icon-kill' },
+            { type: 'don', iconClass: 'icon-don-check' },
+            { type: 'sheriff', iconClass: 'icon-sheriff-check' },
+            { type: 'voted', iconClass: 'icon-voted' }
+        ];
+        const roundsKey = JSON.stringify(gameData.rounds || []);
+        const isNewState = roundsKey !== prevRoundsKey;
+        prevRoundsKey = roundsKey;
+
+        const rows = actions.map(action => {
+            let cells = `<td class="action-icon"><span class="icon ${action.iconClass}"></span></td>`;
+            for (let col = 1; col <= maxRounds; col++) {
+                const round = (gameData.rounds || []).find(r => r.round_number === col);
+                if (!round) { cells += '<td><div class="round-cell"></div></td>'; continue; }
+                let content = '';
+                if (action.type === 'kill') {
+                    if (round.mafia_miss) content = wrapRoundSymbol(null, 'neutral', isNewState, true);
+                    else if (round.mafia_kill_player_id) {
+                        const seat = gameData.seating.find(s => s.player_id === round.mafia_kill_player_id);
+                        if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNewState);
+                    }
+                } else if (action.type === 'don') {
+                    if (round.don_check_player_id) {
+                        const seat = gameData.seating.find(s => s.player_id === round.don_check_player_id);
+                        if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNewState);
+                    } else content = wrapRoundSymbol(null, 'neutral', isNewState, true);
+                } else if (action.type === 'sheriff') {
+                    if (round.sheriff_check_player_id) {
+                        const seat = gameData.seating.find(s => s.player_id === round.sheriff_check_player_id);
+                        if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNewState);
+                    } else content = wrapRoundSymbol(null, 'neutral', isNewState, true);
+                } else if (action.type === 'voted') {
+                    const votedIds = Array.isArray(round.voted_out_players) ? round.voted_out_players : [];
+                    if (round.nobody_voted_out || votedIds.length === 0) content = wrapRoundSymbol(null, 'neutral', isNewState, true);
+                    else if (votedIds.length === 1) {
+                        const seat = gameData.seating.find(s => s.player_id === votedIds[0]);
+                        if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNewState);
+                    } else content = renderMultiVoted(votedIds, isNewState);
+                }
+                cells += `<td><div class="round-cell">${content}</div></td>`;
+            }
+            return `<tr>${cells}</tr>`;
+        });
+        tbody.innerHTML = rows.join('');
+    }
+
+    function wrapRoundNumber(value, teamClass, animate) {
+        return `<div class="round-number-wrapper ${animate ? 'entry-anim' : ''}"><div class="round-bg ${teamClass}"></div><div class="round-gradient"></div><div class="round-number">${value}</div></div>`;
+    }
+
+    function wrapRoundSymbol(symbol, bgClass, animate, useIconNone) {
+        const inner = useIconNone ? `<span class="icon icon-none"></span>` : `<span class="round-number ${symbol === '❌' ? 'cross' : ''}">${symbol}</span>`;
+        return `<div class="round-number-wrapper ${animate ? 'entry-anim' : ''}"><div class="round-bg ${bgClass}"></div><div class="round-gradient"></div>${inner}</div>`;
+    }
+
+    function renderMultiVoted(votedIds, animate) {
+        const positions = votedIds.map(id => { const s = gameData.seating.find(s => s.player_id === id); return s ? s.position : null; }).filter(v => v !== null).slice(0, 4);
+        const len = positions.length;
+        let numbersHtml = '';
+        if (len === 2) numbersHtml = `<span class="voted-small-number voted-two-top">${positions[0]}</span><span class="voted-small-number voted-two-bottom">${positions[1]}</span>`;
+        else if (len === 3) numbersHtml = `<span class="voted-small-number voted-three-top">${positions[0]}</span><span class="voted-small-number voted-three-bottom-left">${positions[1]}</span><span class="voted-small-number voted-three-bottom-right">${positions[2]}</span>`;
+        else if (len >= 4) numbersHtml = `<span class="voted-small-number voted-four-top-left">${positions[0]}</span><span class="voted-small-number voted-four-top-right">${positions[1]}</span><span class="voted-small-number voted-four-bottom-left">${positions[2]}</span><span class="voted-small-number voted-four-bottom-right">${positions[3]}</span>`;
+        else numbersHtml = positions.map(p => `<span class="voted-small-number voted-two-top">${p}</span>`).join('');
+        return `<div class="voted-multi-container ${animate ? 'entry-anim' : ''}"><div class="voted-multi-bg neutral"></div><div class="voted-multi-gradient"></div><div class="voted-multi-content"><div class="voted-multi-inner">${numbersHtml}</div></div></div>`;
+    }
+
+    function getRoleLabel(role) {
+        return { mafia: 'М', don: 'Д', sheriff: 'Ш', civilian: '' }[role] || '';
+    }
+
+    function getRoleChipClass(role) {
+        if (role === 'mafia' || role === 'don') return 'chip-black';
+        if (role === 'sheriff') return 'chip-sheriff';
+        return 'chip-red';
+    }
+
+    function formatScore(val) {
+        const n = Number(val) || 0;
+        if (n === 0) return '';
+        const s = n.toFixed(2);
+        return s.replace(/\.?0+$/, '');
+    }
+
+    function formatScoreTotal(val) {
+        const n = Number(val) || 0;
+        return n.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    }
+
+    // === ПОКАЗАТЬ РЕЗУЛЬТАТЫ ИГРЫ ===
+    async function showGameScores(gameId) {
+        try {
+            const resp = await fetch(`${API_BASE_URL}/games/${gameId}/scores`);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            const scores = data.scores || [];
+            if (scores.length === 0) return;
+
+            const leader = scores[0];
+            const overlay = document.getElementById('resultsOverlay');
+            const content = document.getElementById('resultsContent');
+
+            content.innerHTML = `
+                <div class="results-leader-photo">
+                    ${leader.photo_url
+                        ? `<img src="${leader.photo_url}" alt="${leader.nickname}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div class="leader-placeholder" style="display:none;">👤</div>`
+                        : `<div class="leader-placeholder">👤</div>`}
+                    <div class="results-leader-name-strip">
+                        <div class="results-leader-name">${leader.nickname}</div>
+                    </div>
+                </div>
+                <div class="results-table-wrapper">
+                    <div class="results-title">
+                        <h2>Таблица</h2>
+                        <div class="subtitle">ПОСЛЕ ИГРЫ № ${gameData.game_number}</div>
+                    </div>
+                    <table class="scores-table">
+                        <thead>
+                            <tr>
+                                <th class="col-pos">№</th>
+                                <th class="col-avatar"></th>
+                                <th class="col-role"></th>
+                                <th class="col-nick">Игрок</th>
+                                <th class="col-num">Победа</th>
+                                <th class="col-num">Судья</th>
+                                <th class="col-num">ЛХ</th>
+                                <th class="col-num">Ci</th>
+                                <th class="col-total">Итог</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${scores.map((s, i) => `
+                                <tr>
+                                    <td class="col-pos">${i + 1}</td>
+                                    <td class="col-avatar">
+                                        ${s.photo_url
+                                            ? `<img src="${s.photo_url}" class="mini-avatar" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div class="mini-avatar-placeholder" style="display:none;">👤</div>`
+                                            : `<div class="mini-avatar-placeholder">👤</div>`}
+                                    </td>
+                                    <td class="col-role"><div class="role-chip ${getRoleChipClass(s.role)}"></div></td>
+                                    <td class="col-nick">${s.nickname}</td>
+                                    <td class="col-num">${Number(s.win_score) === 1 ? '1' : ''}</td>
+                                    <td class="col-num">${formatScore(s.judge_bonus)}</td>
+                                    <td class="col-num">${formatScore(s.lh_score)}</td>
+                                    <td class="col-num">${formatScore(s.ci_score)}</td>
+                                    <td class="col-total">${formatScoreTotal(s.total_score)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            // Скрываем панели, показываем результаты
+            const container = document.querySelector('.overlay-container');
+            container.classList.add('hidden');
+            container.classList.remove('visible');
+
+            overlay.classList.add('active', 'fade-in');
+            overlay.classList.remove('fade-out');
+            setTimeout(() => overlay.classList.remove('fade-in'), 700);
+        } catch (error) {
+            console.error('Error showing game scores:', error);
+        }
+    }
+
+    // === ПОКАЗАТЬ ПРОМЕЖУТОЧНЫЙ ИТОГ ===
+    async function showTournamentStandings(tId) {
+        try {
+            const resp = await fetch(`${API_BASE_URL}/tournaments/${tId}/standings`);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            const standings = data.standings || [];
+            if (standings.length === 0) return;
+
+            const leader = standings[0];
+            const overlay = document.getElementById('resultsOverlay');
+            const content = document.getElementById('resultsContent');
+
+            content.innerHTML = `
+                <div class="results-leader-photo">
+                    ${leader.photo_url
+                        ? `<img src="${leader.photo_url}" alt="${leader.nickname}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div class="leader-placeholder" style="display:none;">👤</div>`
+                        : `<div class="leader-placeholder">👤</div>`}
+                    <div class="results-leader-name-strip">
+                        <div class="results-leader-name">${leader.nickname}</div>
+                    </div>
+                </div>
+                <div class="results-table-wrapper">
+                    <div class="results-title">
+                        <h2>Промежуточный итог</h2>
+                        <div class="subtitle">ПОСЛЕ ИГРЫ № ${gameData.game_number}</div>
+                    </div>
+                    <table class="standings-table">
+                        <thead>
+                            <tr>
+                                <th class="col-pos">№</th>
+                                <th class="col-avatar"></th>
+                                <th class="col-nick">Игрок</th>
+                                <th class="col-num">Игры</th>
+                                <th class="col-num">Победы</th>
+                                <th class="col-total">Баллы</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${standings.map((s, i) => `
+                                <tr>
+                                    <td class="col-pos">${i + 1}</td>
+                                    <td class="col-avatar">
+                                        ${s.photo_url
+                                            ? `<img src="${s.photo_url}" class="mini-avatar" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div class="mini-avatar-placeholder" style="display:none;">👤</div>`
+                                            : `<div class="mini-avatar-placeholder">👤</div>`}
+                                    </td>
+                                    <td class="col-nick">${s.nickname}</td>
+                                    <td class="col-num">${s.games_played || 0}</td>
+                                    <td class="col-num">${s.wins}</td>
+                                    <td class="col-total">${formatScoreTotal(s.total_score)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            const container = document.querySelector('.overlay-container');
+            container.classList.add('hidden');
+            container.classList.remove('visible');
+
+            overlay.classList.add('active', 'fade-in');
+            overlay.classList.remove('fade-out');
+            setTimeout(() => overlay.classList.remove('fade-in'), 700);
+        } catch (error) {
+            console.error('Error showing tournament standings:', error);
+        }
+    }
+
+    function hideResultsOverlay() {
+        const overlay = document.getElementById('resultsOverlay');
+        if (!overlay.classList.contains('active')) return;
+        overlay.classList.add('fade-out');
+        overlay.classList.remove('fade-in');
+        setTimeout(() => {
+            overlay.classList.remove('active', 'fade-out');
+            const container = document.querySelector('.overlay-container');
+            container.classList.remove('hidden');
+            container.classList.add('visible');
+        }, 450);
+    }
+
+    function animateRoleChange(positions) {
+        if (!Array.isArray(positions) || positions.length === 0) return;
+        requestAnimationFrame(() => {
+            positions.forEach(pos => {
+                const card = document.querySelector(`.player-card[data-position="${pos}"]`);
+                if (!card) return;
+                card.classList.remove('role-changed');
+                void card.offsetWidth;
+                card.classList.add('role-changed');
+                setTimeout(() => card.classList.remove('role-changed'), 600);
+            });
+        });
+    }
+
+    function connectWebSocket() {
+        socket = io(SOCKET_URL);
+
+        socket.on('connect', () => {
+            socketConnected = true;
+            if (gameData?.id) socket.emit('join_game', gameData.id);
+        });
+
+        socket.on('game_updated', () => {
+            const overlay = document.getElementById('resultsOverlay');
+            if (overlay && overlay.classList.contains('active')) return;
+            loadGameData();
+        });
+
+        socket.on('roles_changed', payload => {
+            if (!payload || !gameData || payload.gameId !== gameData.id) return;
+            animateRoleChange(payload.positions || []);
+        });
+
+        socket.on('game_scores_confirmed', (data) => {
+            if (!data || !gameData || data.gameId !== gameData.id) return;
+            loadGameData().then(() => {
+                showGameScores(data.gameId);
+            });
+        });
+
+        socket.on('show_tournament_standings', (data) => {
+            if (!data || !data.tournamentId) return;
+            showTournamentStandings(data.tournamentId);
+        });
+
+        socket.on('hide_results_overlay', () => {
+            hideResultsOverlay();
+        });
+    }
+
+    window.addEventListener('load', () => {
+        scaleOverlay();
+        connectWebSocket();
+        loadGameData();
+    });
+
+    window.addEventListener('resize', scaleOverlay);
+</script>
+</body>
+</html>
