@@ -390,7 +390,7 @@
             font-weight: 500;
         }
 
-        .scores-table tbody td.col-nick { text-align: left; }
+        .scores-table tbody td.col-nick { text-align: left; font-size: 24px; }
 
         .scores-table .col-pos { width: 50px; font-weight: 700; font-size: 24px; }
         .scores-table .col-avatar { width: 52px; }
@@ -440,7 +440,7 @@
             border-bottom: 2px solid rgba(255,255,255,0.15);
         }
 
-        .standings-table thead th.col-nick { text-align: left; }
+        .standings-table thead th.col-nick { text-align: left; font-size: 22px; }
 
         .standings-table tbody tr {
             border-bottom: 1px solid rgba(255,255,255,0.06);
@@ -465,12 +465,12 @@
         .standings-table .col-num { width: 90px; font-size: 22px; }
         .standings-table .col-total { width: 100px; font-weight: 700; font-size: 26px; color: var(--yellow-team-solid); }
         .standings-table .mini-avatar {
-            width: 42px; height: 42px; border-radius: 50%;
-            object-fit: cover; display: block; margin: 0 auto;
+            width: 42px; height: 42px; border-radius: 4px;
+            object-fit: cover; object-position: center top; display: block; margin: 0 auto;
         }
 
         .standings-table .mini-avatar-placeholder {
-            width: 42px; height: 42px; border-radius: 50%;
+            width: 42px; height: 42px; border-radius: 4px;
             background: #374151; display: flex; align-items: center; justify-content: center;
             font-size: 18px; color: #6B7280; margin: 0 auto;
         }
@@ -772,14 +772,31 @@
     function formatScore(val) {
         const n = Number(val) || 0;
         if (n === 0) return '';
+        // Показываем до 2 знаков, убираем только конечный ноль если оба нуля
         const s = n.toFixed(2);
-        return s.replace(/\.?0+$/, '');
+        // 1.30 → 1.3, но 1.35 → 1.35, 0.50 → 0.5, 0.55 → 0.55
+        if (s.endsWith('0') && !s.endsWith('00')) {
+            return s.slice(0, -1);
+        }
+        if (s.endsWith('00')) {
+            return s.slice(0, -3); // убираем .00
+        }
+        return s;
     }
+
 
     function formatScoreTotal(val) {
         const n = Number(val) || 0;
-        return n.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+        const s = n.toFixed(2);
+        if (s.endsWith('0') && !s.endsWith('00')) {
+            return s.slice(0, -1);
+        }
+        if (s.endsWith('00')) {
+            return s.slice(0, -3);
+        }
+        return s;
     }
+
 
     // === ПОКАЗАТЬ РЕЗУЛЬТАТЫ ИГРЫ ===
     async function showGameScores(gameId) {
@@ -805,8 +822,8 @@
                 </div>
                 <div class="results-table-wrapper">
                     <div class="results-title">
-                        <h2>Таблица</h2>
-                        <div class="subtitle">ПОСЛЕ ИГРЫ № ${gameData.game_number}</div>
+                        <h2>РЕЗУЛЬТАТ ИГРЫ №${gameData.game_number}</h2>
+                        <div class="subtitle">${data.result.winner_team === 'red' ? 'ПОБЕДА МИРНЫХ' : 'ПОБЕДА МАФИИ'}</div>
                     </div>
                     <table class="scores-table">
                         <thead>
