@@ -14,6 +14,12 @@
             <div class="nav-links">
                 <a href="index.html" class="nav-link active">Турниры</a>
                 <a href="players.html" class="nav-link">Игроки</a>
+                <a href="users.html" class="nav-link" id="usersLink" style="display:none;">Пользователи</a>
+                <span style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
+                    <span id="currentUser" style="color: var(--text-secondary); font-size: 14px;"></span>
+                    <a href="#" class="nav-link" id="changePassLink">🔑</a>
+                    <a href="#" class="nav-link" onclick="API.logout(); return false;">Выход</a>
+                </span>
             </div>
         </nav>
 
@@ -77,9 +83,111 @@
         </div>
     </div>
 
-<script src="js/ui.js"></script>
-<script src="/config.js"></script>
-<script src="js/api.js"></script>
-<script src="js/tournaments.js"></script>
+    <!-- Модальное окно смены пароля -->
+    <div id="changePasswordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Смена пароля</h3>
+                <button class="close-btn" id="closePasswordModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label>Текущий пароль:</label>
+                        <input type="password" id="currentPassword" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Новый пароль:</label>
+                        <input type="password" id="newPassword" class="form-input" placeholder="Мин. 6 символов" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Повторите новый пароль:</label>
+                        <input type="password" id="confirmPassword" class="form-input" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelPasswordBtn">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Сменить пароль</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/ui.js"></script>
+    <script src="/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/tournaments.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const user = API.getUser();
+        const el = document.getElementById('currentUser');
+        if (el && user) el.textContent = user.username;
+
+        const usersLink = document.getElementById('usersLink');
+        if (usersLink && API.isSuperadmin()) usersLink.style.display = '';
+
+        // Кнопка смены пароля
+        const changePassLink = document.getElementById('changePassLink');
+        if (changePassLink) {
+            changePassLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('currentPassword').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('confirmPassword').value = '';
+                document.getElementById('changePasswordModal').classList.add('active');
+            });
+        }
+
+        // Закрытие модалки пароля
+        const closeBtn = document.getElementById('closePasswordModal');
+        if (closeBtn) closeBtn.addEventListener('click', () => {
+            document.getElementById('changePasswordModal').classList.remove('active');
+        });
+
+        const cancelBtn = document.getElementById('cancelPasswordBtn');
+        if (cancelBtn) cancelBtn.addEventListener('click', () => {
+            document.getElementById('changePasswordModal').classList.remove('active');
+        });
+
+        const modal = document.getElementById('changePasswordModal');
+        if (modal) modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('active');
+        });
+
+        // Отправка формы смены пароля
+        const form = document.getElementById('changePasswordForm');
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const current = document.getElementById('currentPassword').value;
+                const newPass = document.getElementById('newPassword').value;
+                const confirmPass = document.getElementById('confirmPassword').value;
+
+                if (newPass.length < 6) {
+                    UI.showToast('Новый пароль должен быть не менее 6 символов', 'error');
+                    return;
+                }
+                if (newPass !== confirmPass) {
+                    UI.showToast('Пароли не совпадают', 'error');
+                    return;
+                }
+
+                try {
+                    await API.request('/auth/change-password', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            current_password: current,
+                            new_password: newPass
+                        })
+                    });
+                    UI.showToast('Пароль успешно изменён');
+                    document.getElementById('changePasswordModal').classList.remove('active');
+                } catch (error) {
+                    UI.showToast('Ошибка: ' + error.message, 'error');
+                }
+            });
+        }
+    });
+    </script>
 </body>
 </html>

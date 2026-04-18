@@ -19,16 +19,18 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// Делаем io доступным для всех routes через app
+// Делаем io доступным для routes
 app.set('io', io);
 
 // Import routes
+const authRouter = require('./routes/auth');
 const playersRouter = require('./routes/players');
 const tournamentsRouter = require('./routes/tournaments');
 const gamesRouter = require('./routes/games');
 const uploadRouter = require('./routes/upload');
 
 // API Routes
+app.use('/api/auth', authRouter);
 app.use('/api/players', playersRouter);
 app.use('/api/tournaments', tournamentsRouter);
 app.use('/api/games', gamesRouter);
@@ -44,14 +46,13 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
-// Проверка подключения к БД и запуск сервера
 const pool = require('./config/database');
 
 async function startServer() {
   try {
     await pool.query('SELECT NOW()');
     console.log('✅ Database connection verified');
-    
+
     const PORT = process.env.PORT || 3000;
     const HOST = '0.0.0.0';
 

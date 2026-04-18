@@ -1,16 +1,30 @@
-// backend/routes/tournaments.js
-
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
+const {
+  requireAuth,
+  requireActiveSubscription,
+  requireTournamentOwner
+} = require('../middleware/auth');
 
-// Получить список турниров
-router.get('/', async (req, res) => {
+// Получить список турниров (только свои, суперадмин видит все)
+router.get('/', requireAuth, requireActiveSubscription, async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT * FROM tournaments ORDER BY created_at DESC`
-    );
+    let result;
+    if (req.user.role === 'superadmin') {
+      result = await pool.query(
+        `SELECT t.*, u.username AS owner_username
+         FROM tournaments t
+         LEFT JOIN users u ON t.owner_id = u.id
+         ORDER BY t.created_at DESC`
+      );
+    } else {
+      result = await pool.query(
+        `SELECT * FROM tournaments WHERE owner_id = $1 ORDER BY created_at DESC`,
+        [req.user.id]
+      );
+    }
     res.json(result.rows);
   } catch (error) {
     console.error('Error getting tournaments:', error);
@@ -19,7 +33,7 @@ router.get('/', async (req, res) => {
 });
 
 // Получить один турнир
-router.get('/:id', async (req, res) => {
+router.get('/:id', requireAuth, requireActiveSubscription, requireTournamentOwner, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT * FROM tournaments WHERE id = $1`,
@@ -35,8 +49,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Создать турнир + автоматически создать игры
-router.post('/', async (req, res) => {
+// Создать турнир
+router.post('/', requireAuth, requireActiveSubscription, async (req, res) => {
   const client = await pool.connect();
   try {
     const { name, total_games, total_tables } = req.body;
@@ -47,8 +61,8 @@ router.post('/', async (req, res) => {
     const tournamentId = uuidv4();
     const tablesCount = total_tables || 1;
     const tournamentResult = await client.query(
-      `INSERT INTO tournaments (id, name, total_games, total_tables) VALUES ($1, $2, $3, $4) RETURNING *`,
-      [tournamentId, name, total_games, tablesCount]
+      `INSERT INTO tournaments (id, name, total_games, total_tables, owner_id) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [tournamentId, name, total_games, tablesCount, req.user.id]
     );
     const gamesValues = [];
     for (let gameNumber = 1; gameNumber <= total_games; gameNumber++) {
@@ -71,7 +85,7 @@ router.post('/', async (req, res) => {
 });
 
 // Обновить турнир
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, requireActiveSubscription, requireTournamentOwner, async (req, res) => {
   try {
     const { name, total_games, total_tables, status } = req.body;
     const result = await pool.query(
@@ -94,7 +108,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Удалить турнир
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, requireActiveSubscription, requireTournamentOwner, async (req, res) => {
   try {
     const result = await pool.query(
       `DELETE FROM tournaments WHERE id = $1 RETURNING *`,
@@ -111,16 +125,15 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Игроки турнира
-router.get('/:id/players', async (req, res) => {
+router.get('/:id/players', requireAuth, requireTournamentOwner, async (req, res) => {
   try {
-    const tournamentId = req.params.id;
     const result = await pool.query(
       `SELECT tp.id AS tournament_player_id, p.*
        FROM tournament_players tp
        INNER JOIN players p ON tp.player_id = p.id
        WHERE tp.tournament_id = $1
        ORDER BY p.nickname ASC`,
-      [tournamentId]
+      [req.params.id]
     );
     res.json(result.rows);
   } catch (error) {
@@ -130,7 +143,7 @@ router.get('/:id/players', async (req, res) => {
 });
 
 // Добавить игроков в турнир
-router.post('/:id/players', async (req, res) => {
+router.post('/:id/players', requireAuth, requireActiveSubscription, requireTournamentOwner, async (req, res) => {
   try {
     const tournamentId = req.params.id;
     const { player_ids } = req.body;
@@ -159,7 +172,7 @@ router.post('/:id/players', async (req, res) => {
 });
 
 // Удалить игрока из турнира
-router.delete('/:id/players/:playerId', async (req, res) => {
+router.delete('/:id/players/:playerId', requireAuth, requireActiveSubscription, requireTournamentOwner, async (req, res) => {
   try {
     const tournamentId = req.params.id;
     const playerId = req.params.playerId;
@@ -183,9 +196,8 @@ router.delete('/:id/players/:playerId', async (req, res) => {
 });
 
 // Игры турнира
-router.get('/:id/games', async (req, res) => {
+router.get('/:id/games', requireAuth, requireTournamentOwner, async (req, res) => {
   try {
-    const tournamentId = req.params.id;
     const result = await pool.query(
       `SELECT g.*, COUNT(gs.id) AS seating_count
        FROM games g
@@ -193,7 +205,7 @@ router.get('/:id/games', async (req, res) => {
        WHERE g.tournament_id = $1
        GROUP BY g.id
        ORDER BY g.game_number ASC`,
-      [tournamentId]
+      [req.params.id]
     );
     res.json(result.rows);
   } catch (error) {
@@ -202,79 +214,32 @@ router.get('/:id/games', async (req, res) => {
   }
 });
 
-// Промежуточный итог турнира — с полной сортировкой по правилам 7.8
+// Промежуточный итог турнира
 router.get('/:id/standings', async (req, res) => {
   try {
     const tournamentId = req.params.id;
-
     const result = await pool.query(
       `SELECT
-         p.id                        AS player_id,
-         p.nickname,
-         p.photo_url,
-
-         -- Основные показатели
-         COUNT(gps.id)                                            AS games_played,
-         COALESCE(SUM(gps.total_score), 0)                       AS total_score,
-
-         -- 7.8.1: сумма дополнительных баллов (judge_bonus)
-         COALESCE(SUM(gps.judge_bonus), 0)                       AS total_judge_bonus,
-
-         -- 7.8.2: количество побед
-         COUNT(*) FILTER (WHERE gps.win_score = 1)               AS wins,
-
-         -- 7.8.3: победы Доном или Шерифом
-         COUNT(*) FILTER (
-           WHERE gps.win_score = 1
-             AND gs.role IN ('don', 'sheriff')
-         )                                                        AS wins_as_don_sheriff,
-
-         -- 7.8.4: количество смертей в первую ночь
-         COUNT(*) FILTER (
-           WHERE gr_round1.mafia_kill_player_id = gps.player_id
-             AND gr_round1.mafia_miss = FALSE
-         )                                                        AS first_night_deaths,
-
-         -- 7.8.5: проигрыши Доном или Шерифом (меньше = лучше)
-         COUNT(*) FILTER (
-           WHERE gps.win_score = 0
-             AND gs.role IN ('don', 'sheriff')
-         )                                                        AS losses_as_don_sheriff
-
+         p.id AS player_id, p.nickname, p.photo_url,
+         COUNT(gps.id) AS games_played,
+         COALESCE(SUM(gps.total_score), 0) AS total_score,
+         COALESCE(SUM(gps.judge_bonus), 0) AS total_judge_bonus,
+         COUNT(*) FILTER (WHERE gps.win_score = 1) AS wins,
+         COUNT(*) FILTER (WHERE gps.win_score = 1 AND gs.role IN ('don', 'sheriff')) AS wins_as_don_sheriff,
+         COUNT(*) FILTER (WHERE gr_round1.mafia_kill_player_id = gps.player_id AND gr_round1.mafia_miss = FALSE) AS first_night_deaths,
+         COUNT(*) FILTER (WHERE gps.win_score = 0 AND gs.role IN ('don', 'sheriff')) AS losses_as_don_sheriff
        FROM game_player_scores gps
-
-       INNER JOIN games g
-         ON g.id = gps.game_id
-
-       INNER JOIN game_results gres
-         ON gres.game_id = g.id AND gres.confirmed = TRUE
-
-       INNER JOIN players p
-         ON p.id = gps.player_id
-
-       LEFT JOIN game_seating gs
-         ON gs.game_id = gps.game_id AND gs.player_id = gps.player_id
-
-       -- Присоединяем первый круг каждой игры для подсчёта смертей в первую ночь
-       LEFT JOIN game_rounds gr_round1
-         ON gr_round1.game_id = gps.game_id AND gr_round1.round_number = 1
-
+       INNER JOIN games g ON g.id = gps.game_id
+       INNER JOIN game_results gres ON gres.game_id = g.id AND gres.confirmed = TRUE
+       INNER JOIN players p ON p.id = gps.player_id
+       LEFT JOIN game_seating gs ON gs.game_id = gps.game_id AND gs.player_id = gps.player_id
+       LEFT JOIN game_rounds gr_round1 ON gr_round1.game_id = gps.game_id AND gr_round1.round_number = 1
        WHERE g.tournament_id = $1
-
        GROUP BY p.id, p.nickname, p.photo_url
-
-       ORDER BY
-         total_score DESC,                    -- основной рейтинг
-         total_judge_bonus DESC,              -- 7.8.1: доп. баллы
-         wins DESC,                           -- 7.8.2: победы
-         wins_as_don_sheriff DESC,            -- 7.8.3: победы доном/шерифом
-         first_night_deaths DESC,             -- 7.8.4: смерти в первую ночь
-         losses_as_don_sheriff ASC,           -- 7.8.5: проигрыши доном/шерифом (меньше = лучше)
-         p.nickname ASC                       -- 7.8.6: алфавит (вместо жребия)
-      `,
+       ORDER BY total_score DESC, total_judge_bonus DESC, wins DESC, wins_as_don_sheriff DESC,
+                first_night_deaths DESC, losses_as_don_sheriff ASC, p.nickname ASC`,
       [tournamentId]
     );
-
     res.json({ standings: result.rows });
   } catch (error) {
     console.error('Error getting tournament standings:', error);

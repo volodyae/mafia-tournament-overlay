@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление пользователями</title>
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <h1>🏆 Админ-панель Мафии</h1>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Турниры</a>
+                <a href="players.html" class="nav-link">Игроки</a>
+                <a href="users.html" class="nav-link active" id="usersLink" style="display:none;">Пользователи</a>
+                <span style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
+                    <span id="currentUser" style="color: var(--text-secondary); font-size: 14px;"></span>
+                    <a href="#" class="nav-link" id="changePassLink">🔑</a>
+                    <a href="#" class="nav-link" onclick="API.logout(); return false;">Выход</a>
+                </span>
+            </div>
+        </nav>
+
+        <div class="content">
+            <div class="page-header">
+                <h2>Управление пользователями</h2>
+                <button class="btn btn-primary" id="addUserBtn">+ Добавить пользователя</button>
+            </div>
+
+            <div id="usersList" class="tournaments-list">
+                <!-- Заполняется через JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно создания/редактирования пользователя -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="userModalTitle">Добавить пользователя</h3>
+                <button class="close-btn" id="closeUserModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="editUserId">
+
+                    <div class="form-group">
+                        <label>Логин:</label>
+                        <input type="text" id="userLogin" class="form-input" placeholder="Логин" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label id="passwordLabel">Пароль:</label>
+                        <input type="text" id="userPassword" class="form-input" placeholder="Пароль (мин. 6 символов)">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Подписка (дней):</label>
+                        <input type="number" id="subscriptionDays" class="form-input" value="30" min="1" max="365" placeholder="Количество дней">
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelUserBtn">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно смены пароля -->
+    <div id="changePasswordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Смена пароля</h3>
+                <button class="close-btn" id="closePasswordModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label>Текущий пароль:</label>
+                        <input type="password" id="currentPassword" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Новый пароль:</label>
+                        <input type="password" id="newPassword" class="form-input" placeholder="Мин. 6 символов" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Повторите новый пароль:</label>
+                        <input type="password" id="confirmPassword" class="form-input" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelPasswordBtn">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Сменить пароль</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/ui.js"></script>
+    <script src="/config.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+    let users = [];
+    let editingUserId = null;
+
+    const usersList = document.getElementById('usersList');
+    const addUserBtn = document.getElementById('addUserBtn');
+    const userModal = document.getElementById('userModal');
+    const userForm = document.getElementById('userForm');
+    const closeUserModal = document.getElementById('closeUserModal');
+    const cancelUserBtn = document.getElementById('cancelUserBtn');
+    const usersLinkEl = document.getElementById('usersLink');
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const user = API.getUser();
+        const el = document.getElementById('currentUser');
+        if (el && user) el.textContent = user.username;
+
+        // Только суперадмин видит эту страницу
+        if (!API.isSuperadmin()) {
+            document.querySelector('.content').innerHTML = `
+                <div class="empty-state">
+                    <h3>Доступ запрещён</h3>
+                    <p>Эта страница доступна только администратору</p>
+                </div>`;
+            return;
+        }
+
+        if (usersLinkEl) usersLinkEl.style.display = '';
+
+        await loadUsers();
+        setupEventListeners();
+
+        // Кнопка смены пароля
+        const changePassLink = document.getElementById('changePassLink');
+        if (changePassLink) {
+            changePassLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('currentPassword').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('confirmPassword').value = '';
+                document.getElementById('changePasswordModal').classList.add('active');
+            });
+        }
+    });
+
+    async function loadUsers() {
+        try {
+            UI.showLoading(usersList);
+            users = await API.getUsers();
+            renderUsers();
+        } catch (error) {
+            UI.showToast('Ошибка загрузки пользователей', 'error');
+            console.error(error);
+        }
+    }
+
+    function renderUsers() {
+        if (users.length === 0) {
+            UI.showEmpty(usersList, 'Нет пользователей');
+            return;
+        }
+
+        usersList.innerHTML = users.map(user => {
+            const isSuper = user.role === 'superadmin';
+            const isActive = user.is_active;
+            const subDate = user.subscription_until ? new Date(user.subscription_until) : null;
+            const isExpired = subDate && subDate < new Date();
+
+            let statusHtml = '';
+            if (isSuper) {
+                statusHtml = '<span style="color: var(--yellow-team-solid);">⭐ Суперадмин</span>';
+            } else if (!isActive) {
+                statusHtml = '<span style="color: var(--danger);">🚫 Деактивирован</span>';
+            } else if (isExpired) {
+                statusHtml = '<span style="color: var(--danger);">⏰ Подписка истекла</span>';
+            } else if (subDate) {
+                statusHtml = `<span style="color: var(--success);">✅ Активен до ${UI.formatDate(user.subscription_until)}</span>`;
+            } else {
+                statusHtml = '<span style="color: var(--success);">✅ Бессрочный</span>';
+            }
+
+            return `
+                <div class="tournament-card">
+                    <h3>👤 ${user.username}</h3>
+                    <div class="tournament-meta">
+                        ${statusHtml}<br>
+                        📅 Создан: ${UI.formatDate(user.created_at)}
+                    </div>
+                    ${!isSuper ? `
+                        <div class="tournament-actions">
+                            <button class="btn btn-primary edit-user" data-id="${user.id}">✏️ Редактировать</button>
+                            <button class="btn ${isActive ? 'btn-secondary' : 'btn-success'} toggle-user" data-id="${user.id}" data-active="${isActive}">
+                                ${isActive ? '🚫 Деактивировать' : '✅ Активировать'}
+                            </button>
+                            <button class="btn btn-danger delete-user" data-id="${user.id}" data-username="${user.username}">🗑️ Удалить</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+
+        document.querySelectorAll('.edit-user').forEach(btn => {
+            btn.addEventListener('click', () => openEditUserModal(btn.dataset.id));
+        });
+
+        document.querySelectorAll('.toggle-user').forEach(btn => {
+            btn.addEventListener('click', () => toggleUser(btn.dataset.id, btn.dataset.active === 'true'));
+        });
+
+        document.querySelectorAll('.delete-user').forEach(btn => {
+            btn.addEventListener('click', () => deleteUser(btn.dataset.id, btn.dataset.username));
+        });
+    }
+
+    // Открыть модалку создания
+    addUserBtn.addEventListener('click', () => {
+        editingUserId = null;
+        document.getElementById('userModalTitle').textContent = 'Добавить пользователя';
+        document.getElementById('editUserId').value = '';
+        document.getElementById('userLogin').value = '';
+        document.getElementById('userLogin').disabled = false;
+        document.getElementById('userPassword').value = '';
+        document.getElementById('userPassword').placeholder = 'Пароль (мин. 6 символов)';
+        document.getElementById('passwordLabel').textContent = 'Пароль:';
+        document.getElementById('subscriptionDays').value = '30';
+        userModal.classList.add('active');
+    });
+
+    // Открыть модалку редактирования
+    function openEditUserModal(userId) {
+        const user = users.find(u => u.id === userId);
+        if (!user) return;
+
+        editingUserId = userId;
+        document.getElementById('userModalTitle').textContent = `Редактировать: ${user.username}`;
+        document.getElementById('editUserId').value = userId;
+        document.getElementById('userLogin').value = user.username;
+        document.getElementById('userLogin').disabled = true;
+        document.getElementById('userPassword').value = '';
+        document.getElementById('userPassword').placeholder = 'Оставьте пустым, чтобы не менять';
+        document.getElementById('passwordLabel').textContent = 'Новый пароль (необязательно):';
+        document.getElementById('subscriptionDays').value = '30';
+        userModal.classList.add('active');
+    }
+
+    // Сохранение
+    userForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const login = document.getElementById('userLogin').value.trim();
+        const password = document.getElementById('userPassword').value;
+        const days = parseInt(document.getElementById('subscriptionDays').value) || 30;
+
+        if (editingUserId) {
+            try {
+                const updateData = { subscription_days: days };
+                if (password && password.length >= 6) {
+                    updateData.new_password = password;
+                } else if (password && password.length > 0 && password.length < 6) {
+                    UI.showToast('Пароль должен быть не менее 6 символов', 'error');
+                    return;
+                }
+
+                await API.updateUser(editingUserId, updateData);
+                UI.showToast('Пользователь обновлён');
+                userModal.classList.remove('active');
+                await loadUsers();
+            } catch (error) {
+                UI.showToast('Ошибка: ' + error.message, 'error');
+            }
+        } else {
+            if (!login) {
+                UI.showToast('Введите логин', 'error');
+                return;
+            }
+            if (!password || password.length < 6) {
+                UI.showToast('Пароль должен быть не менее 6 символов', 'error');
+                return;
+            }
+
+            try {
+                await API.createUser({
+                    username: login,
+                    password: password,
+                    subscription_days: days
+                });
+                UI.showToast('Пользователь создан');
+                userModal.classList.remove('active');
+                await loadUsers();
+            } catch (error) {
+                UI.showToast('Ошибка: ' + error.message, 'error');
+            }
+        }
+    });
+
+    async function toggleUser(userId, currentlyActive) {
+        try {
+            await API.updateUser(userId, { is_active: !currentlyActive });
+            UI.showToast(currentlyActive ? 'Пользователь деактивирован' : 'Пользователь активирован');
+            await loadUsers();
+        } catch (error) {
+            UI.showToast('Ошибка: ' + error.message, 'error');
+        }
+    }
+
+    async function deleteUser(userId, username) {
+        if (!confirm(`Удалить пользователя "${username}"? Это действие необратимо!`)) return;
+
+        try {
+            await API.deleteUser(userId);
+            UI.showToast('Пользователь удалён');
+            await loadUsers();
+        } catch (error) {
+            UI.showToast('Ошибка: ' + error.message, 'error');
+        }
+    }
+
+    // ===== СМЕНА ПАРОЛЯ =====
+
+    document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const current = document.getElementById('currentPassword').value;
+        const newPass = document.getElementById('newPassword').value;
+        const confirmPass = document.getElementById('confirmPassword').value;
+
+        if (newPass.length < 6) {
+            UI.showToast('Новый пароль должен быть не менее 6 символов', 'error');
+            return;
+        }
+
+        if (newPass !== confirmPass) {
+            UI.showToast('Пароли не совпадают', 'error');
+            return;
+        }
+
+        try {
+            await API.request('/auth/change-password', {
+                method: 'POST',
+                body: JSON.stringify({
+                    current_password: current,
+                    new_password: newPass
+                })
+            });
+            UI.showToast('Пароль успешно изменён');
+            document.getElementById('changePasswordModal').classList.remove('active');
+        } catch (error) {
+            UI.showToast('Ошибка: ' + error.message, 'error');
+        }
+    });
+
+    function setupEventListeners() {
+        closeUserModal.addEventListener('click', () => userModal.classList.remove('active'));
+        cancelUserBtn.addEventListener('click', () => userModal.classList.remove('active'));
+        userModal.addEventListener('click', (e) => { if (e.target === userModal) userModal.classList.remove('active'); });
+
+        document.getElementById('closePasswordModal').addEventListener('click', () => {
+            document.getElementById('changePasswordModal').classList.remove('active');
+        });
+        document.getElementById('cancelPasswordBtn').addEventListener('click', () => {
+            document.getElementById('changePasswordModal').classList.remove('active');
+        });
+        document.getElementById('changePasswordModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('changePasswordModal')) {
+                document.getElementById('changePasswordModal').classList.remove('active');
+            }
+        });
+    }
+    </script>
+</body>
+</html>
