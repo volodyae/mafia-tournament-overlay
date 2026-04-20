@@ -493,58 +493,59 @@
     </div>
 
     <!-- Модальное окно добавления/редактирования круга -->
-    <div id="roundModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="roundModalTitle">Круг 1</h3>
-                <button class="close-btn" id="closeRoundModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="roundForm">
-                    <input type="hidden" id="roundNumber">
+<div id="roundModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="roundModalTitle">Круг 1</h3>
+            <button class="close-btn" id="closeRoundModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="roundForm">
+                <input type="hidden" id="roundNumber">
 
-                    <div class="form-group">
-                        <label>🔫Убит:</label>
-                        <select id="mafiaKill" class="form-select">
-                            <option value="">Выберите игрока</option>
-                            <option value="miss">❌ Промах</option>
-                        </select>
+                <div class="form-group">
+                    <label>👍 Голосование:</label>
+                    <div id="votedOutList" style="margin-bottom: 8px;">
+                        <!-- Заполняется через JS -->
                     </div>
+                    <select id="addVotedOut" class="form-select">
+                        <option value="">+ Добавить игрока</option>
+                        <option value="nobody">❌ Никто не выбыл</option>
+                    </select>
+                </div>
 
-                    <div class="form-group">
-                        <label>🎩 Проверка дона:</label>
-                        <select id="donCheck" class="form-select">
-                            <option value="">Выберите игрока</option>
-                            <option value="none">❌ Не проверял</option>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label>🔫 Убит:</label>
+                    <select id="mafiaKill" class="form-select">
+                        <option value="">Выберите игрока</option>
+                        <option value="miss">❌ Промах</option>
+                    </select>
+                </div>
 
-                    <div class="form-group">
-                        <label>⭐ Проверка шерифа:</label>
-                        <select id="sheriffCheck" class="form-select">
-                            <option value="">Выберите игрока</option>
-                            <option value="none">❌ Не проверял</option>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label>🎩 Проверка дона:</label>
+                    <select id="donCheck" class="form-select">
+                        <option value="">Выберите игрока</option>
+                        <option value="none">❌ Не проверял</option>
+                    </select>
+                </div>
 
-                    <div class="form-group">
-                        <label>👍 Голосование:</label>
-                        <div id="votedOutList" style="margin-bottom: 8px;">
-                            <!-- Заполняется через JS -->
-                        </div>
-                        <select id="addVotedOut" class="form-select">
-                            <option value="">+ Добавить игрока</option>
-                            <option value="nobody">❌ Никто не выбыл</option>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label>⭐ Проверка шерифа:</label>
+                    <select id="sheriffCheck" class="form-select">
+                        <option value="">Выберите игрока</option>
+                        <option value="none">❌ Не проверял</option>
+                    </select>
+                </div>
 
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" id="closeRoundBtn">Закрыть</button>
-                    </div>
-                </form>
-            </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="closeRoundBtn">Закрыть</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
+
 
     <!-- Модальное окно доп. баллов судьи -->
     <div id="scoresModal" class="modal">
