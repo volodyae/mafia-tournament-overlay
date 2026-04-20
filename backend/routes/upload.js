@@ -55,7 +55,7 @@ const upload = multer({
     limits: { fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5242880 }
 });
 
-router.post('/', upload.single('photo'), async (req, res) => {
+router.post('/player-photo', upload.single('photo'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'Файл не загружен' });

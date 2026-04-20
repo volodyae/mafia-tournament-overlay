@@ -179,10 +179,13 @@ playerForm.addEventListener('submit', async (e) => {
             formData.append('photo', fileInput.files[0]);
 
             try {
-                const response = await fetch(`${baseUrl}/api/upload/player-photo`, {
+                const token = localStorage.getItem('auth_token');
+const response = await fetch(`${baseUrl}/api/upload/player-photo`, {
   method: 'POST',
+  headers: token ? { 'Authorization': 'Bearer ' + token } : {},
   body: formData
 });
+
 if (!response.ok) {
     throw new Error('Ошибка загрузки файла');
 }
