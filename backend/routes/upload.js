@@ -1,76 +1,99 @@
 const express = require('express');
+const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-require('dotenv').config();
-const router = express.Router();
 
-const uploadDir = path.join(__dirname, '../../frontend/uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// Проверяем, настроен ли Cloudinary
+const useCloudinary = !!(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+);
+
+let cloudinary = null;
+
+if (useCloudinary) {
+    cloudinary = require('cloudinary').v2;
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET
+    });
+    console.log('☁️  Cloudinary configured for file uploads');
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, `player-${uniqueSuffix}${path.extname(file.originalname)}`);
-  }
-});
+// Multer — временное хранение в памяти (для Cloudinary) или на диске (локально)
+const storage = useCloudinary
+    ? multer.memoryStorage()
+    : multer.diskStorage({
+        destination: (req, file, cb) => {
+            const uploadDir = path.join(__dirname, '../../frontend/uploads');
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+            }
+            cb(null, uploadDir);
+        },
+        filename: (req, file, cb) => {
+            const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            cb(null, uniqueName + path.extname(file.originalname));
+        }
+    });
 
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
-  
-  if (mimetype && extname) {
-    return cb(null, true);
-  } else {
-    cb(new Error('Only images allowed'));
-  }
+    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowed.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Допустимы только изображения (JPEG, PNG, GIF, WebP)'), false);
+    }
 };
 
-const maxFileSize = parseInt(process.env.MAX_FILE_SIZE || `${5 * 1024 * 1024}`, 10);
-
 const upload = multer({
-  storage: storage,
-  limits: { fileSize: maxFileSize },
-  fileFilter: fileFilter
+    storage,
+    fileFilter,
+    limits: { fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5242880 }
 });
 
-router.post('/player-photo', upload.single('photo'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+router.post('/', upload.single('photo'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Файл не загружен' });
+        }
+
+        if (useCloudinary) {
+            // Загрузка в Cloudinary из буфера
+            const result = await new Promise((resolve, reject) => {
+                const stream = cloudinary.uploader.upload_stream(
+                    {
+                        folder: 'mafia-overlay',
+                        resource_type: 'image',
+                        transformation: [
+                            { width: 800, height: 800, crop: 'limit' },
+                            { quality: 'auto', fetch_format: 'auto' }
+                        ]
+                    },
+                    (error, result) => {
+                        if (error) reject(error);
+                        else resolve(result);
+                    }
+                );
+                stream.end(req.file.buffer);
+            });
+
+            return res.json({
+                photo_url: result.secure_url,
+                public_id: result.public_id
+            });
+        } else {
+            // Локальное хранение
+            const photo_url = `/uploads/${req.file.filename}`;
+            return res.json({ photo_url });
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        res.status(500).json({ error: 'Ошибка загрузки файла' });
     }
-
-    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-    const photoUrl = `${baseUrl}/uploads/${req.file.filename}`;
-
-    res.json({
-      success: true,
-      photo_url: photoUrl,
-      filename: req.file.filename
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.delete('/:filename', (req, res) => {
-  try {
-    const filepath = path.join(uploadDir, req.params.filename);
-    if (fs.existsSync(filepath)) {
-      fs.unlinkSync(filepath);
-      res.json({ success: true });
-    } else {
-      res.status(404).json({ error: 'File not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
 });
 
 module.exports = router;
