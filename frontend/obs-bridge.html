@@ -92,6 +92,94 @@
             font-size: 13px;
         }
         .scene-tag.active { background: #10B981; color: #111827; font-weight: 600; }
+        /* Мобильная адаптация */
+@media (max-width: 768px) {
+    body {
+        padding: 16px;
+    }
+
+    h1 {
+        font-size: 20px;
+    }
+
+    .status-block {
+        padding: 14px;
+    }
+
+    .form-row {
+        flex-direction: column;
+    }
+
+    .form-row input {
+        width: 100%;
+    }
+
+    .form-row button {
+        width: 100%;
+    }
+
+    .status-row {
+        flex-wrap: wrap;
+    }
+
+    .label {
+        min-width: 100px;
+        font-size: 13px;
+    }
+
+    .value {
+        font-size: 14px;
+    }
+
+    .scenes-list {
+        gap: 6px;
+    }
+
+    .scene-tag {
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+
+    .log {
+        font-size: 11px;
+        max-height: 200px;
+        padding: 12px;
+    }
+}
+
+@media (max-width: 400px) {
+    body {
+        padding: 12px;
+    }
+
+    h1 {
+        font-size: 18px;
+    }
+
+    .status-block {
+        padding: 10px;
+        border-radius: 8px;
+    }
+
+    .label {
+        min-width: 80px;
+        font-size: 12px;
+    }
+
+    .value {
+        font-size: 13px;
+    }
+
+    input {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+
+    button {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+}
     </style>
 </head>
 <body>
