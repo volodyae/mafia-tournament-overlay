@@ -403,15 +403,6 @@
     </div>
 </nav>
 
-
-                <span style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
-                    <span id="currentUser" style="color: var(--text-secondary); font-size: 14px;"></span>
-                    <a href="#" class="nav-link" id="changePassLink">🔑</a>
-                    <a href="#" class="nav-link" onclick="API.logout(); return false;">Выход</a>
-                </span>
-            </div>
-        </nav>
-
         <!-- Главный контент -->
         <div class="content">
             <div class="page-header">
@@ -735,9 +726,6 @@ const TimerManager = (() => {
     let totalSeconds = 0;
     let state = 'idle'; // idle | running | paused | finished
     let beepPlayed = false;
-
-    // Звуковые сигналы
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     function formatTime(sec) {
         const s = Math.ceil(sec);
