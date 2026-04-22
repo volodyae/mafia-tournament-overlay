@@ -991,6 +991,21 @@ const MusicPlayer = (() => {
 
 // ================== OBS WEBSOCKET ==================
 
+const isLocalNetwork = window.location.hostname === 'localhost'
+    || window.location.hostname === '127.0.0.1'
+    || window.location.hostname.startsWith('192.168.')
+    || window.location.hostname.startsWith('10.')
+    || window.location.hostname.startsWith('172.');
+
+if (!isLocalNetwork) {
+    // Скрываем OBS-секцию на удалённом хостинге
+    const obsSection = document.getElementById('obsSection');
+    if (obsSection) obsSection.style.display = 'none';
+    // Скрываем разделитель перед OBS
+    const dividers = document.querySelectorAll('.cp-divider');
+    if (dividers.length >= 2) dividers[dividers.length - 1].style.display = 'none';
+} else {
+
 const OBSManager = (() => {
     let obs = null;
     let connected = false;
@@ -1138,6 +1153,7 @@ const OBSManager = (() => {
 
     return { connect, switchScene };
 })();
+} // закрытие else для isLocalNetwork
 </script>
 </body>
 </html>
