@@ -904,6 +904,11 @@ body {
     color: var(--success);
 }
 
+.music-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
 .music-track-name {
     font-size: 13px;
     color: var(--text-secondary);
@@ -913,6 +918,10 @@ body {
     min-width: 0;
     flex: 1;
     max-width: 200px;
+}
+
+.music-progress {
+    display: none;
 }
 
 .music-volume {
@@ -1011,36 +1020,38 @@ body.has-control-panel .content {
 
 /* === Мобильная адаптация панели === */
 @media (max-width: 768px) {
-    .control-panel {
+    .cp-music {
         flex-wrap: wrap;
-        gap: 8px;
-        padding: 8px 10px;
     }
 
-    .cp-divider {
+    .music-volume {
         display: none;
     }
 
-    .cp-timer {
-        order: 1;
+    .music-progress {
+        display: block;
+        width: 100%;
+        height: 4px;
+        -webkit-appearance: none;
+        appearance: none;
+        background: var(--border);
+        border-radius: 2px;
+        outline: none;
+        order: 10;
+        margin-top: 4px;
     }
 
-    .cp-music {
-        order: 2;
-        flex-basis: 100%;
-    }
-
-    .cp-obs {
-        order: 3;
-        flex-basis: 100%;
-        flex-wrap: wrap;
+    .music-progress::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--primary);
+        cursor: pointer;
     }
 
     .music-track-name {
-        max-width: 120px;
-    }
-
-    body.has-control-panel .content {
-        padding-bottom: 140px;
+        max-width: none;
+        flex: 1;
     }
 }

@@ -618,13 +618,21 @@
     <div class="cp-divider"></div>
 
     <!-- Музыка -->
-    <div class="cp-music">
-        <button class="music-btn" id="musicPrevBtn" title="Предыдущий">⏮</button>
-        <button class="music-btn" id="musicPlayBtn" title="Играть">▶</button>
-        <button class="music-btn" id="musicNextBtn" title="Следующий">⏭</button>
-        <div class="music-track-name" id="musicTrackName">Загрузка...</div>
-        <input type="range" class="music-volume" id="musicVolume" min="0" max="100" value="70" title="Громкость">
-    </div>
+<div class="cp-music">
+    <button class="music-btn" id="musicPrevBtn" title="Предыдущий">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h2v12H3V2zm3.5 6 8.5 6V2l-8.5 6z"/></svg>
+    </button>
+    <button class="music-btn" id="musicPlayBtn" title="Играть">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="playIcon"><path d="M4 2l10 6-10 6V2z"/></svg>
+    </button>
+    <button class="music-btn" id="musicNextBtn" title="Следующий">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M11 2h2v12h-2V2zM2.5 2l8.5 6-8.5 6V2z"/></svg>
+    </button>
+    <div class="music-track-name" id="musicTrackName">Загрузка...</div>
+    <input type="range" class="music-progress" id="musicProgress" min="0" max="100" value="0" title="Перемотка">
+    <input type="range" class="music-volume" id="musicVolume" min="0" max="100" value="70" title="Громкость">
+</div>
+
 
     <div class="cp-divider"></div>
 
@@ -844,7 +852,7 @@ const MusicPlayer = (() => {
     let currentIndex = -1;
     let audio = new Audio();
     let isPlaying = false;
-    const FADE_DURATION = 1000; // мс
+    const FADE_DURATION = 1000;
     let fadeInterval = null;
 
     const playBtn = document.getElementById('musicPlayBtn');
@@ -852,8 +860,26 @@ const MusicPlayer = (() => {
     const nextBtn = document.getElementById('musicNextBtn');
     const trackName = document.getElementById('musicTrackName');
     const volumeSlider = document.getElementById('musicVolume');
+    const progressSlider = document.getElementById('musicProgress');
+
+    const playSVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2l10 6-10 6V2z"/></svg>';
+    const pauseSVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h4v12H3V2zm6 0h4v12H9V2z"/></svg>';
 
     audio.volume = volumeSlider.value / 100;
+
+    // Обновление прогресс-бара
+    audio.addEventListener('timeupdate', () => {
+        if (audio.duration && !isNaN(audio.duration)) {
+            progressSlider.value = (audio.currentTime / audio.duration) * 100;
+        }
+    });
+
+    // Перемотка
+    progressSlider.addEventListener('input', () => {
+        if (audio.duration && !isNaN(audio.duration)) {
+            audio.currentTime = (progressSlider.value / 100) * audio.duration;
+        }
+    });
 
     async function loadTracks() {
         try {
@@ -923,6 +949,7 @@ const MusicPlayer = (() => {
         const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
         const url = `${baseUrl}${tracks[currentIndex].url}`;
         trackName.textContent = tracks[currentIndex].name;
+        progressSlider.value = 0;
 
         const wasPlaying = isPlaying;
 
@@ -936,14 +963,23 @@ const MusicPlayer = (() => {
         }
     }
 
+    function setPlayIcon() {
+        playBtn.innerHTML = playSVG;
+        playBtn.classList.remove('playing');
+    }
+
+    function setPauseIcon() {
+        playBtn.innerHTML = pauseSVG;
+        playBtn.classList.add('playing');
+    }
+
     function togglePlay() {
         if (tracks.length === 0) return;
 
         if (isPlaying) {
             fadeOut();
             isPlaying = false;
-            playBtn.textContent = '▶';
-            playBtn.classList.remove('playing');
+            setPlayIcon();
         } else {
             if (!audio.src || audio.ended) {
                 const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
@@ -953,23 +989,22 @@ const MusicPlayer = (() => {
             }
             fadeIn();
             isPlaying = true;
-            playBtn.textContent = '⏸';
-            playBtn.classList.add('playing');
+            setPauseIcon();
         }
     }
 
     audio.addEventListener('ended', () => {
-        // Автопереключение
         if (currentIndex < tracks.length - 1) {
             currentIndex++;
             const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
             audio.src = `${baseUrl}${tracks[currentIndex].url}`;
             trackName.textContent = tracks[currentIndex].name;
+            progressSlider.value = 0;
             fadeIn();
         } else {
             isPlaying = false;
-            playBtn.textContent = '▶';
-            playBtn.classList.remove('playing');
+            setPlayIcon();
+            progressSlider.value = 0;
         }
     });
 

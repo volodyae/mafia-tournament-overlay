@@ -236,6 +236,41 @@
             100% { transform: translateY(0) scale(1); box-shadow: 0 0 0 0 rgba(250,204,21,0.0); }
         }
         .player-card.role-changed { animation: role-change-flash 0.5s ease-out; }
+        /* Анимация смены полоски роли */
+@keyframes strip-change {
+    0% { opacity: 1; transform: scaleX(1); }
+    30% { opacity: 0.3; transform: scaleX(0.7); }
+    60% { opacity: 0.8; transform: scaleX(1.05); }
+    100% { opacity: 1; transform: scaleX(1); }
+}
+
+.player-role-strip-inner.strip-changed {
+    animation: strip-change 0.5s ease-out;
+}
+
+/* Анимация смены бейджа роли */
+@keyframes badge-pop {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.3); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.role-badge.badge-changed {
+    animation: badge-pop 0.4s ease-out;
+}
+
+/* Анимация появления/смены значения в таблице раундов */
+@keyframes cell-flash {
+    0% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: 1; transform: scale(1.15); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.round-cell-changed .round-number-wrapper,
+.round-cell-changed .voted-multi-container {
+    animation: cell-flash 0.4s ease-out;
+}
+
 
         /* ================================================= */
         /* ========== РЕЗУЛЬТАТЫ / STANDINGS OVERLAY ======== */
@@ -531,7 +566,8 @@
     let previousEliminated = new Set();
     let prevBestMoveIds = [];
     let prevNomineeIds = [];
-    let prevRoundsKey = '';
+    let prevRoundsData = {};
+    let prevRoles = {}; // { position: { role, team } }
 
     function scaleOverlay() {
         const container = document.querySelector('.overlay-container');
@@ -605,48 +641,62 @@
         const bottomPanel = document.querySelector('.bottom-panel');
         const newEliminated = new Set();
 
-        bottomPanel.innerHTML = gameData.seating.map(seat => {
-            const { eliminated, reason } = getEliminationInfo(seat.player_id);
-            if (eliminated) newEliminated.add(seat.player_id);
-            const justEliminated = eliminated && !previousEliminated.has(seat.player_id);
-            const roleLabel = getRoleLabel(seat.role);
-            let eliminationIconClass = null;
-            if (reason === 'voted') eliminationIconClass = 'icon-voted';
-            else if (reason === 'killed') eliminationIconClass = 'icon-kill';
-            else if (reason === 'removed') eliminationIconClass = 'icon-removed';
-            let stripClass = 'red';
-            if (seat.role === 'mafia' || seat.role === 'don') stripClass = 'black';
-            if (seat.role === 'sheriff') stripClass = 'sheriff-strip';
-            let cardBadgeHtml = '';
-            if (seat.card === 'yellow') cardBadgeHtml = `<div class="player-card-badge yellow-card"></div>`;
-            else if (seat.card === 'red') cardBadgeHtml = `<div class="player-card-badge red-card"></div>`;
-            return `
-                <div class="player-card ${eliminated ? 'eliminated' : ''} ${justEliminated ? 'just-eliminated' : ''}" data-position="${seat.position}">
-                    <div class="player-card-inner">
-                        ${eliminated && eliminationIconClass ? `<div class="elimination-icon"><span class="icon ${eliminationIconClass}"></span></div>` : ''}
-                        ${roleLabel ? `<div class="role-badge ${seat.role === 'sheriff' ? 'role-badge-sheriff' : ''}">${roleLabel}</div>` : ''}
-                        <div class="player-media">
-                            <div class="player-role-gradient ${stripClass}"></div>
-                            ${seat.photo_url
-                                ? `<img src="${seat.photo_url}" alt="${seat.nickname}" class="player-portrait" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div class="player-placeholder" style="display:none;">👤</div>`
-                                : `<div class="player-placeholder">👤</div>`}
-                            ${cardBadgeHtml}
-                        </div>
-                        <div class="player-role-strip">
-                            <div class="player-role-strip-inner ${stripClass}"></div>
-                            <div class="player-info">
-                                <div class="player-info-gradient"></div>
-                                <div class="player-info-content">
-                                    <div class="player-nickname">
-                                        <span class="player-number">${seat.position}</span>
-                                        <span class="player-nickname-text">${seat.nickname}</span>
-                                    </div>
-                                </div>
+        const newRoles = {};
+gameData.seating.forEach(s => {
+    newRoles[s.position] = { role: s.role, team: s.team };
+});
+
+bottomPanel.innerHTML = gameData.seating.map(seat => {
+    const { eliminated, reason } = getEliminationInfo(seat.player_id);
+    if (eliminated) newEliminated.add(seat.player_id);
+    const justEliminated = eliminated && !previousEliminated.has(seat.player_id);
+    const roleLabel = getRoleLabel(seat.role);
+
+    const prev = prevRoles[seat.position];
+    const roleChanged = prev && (prev.role !== seat.role || prev.team !== seat.team);
+
+    let eliminationIconClass = null;
+    if (reason === 'voted') eliminationIconClass = 'icon-voted';
+    else if (reason === 'killed') eliminationIconClass = 'icon-kill';
+    else if (reason === 'removed') eliminationIconClass = 'icon-removed';
+
+    let stripClass = 'red';
+    if (seat.role === 'mafia' || seat.role === 'don') stripClass = 'black';
+    if (seat.role === 'sheriff') stripClass = 'sheriff-strip';
+
+    let cardBadgeHtml = '';
+    if (seat.card === 'yellow') cardBadgeHtml = `<div class="player-card-badge yellow-card"></div>`;
+    else if (seat.card === 'red') cardBadgeHtml = `<div class="player-card-badge red-card"></div>`;
+
+    return `
+        <div class="player-card ${eliminated ? 'eliminated' : ''} ${justEliminated ? 'just-eliminated' : ''} ${roleChanged ? 'role-changed' : ''}" data-position="${seat.position}">
+            <div class="player-card-inner">
+                ${eliminated && eliminationIconClass ? `<div class="elimination-icon"><span class="icon ${eliminationIconClass}"></span></div>` : ''}
+                ${roleLabel ? `<div class="role-badge ${seat.role === 'sheriff' ? 'role-badge-sheriff' : ''} ${roleChanged ? 'badge-changed' : ''}">${roleLabel}</div>` : ''}
+                <div class="player-media">
+                    <div class="player-role-gradient ${stripClass}"></div>
+                    ${seat.photo_url
+                        ? `<img src="${seat.photo_url}" alt="${seat.nickname}" class="player-portrait" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div class="player-placeholder" style="display:none;">👤</div>`
+                        : `<div class="player-placeholder">👤</div>`}
+                    ${cardBadgeHtml}
+                </div>
+                <div class="player-role-strip">
+                    <div class="player-role-strip-inner ${stripClass} ${roleChanged ? 'strip-changed' : ''}"></div>
+                    <div class="player-info">
+                        <div class="player-info-gradient"></div>
+                        <div class="player-info-content">
+                            <div class="player-nickname">
+                                <span class="player-number">${seat.position}</span>
+                                <span class="player-nickname-text">${seat.nickname}</span>
                             </div>
                         </div>
                     </div>
-                </div>`;
-        }).join('');
+                </div>
+            </div>
+        </div>`;
+}).join('');
+
+prevRoles = newRoles;
 
         previousEliminated = newEliminated;
         renderBestMove();
@@ -690,54 +740,73 @@
     }
 
     function renderRounds() {
-        const tbody = document.querySelector('.rounds-table tbody');
-        const maxRounds = 6;
-        const actions = [
-            { type: 'kill', iconClass: 'icon-kill' },
-            { type: 'don', iconClass: 'icon-don-check' },
-            { type: 'sheriff', iconClass: 'icon-sheriff-check' },
-            { type: 'voted', iconClass: 'icon-voted' }
-        ];
-        const roundsKey = JSON.stringify(gameData.rounds || []);
-        const isNewState = roundsKey !== prevRoundsKey;
-        prevRoundsKey = roundsKey;
+    const tbody = document.querySelector('.rounds-table tbody');
+    const maxRounds = 6;
+    const actions = [
+        { type: 'kill', iconClass: 'icon-kill' },
+        { type: 'don', iconClass: 'icon-don-check' },
+        { type: 'sheriff', iconClass: 'icon-sheriff-check' },
+        { type: 'voted', iconClass: 'icon-voted' }
+    ];
 
-        const rows = actions.map(action => {
-            let cells = `<td class="action-icon"><span class="icon ${action.iconClass}"></span></td>`;
-            for (let col = 1; col <= maxRounds; col++) {
-                const round = (gameData.rounds || []).find(r => r.round_number === col);
-                if (!round) { cells += '<td><div class="round-cell"></div></td>'; continue; }
-                let content = '';
-                if (action.type === 'kill') {
-                    if (round.mafia_miss) content = wrapRoundSymbol(null, 'neutral', isNewState, true);
-                    else if (round.mafia_kill_player_id) {
-                        const seat = gameData.seating.find(s => s.player_id === round.mafia_kill_player_id);
-                        if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNewState);
-                    }
-                } else if (action.type === 'don') {
-                    if (round.don_check_player_id) {
-                        const seat = gameData.seating.find(s => s.player_id === round.don_check_player_id);
-                        if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNewState);
-                    } else content = wrapRoundSymbol(null, 'neutral', isNewState, true);
-                } else if (action.type === 'sheriff') {
-                    if (round.sheriff_check_player_id) {
-                        const seat = gameData.seating.find(s => s.player_id === round.sheriff_check_player_id);
-                        if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNewState);
-                    } else content = wrapRoundSymbol(null, 'neutral', isNewState, true);
-                } else if (action.type === 'voted') {
-                    const votedIds = Array.isArray(round.voted_out_players) ? round.voted_out_players : [];
-                    if (round.nobody_voted_out || votedIds.length === 0) content = wrapRoundSymbol(null, 'neutral', isNewState, true);
-                    else if (votedIds.length === 1) {
-                        const seat = gameData.seating.find(s => s.player_id === votedIds[0]);
-                        if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNewState);
-                    } else content = renderMultiVoted(votedIds, isNewState);
-                }
-                cells += `<td><div class="round-cell">${content}</div></td>`;
-            }
-            return `<tr>${cells}</tr>`;
-        });
-        tbody.innerHTML = rows.join('');
+    // Строим текущее состояние для сравнения
+    const currentData = {};
+    for (let col = 1; col <= maxRounds; col++) {
+        const round = (gameData.rounds || []).find(r => r.round_number === col);
+        if (!round) continue;
+        currentData[`kill_${col}`] = round.mafia_miss ? 'miss' : (round.mafia_kill_player_id || '');
+        currentData[`don_${col}`] = round.don_check_player_id || '';
+        currentData[`sheriff_${col}`] = round.sheriff_check_player_id || '';
+        currentData[`voted_${col}`] = JSON.stringify(round.voted_out_players || []);
     }
+
+    const rows = actions.map(action => {
+        let cells = `<td class="action-icon"><span class="icon ${action.iconClass}"></span></td>`;
+        for (let col = 1; col <= maxRounds; col++) {
+            const round = (gameData.rounds || []).find(r => r.round_number === col);
+            if (!round) { cells += '<td><div class="round-cell"></div></td>'; continue; }
+
+            const cellKey = `${action.type}_${col}`;
+            const prevVal = prevRoundsData[cellKey];
+            const currVal = currentData[cellKey];
+            const changed = prevVal !== undefined && prevVal !== currVal;
+            const isNew = prevVal === undefined && currVal !== undefined && currVal !== '';
+
+            let content = '';
+            if (action.type === 'kill') {
+                if (round.mafia_miss) content = wrapRoundSymbol(null, 'neutral', isNew, true);
+                else if (round.mafia_kill_player_id) {
+                    const seat = gameData.seating.find(s => s.player_id === round.mafia_kill_player_id);
+                    if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNew);
+                }
+            } else if (action.type === 'don') {
+                if (round.don_check_player_id) {
+                    const seat = gameData.seating.find(s => s.player_id === round.don_check_player_id);
+                    if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNew);
+                } else content = wrapRoundSymbol(null, 'neutral', isNew, true);
+            } else if (action.type === 'sheriff') {
+                if (round.sheriff_check_player_id) {
+                    const seat = gameData.seating.find(s => s.player_id === round.sheriff_check_player_id);
+                    if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNew);
+                } else content = wrapRoundSymbol(null, 'neutral', isNew, true);
+            } else if (action.type === 'voted') {
+                const votedIds = Array.isArray(round.voted_out_players) ? round.voted_out_players : [];
+                if (round.nobody_voted_out || votedIds.length === 0) content = wrapRoundSymbol(null, 'neutral', isNew, true);
+                else if (votedIds.length === 1) {
+                    const seat = gameData.seating.find(s => s.player_id === votedIds[0]);
+                    if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNew);
+                } else content = renderMultiVoted(votedIds, isNew);
+            }
+
+            const animClass = changed ? 'round-cell-changed' : '';
+            cells += `<td><div class="round-cell ${animClass}">${content}</div></td>`;
+        }
+        return `<tr>${cells}</tr>`;
+    });
+
+    tbody.innerHTML = rows.join('');
+    prevRoundsData = currentData;
+}
 
     function wrapRoundNumber(value, teamClass, animate) {
         return `<div class="round-number-wrapper ${animate ? 'entry-anim' : ''}"><div class="round-bg ${teamClass}"></div><div class="round-gradient"></div><div class="round-number">${value}</div></div>`;
