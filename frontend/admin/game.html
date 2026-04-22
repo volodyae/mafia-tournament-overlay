@@ -997,6 +997,21 @@ const isLocalNetwork = window.location.hostname === 'localhost'
     || window.location.hostname.startsWith('10.')
     || window.location.hostname.startsWith('172.');
 
+function waitForSocket(callback) {
+    if (window.gameSocket && window.gameSocket.connected) {
+        callback(window.gameSocket);
+    } else {
+        const check = setInterval(() => {
+            if (window.gameSocket && window.gameSocket.connected) {
+                clearInterval(check);
+                callback(window.gameSocket);
+            }
+        }, 300);
+        // Таймаут 15 секунд
+        setTimeout(() => clearInterval(check), 15000);
+    }
+}
+
 const OBSManager = (() => {
     let obsScenes = [];
     let obsCurrentScene = '';
@@ -1037,44 +1052,47 @@ const OBSManager = (() => {
 
     function doSwitchScene(sceneName) {
         if (isLocalNetwork && localObs) {
-            // Прямое подключение
             localObs.call('SetCurrentProgramScene', { sceneName }).catch(err => {
                 UI.showToast('Ошибка переключения сцены', 'error');
             });
-        } else {
-            // Через мост
-            socket.emit('obs_command', { action: 'switch_scene', sceneName });
+        } else if (window.gameSocket) {
+            window.gameSocket.emit('obs_command', { action: 'switch_scene', sceneName });
         }
     }
 
     // === Режим моста (Render) ===
     function setupBridgeMode() {
-        // Запрашиваем состояние OBS у моста
-        socket.emit('obs_command', { action: 'get_scenes' });
+        waitForSocket((sock) => {
+            sock.emit('obs_command', { action: 'get_scenes' });
 
-        socket.on('obs_status', (data) => {
-            obsConnected = data.connected;
-            if (data.connected) {
-                setStatus('connected');
-                obsScenes = data.scenes || [];
-                obsCurrentScene = data.currentScene || '';
-                renderSceneButtons();
-            } else {
-                setStatus('disconnected');
-                obsScenes = [];
-                renderSceneButtons();
-            }
-        });
+            sock.on('obs_status', (data) => {
+                obsConnected = data.connected;
+                if (data.connected) {
+                    setStatus('connected');
+                    obsScenes = data.scenes || [];
+                    obsCurrentScene = data.currentScene || '';
+                    renderSceneButtons();
+                } else {
+                    setStatus('disconnected');
+                    obsScenes = [];
+                    renderSceneButtons();
+                }
+            });
 
-        socket.on('obs_scene_changed', (data) => {
-            obsCurrentScene = data.sceneName;
-            obsScenes = data.scenes || obsScenes;
-            renderSceneButtons();
+            sock.on('obs_scene_changed', (data) => {
+                obsCurrentScene = data.sceneName;
+                obsScenes = data.scenes || obsScenes;
+                renderSceneButtons();
+            });
         });
 
         connectBtn.addEventListener('click', () => {
-            socket.emit('obs_command', { action: 'get_scenes' });
-            UI.showToast('Запрос состояния OBS отправлен');
+            if (window.gameSocket) {
+                window.gameSocket.emit('obs_command', { action: 'get_scenes' });
+                UI.showToast('Запрос состояния OBS отправлен');
+            } else {
+                UI.showToast('Сокет не подключен', 'error');
+            }
         });
     }
 
@@ -1127,13 +1145,11 @@ const OBSManager = (() => {
             await connectLocal(obsUrl, obsPassword);
         });
 
-        // Автоподключение
         if (savedObs.url) {
             await connectLocal(savedObs.url, savedObs.password || '');
         }
     }
 
-    // Выбираем режим
     if (isLocalNetwork) {
         setupLocalMode();
     } else {

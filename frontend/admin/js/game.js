@@ -10,7 +10,7 @@ let tournamentId = null;
 let gameNumber = null;
 let gameData = null;
 let tournamentPlayers = [];
-let socket = null;
+let socket = null; // локальная переменная для удобства
 let currentNominees = [];
 let votedOutPlayers = [];
 let selectedFirstKilled = null;
@@ -67,6 +67,7 @@ function connectWebSocket() {
   try {
     const socketUrl = window.OVERLAY_CONFIG?.SOCKET_URL || 'http://192.168.0.121:3000';
     socket = io(socketUrl);
+    window.gameSocket = socket; // делаем доступным для панели управления
     
     socket.on('connect', () => {
       if (gameData?.id) {
