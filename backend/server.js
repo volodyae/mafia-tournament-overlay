@@ -28,6 +28,7 @@ const playersRouter = require('./routes/players');
 const tournamentsRouter = require('./routes/tournaments');
 const gamesRouter = require('./routes/games');
 const uploadRouter = require('./routes/upload');
+const audioRouter = require('./routes/audio');
 
 // API Routes
 app.use('/api/auth', authRouter);
@@ -35,7 +36,9 @@ app.use('/api/players', playersRouter);
 app.use('/api/tournaments', tournamentsRouter);
 app.use('/api/games', gamesRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/audio', audioRouter);
 app.use('/uploads', express.static(path.join(__dirname, '../frontend/uploads')));
+app.use('/audio', express.static(path.join(__dirname, '../frontend/audio')));
 
 // WebSocket setup
 const gameEvents = require('./socket/gameEvents');

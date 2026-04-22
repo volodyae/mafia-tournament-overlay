@@ -605,6 +605,35 @@
         </div>
     </div>
 
+    <!-- Панель управления: Таймер + Музыка + OBS -->
+<div class="control-panel" id="controlPanel">
+    <!-- Таймер -->
+    <div class="cp-timer">
+        <button class="timer-btn" id="timerBtn30" data-seconds="30">30</button>
+        <button class="timer-btn" id="timerBtn60" data-seconds="60">60</button>
+        <button class="timer-reset-btn" id="timerResetBtn" title="Сброс">↺</button>
+    </div>
+
+    <div class="cp-divider"></div>
+
+    <!-- Музыка -->
+    <div class="cp-music">
+        <button class="music-btn" id="musicPrevBtn" title="Предыдущий">⏮</button>
+        <button class="music-btn" id="musicPlayBtn" title="Играть">▶</button>
+        <button class="music-btn" id="musicNextBtn" title="Следующий">⏭</button>
+        <div class="music-track-name" id="musicTrackName">Загрузка...</div>
+        <input type="range" class="music-volume" id="musicVolume" min="0" max="100" value="70" title="Громкость">
+    </div>
+
+    <div class="cp-divider"></div>
+
+    <!-- OBS -->
+    <div class="cp-obs" id="obsSection">
+        <div class="obs-status" id="obsStatus" title="OBS отключен"></div>
+        <button class="obs-connect-btn" id="obsConnectBtn">OBS</button>
+    </div>
+</div>
+
     <script src="js/ui.js"></script>
     <script src="/config.js"></script>
     <script src="js/api.js"></script>
@@ -679,5 +708,436 @@
         }
     });
     </script>
+<script src="https://cdn.jsdelivr.net/npm/obs-websocket-js@5/dist/obs-ws.min.js"></script>
+<script>
+// ============================================================
+//  ПАНЕЛЬ УПРАВЛЕНИЯ: Таймер + Музыка + OBS
+// ============================================================
+
+document.body.classList.add('has-control-panel');
+
+// ================== ТАЙМЕР ==================
+
+const TimerManager = (() => {
+    let activeBtn = null;
+    let intervalId = null;
+    let remaining = 0;
+    let totalSeconds = 0;
+    let state = 'idle'; // idle | running | paused | finished
+    let beepPlayed = false;
+
+    // Звуковые сигналы
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function formatTime(sec) {
+        const s = Math.ceil(sec);
+        return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}`;
+    }
+
+    function updateDisplay() {
+        if (!activeBtn) return;
+        const display = Math.ceil(remaining);
+        activeBtn.textContent = state === 'idle' ? activeBtn.dataset.seconds : formatTime(remaining);
+    }
+
+    function updateClasses() {
+        [document.getElementById('timerBtn30'), document.getElementById('timerBtn60')].forEach(btn => {
+            btn.classList.remove('running', 'paused', 'warning', 'finished');
+        });
+
+        if (!activeBtn || state === 'idle') return;
+
+        if (state === 'finished') {
+            activeBtn.classList.add('finished');
+        } else if (state === 'paused') {
+            activeBtn.classList.add('paused');
+            if (remaining <= 10) activeBtn.classList.add('warning');
+        } else if (state === 'running') {
+            activeBtn.classList.add('running');
+            if (remaining <= 10) {
+                activeBtn.classList.remove('running');
+                activeBtn.classList.add('warning');
+            }
+        }
+    }
+
+    function tick() {
+        remaining -= 0.1;
+        if (remaining <= 10 && !beepPlayed) {
+            beepPlayed = true;
+        }
+        if (remaining <= 0) {
+            remaining = 0;
+            state = 'finished';
+            clearInterval(intervalId);
+            intervalId = null;
+        }
+        updateDisplay();
+        updateClasses();
+    }
+
+    function handleClick(btn) {
+        const seconds = parseInt(btn.dataset.seconds);
+
+        // Если этот таймер активен
+        if (activeBtn === btn) {
+            if (state === 'running') {
+                // Пауза
+                state = 'paused';
+                clearInterval(intervalId);
+                intervalId = null;
+            } else if (state === 'paused') {
+                // Возобновить
+                state = 'running';
+                intervalId = setInterval(tick, 100);
+            } else if (state === 'finished' || state === 'idle') {
+                // Перезапуск
+                remaining = seconds;
+                totalSeconds = seconds;
+                state = 'running';
+                beepPlayed = false;
+                intervalId = setInterval(tick, 100);
+            }
+        } else {
+            // Переключение на другой таймер
+            reset(true);
+            activeBtn = btn;
+            remaining = seconds;
+            totalSeconds = seconds;
+            state = 'running';
+            beepPlayed = false;
+            intervalId = setInterval(tick, 100);
+        }
+
+        updateDisplay();
+        updateClasses();
+    }
+
+    function reset(silent) {
+        if (intervalId) clearInterval(intervalId);
+        intervalId = null;
+        state = 'idle';
+        remaining = 0;
+        beepPlayed = false;
+
+        const btn30 = document.getElementById('timerBtn30');
+        const btn60 = document.getElementById('timerBtn60');
+        btn30.textContent = '30';
+        btn60.textContent = '60';
+        [btn30, btn60].forEach(b => b.classList.remove('running', 'paused', 'warning', 'finished'));
+        activeBtn = null;
+
+        if (!silent) {
+            // тихий сброс
+        }
+    }
+
+    return { handleClick, reset };
+})();
+
+document.getElementById('timerBtn30').addEventListener('click', function() { TimerManager.handleClick(this); });
+document.getElementById('timerBtn60').addEventListener('click', function() { TimerManager.handleClick(this); });
+document.getElementById('timerResetBtn').addEventListener('click', () => TimerManager.reset(false));
+
+// ================== МУЗЫКАЛЬНЫЙ ПЛЕЕР ==================
+
+const MusicPlayer = (() => {
+    let tracks = [];
+    let currentIndex = -1;
+    let audio = new Audio();
+    let isPlaying = false;
+    const FADE_DURATION = 1000; // мс
+    let fadeInterval = null;
+
+    const playBtn = document.getElementById('musicPlayBtn');
+    const prevBtn = document.getElementById('musicPrevBtn');
+    const nextBtn = document.getElementById('musicNextBtn');
+    const trackName = document.getElementById('musicTrackName');
+    const volumeSlider = document.getElementById('musicVolume');
+
+    audio.volume = volumeSlider.value / 100;
+
+    async function loadTracks() {
+        try {
+            const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
+            const response = await fetch(`${baseUrl}/api/audio`, {
+                headers: {
+                    'Authorization': 'Bearer ' + (localStorage.getItem('auth_token') || '')
+                }
+            });
+            tracks = await response.json();
+
+            if (tracks.length === 0) {
+                trackName.textContent = 'Нет треков';
+            } else {
+                currentIndex = 0;
+                trackName.textContent = tracks[0].name;
+            }
+        } catch (err) {
+            trackName.textContent = 'Ошибка загрузки';
+            console.error('Music load error:', err);
+        }
+    }
+
+    function fadeIn(callback) {
+        if (fadeInterval) clearInterval(fadeInterval);
+        const targetVol = volumeSlider.value / 100;
+        audio.volume = 0;
+        audio.play();
+        let vol = 0;
+        const step = targetVol / (FADE_DURATION / 50);
+        fadeInterval = setInterval(() => {
+            vol += step;
+            if (vol >= targetVol) {
+                vol = targetVol;
+                clearInterval(fadeInterval);
+                fadeInterval = null;
+                if (callback) callback();
+            }
+            audio.volume = vol;
+        }, 50);
+    }
+
+    function fadeOut(callback) {
+        if (fadeInterval) clearInterval(fadeInterval);
+        let vol = audio.volume;
+        const step = vol / (FADE_DURATION / 50);
+        fadeInterval = setInterval(() => {
+            vol -= step;
+            if (vol <= 0) {
+                vol = 0;
+                audio.volume = 0;
+                audio.pause();
+                clearInterval(fadeInterval);
+                fadeInterval = null;
+                if (callback) callback();
+            }
+            audio.volume = Math.max(0, vol);
+        }, 50);
+    }
+
+    function playTrack(index) {
+        if (tracks.length === 0) return;
+        if (index < 0) index = tracks.length - 1;
+        if (index >= tracks.length) index = 0;
+        currentIndex = index;
+
+        const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
+        const url = `${baseUrl}${tracks[currentIndex].url}`;
+        trackName.textContent = tracks[currentIndex].name;
+
+        const wasPlaying = isPlaying;
+
+        if (wasPlaying) {
+            fadeOut(() => {
+                audio.src = url;
+                fadeIn();
+            });
+        } else {
+            audio.src = url;
+        }
+    }
+
+    function togglePlay() {
+        if (tracks.length === 0) return;
+
+        if (isPlaying) {
+            fadeOut();
+            isPlaying = false;
+            playBtn.textContent = '▶';
+            playBtn.classList.remove('playing');
+        } else {
+            if (!audio.src || audio.ended) {
+                const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
+                audio.src = `${baseUrl}${tracks[currentIndex >= 0 ? currentIndex : 0].url}`;
+                if (currentIndex < 0) currentIndex = 0;
+                trackName.textContent = tracks[currentIndex].name;
+            }
+            fadeIn();
+            isPlaying = true;
+            playBtn.textContent = '⏸';
+            playBtn.classList.add('playing');
+        }
+    }
+
+    audio.addEventListener('ended', () => {
+        // Автопереключение
+        if (currentIndex < tracks.length - 1) {
+            currentIndex++;
+            const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
+            audio.src = `${baseUrl}${tracks[currentIndex].url}`;
+            trackName.textContent = tracks[currentIndex].name;
+            fadeIn();
+        } else {
+            isPlaying = false;
+            playBtn.textContent = '▶';
+            playBtn.classList.remove('playing');
+        }
+    });
+
+    playBtn.addEventListener('click', togglePlay);
+    prevBtn.addEventListener('click', () => { playTrack(currentIndex - 1); if (!isPlaying) togglePlay(); });
+    nextBtn.addEventListener('click', () => { playTrack(currentIndex + 1); if (!isPlaying) togglePlay(); });
+    volumeSlider.addEventListener('input', () => {
+        if (!fadeInterval) {
+            audio.volume = volumeSlider.value / 100;
+        }
+    });
+
+    loadTracks();
+
+    return { loadTracks };
+})();
+
+// ================== OBS WEBSOCKET ==================
+
+const OBSManager = (() => {
+    let obs = null;
+    let connected = false;
+    let scenes = [];
+    let currentScene = '';
+
+    const statusDot = document.getElementById('obsStatus');
+    const connectBtn = document.getElementById('obsConnectBtn');
+    const obsSection = document.getElementById('obsSection');
+
+    // Загружаем настройки из localStorage
+    const savedObs = JSON.parse(localStorage.getItem('obs_settings') || '{}');
+    let obsUrl = savedObs.url || 'ws://192.168.0.121:4455';
+    let obsPassword = savedObs.password || '';
+
+    function setStatus(status) {
+        statusDot.classList.remove('connected', 'error');
+        if (status === 'connected') {
+            statusDot.classList.add('connected');
+            statusDot.title = 'OBS подключен';
+            connectBtn.textContent = 'OBS ✓';
+        } else if (status === 'error') {
+            statusDot.classList.add('error');
+            statusDot.title = 'Ошибка подключения';
+            connectBtn.textContent = 'OBS ✗';
+        } else {
+            statusDot.title = 'OBS отключен';
+            connectBtn.textContent = 'OBS';
+        }
+    }
+
+    function renderSceneButtons() {
+        // Удаляем старые кнопки сцен
+        obsSection.querySelectorAll('.obs-scene-btn').forEach(b => b.remove());
+
+        scenes.forEach(scene => {
+            const btn = document.createElement('button');
+            btn.className = 'obs-scene-btn';
+            if (scene === currentScene) btn.classList.add('active-scene');
+            btn.textContent = scene;
+            btn.addEventListener('click', () => switchScene(scene));
+            obsSection.appendChild(btn);
+        });
+    }
+
+    async function connect() {
+        // Показать промпт для настроек
+        const url = prompt('OBS WebSocket адрес:', obsUrl);
+        if (!url) return;
+        obsUrl = url;
+
+        const pass = prompt('OBS пароль (оставьте пустым, если нет):', obsPassword);
+        obsPassword = pass || '';
+
+        localStorage.setItem('obs_settings', JSON.stringify({ url: obsUrl, password: obsPassword }));
+
+        try {
+            if (obs) {
+                try { await obs.disconnect(); } catch(e) {}
+            }
+
+            obs = new OBSWebSocket();
+
+            const connectParams = obsPassword
+                ? { rpcVersion: 1, authentication: obsPassword }
+                : { rpcVersion: 1 };
+
+            await obs.connect(obsUrl, obsPassword || undefined);
+            connected = true;
+            setStatus('connected');
+
+            // Получить список сцен
+            const { scenes: sceneList, currentProgramSceneName } = await obs.call('GetSceneList');
+            scenes = sceneList.map(s => s.sceneName).reverse();
+            currentScene = currentProgramSceneName;
+            renderSceneButtons();
+
+            // Слушать переключение сцен
+            obs.on('CurrentProgramSceneChanged', (data) => {
+                currentScene = data.sceneName;
+                renderSceneButtons();
+            });
+
+            obs.on('ConnectionClosed', () => {
+                connected = false;
+                setStatus('disconnected');
+                scenes = [];
+                renderSceneButtons();
+            });
+
+        } catch (err) {
+            console.error('OBS connect error:', err);
+            setStatus('error');
+            UI.showToast('Ошибка подключения к OBS: ' + err.message, 'error');
+        }
+    }
+
+    async function switchScene(sceneName) {
+        if (!connected || !obs) {
+            UI.showToast('OBS не подключен', 'error');
+            return;
+        }
+        try {
+            await obs.call('SetCurrentProgramScene', { sceneName });
+        } catch (err) {
+            UI.showToast('Ошибка переключения сцены', 'error');
+            console.error(err);
+        }
+    }
+
+    // Автоподключение если были сохранены настройки
+    async function autoConnect() {
+        if (!savedObs.url) return;
+        try {
+            obs = new OBSWebSocket();
+            await obs.connect(savedObs.url, savedObs.password || undefined);
+            connected = true;
+            setStatus('connected');
+
+            const { scenes: sceneList, currentProgramSceneName } = await obs.call('GetSceneList');
+            scenes = sceneList.map(s => s.sceneName).reverse();
+            currentScene = currentProgramSceneName;
+            renderSceneButtons();
+
+            obs.on('CurrentProgramSceneChanged', (data) => {
+                currentScene = data.sceneName;
+                renderSceneButtons();
+            });
+
+            obs.on('ConnectionClosed', () => {
+                connected = false;
+                setStatus('disconnected');
+                scenes = [];
+                renderSceneButtons();
+            });
+        } catch (err) {
+            setStatus('disconnected');
+        }
+    }
+
+    connectBtn.addEventListener('click', connect);
+
+    // Автоподключение при загрузке
+    autoConnect();
+
+    return { connect, switchScene };
+})();
+</script>
 </body>
 </html>

@@ -756,3 +756,291 @@ body {
         margin-left: 0;
     }
 }
+
+/* ===== ПАНЕЛЬ УПРАВЛЕНИЯ (таймер + музыка + OBS) ===== */
+
+.control-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #0F172A;
+    border-top: 2px solid var(--border);
+    padding: 8px 16px;
+    z-index: 900;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 56px;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.5);
+}
+
+/* Разделитель между секциями */
+.cp-divider {
+    width: 1px;
+    height: 36px;
+    background: var(--border);
+    flex-shrink: 0;
+}
+
+/* === Таймер === */
+.cp-timer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.timer-btn {
+    min-width: 64px;
+    height: 40px;
+    border: 2px solid var(--primary);
+    background: transparent;
+    color: var(--primary);
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 10px;
+    font-family: 'Courier New', monospace;
+}
+
+.timer-btn:hover {
+    background: rgba(59,130,246,0.15);
+}
+
+.timer-btn.running {
+    background: var(--primary);
+    color: #fff;
+}
+
+.timer-btn.paused {
+    background: #F59E0B;
+    border-color: #F59E0B;
+    color: #111827;
+    animation: pulse-pause 1.5s ease-in-out infinite;
+}
+
+.timer-btn.warning {
+    background: var(--danger) !important;
+    border-color: var(--danger) !important;
+    color: #fff !important;
+    animation: pulse-warning 0.5s ease-in-out infinite;
+}
+
+.timer-btn.finished {
+    background: #6B7280;
+    border-color: #6B7280;
+    color: #fff;
+}
+
+.timer-reset-btn {
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+}
+
+.timer-reset-btn:hover {
+    background: rgba(239,68,68,0.15);
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+@keyframes pulse-pause {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+@keyframes pulse-warning {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* === Музыкальный плеер === */
+.cp-music {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.music-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+    flex-shrink: 0;
+}
+
+.music-btn:hover {
+    background: rgba(59,130,246,0.15);
+    color: var(--primary);
+}
+
+.music-btn.playing {
+    color: var(--success);
+}
+
+.music-track-name {
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1;
+    max-width: 200px;
+}
+
+.music-volume {
+    width: 60px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    flex-shrink: 0;
+}
+
+.music-volume::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+}
+
+/* === OBS === */
+.cp-obs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.obs-status {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #6B7280;
+    flex-shrink: 0;
+    transition: background 0.3s;
+}
+
+.obs-status.connected {
+    background: var(--success);
+    box-shadow: 0 0 6px rgba(16,185,129,0.6);
+}
+
+.obs-status.error {
+    background: var(--danger);
+}
+
+.obs-connect-btn {
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+    white-space: nowrap;
+}
+
+.obs-connect-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.obs-scene-btn {
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+    white-space: nowrap;
+}
+
+.obs-scene-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.obs-scene-btn.active-scene {
+    background: var(--success);
+    border-color: var(--success);
+    color: #fff;
+}
+
+/* Отступ контента от фиксированной панели */
+body.has-control-panel .content {
+    padding-bottom: 80px;
+}
+
+/* === Мобильная адаптация панели === */
+@media (max-width: 768px) {
+    .control-panel {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px 10px;
+    }
+
+    .cp-divider {
+        display: none;
+    }
+
+    .cp-timer {
+        order: 1;
+    }
+
+    .cp-music {
+        order: 2;
+        flex-basis: 100%;
+    }
+
+    .cp-obs {
+        order: 3;
+        flex-basis: 100%;
+        flex-wrap: wrap;
+    }
+
+    .music-track-name {
+        max-width: 120px;
+    }
+
+    body.has-control-panel .content {
+        padding-bottom: 140px;
+    }
+}
