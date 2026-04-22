@@ -394,6 +394,19 @@
                 <a href="players.html" class="nav-link">Игроки</a>
                 <a href="javascript:history.back()" class="nav-link">← Назад</a>
                 <a href="users.html" class="nav-link" id="usersLink" style="display:none;">Пользователи</a>
+                <div class="nav-links">
+    <a href="index.html" class="nav-link active">Турниры</a>
+    <a href="players.html" class="nav-link">Игроки</a>
+    <a href="javascript:history.back()" class="nav-link">← Назад</a>
+    <a href="/obs-bridge.html" class="nav-link" id="obsBridgeLink" target="_blank">🔗 OBS Bridge</a>
+    <a href="users.html" class="nav-link" id="usersLink" style="display:none;">Пользователи</a>
+    <span style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
+        <span id="currentUser" style="color: var(--text-secondary); font-size: 14px;"></span>
+        <a href="#" class="nav-link" id="changePassLink">🔑</a>
+        <a href="#" class="nav-link" onclick="API.logout(); return false;">Выход</a>
+    </span>
+</div>
+
                 <span style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
                     <span id="currentUser" style="color: var(--text-secondary); font-size: 14px;"></span>
                     <a href="#" class="nav-link" id="changePassLink">🔑</a>
