@@ -1,5 +1,9 @@
 // c:\mafia-overlay\backend\socket\gameEvents.js
 module.exports = (io) => {
+
+  // ID сокета OBS-моста (один на сервер)
+  let obsBridgeSocketId = null;
+
   io.on('connection', (socket) => {
     console.log(`✅ Client connected: ${socket.id}`);
     
@@ -103,10 +107,46 @@ module.exports = (io) => {
       });
     });
 
+    // ========== OBS BRIDGE ==========
+
+    // Мост регистрируется
+    socket.on('obs_bridge_register', () => {
+      obsBridgeSocketId = socket.id;
+      console.log(`🔗 OBS Bridge registered: ${socket.id}`);
+    });
+
+    // Админка отправляет команду OBS (switch_scene, get_scenes)
+    socket.on('obs_command', (data) => {
+      if (obsBridgeSocketId) {
+        io.to(obsBridgeSocketId).emit('obs_command', data);
+      } else {
+        socket.emit('obs_status', { connected: false });
+      }
+    });
+
+    // Мост сообщает статус OBS (connected, scenes, currentScene)
+    socket.on('obs_status', (data) => {
+      // Отправляем всем кроме моста
+      socket.broadcast.emit('obs_status', data);
+    });
+
+    // Мост сообщает об изменении сцены
+    socket.on('obs_scene_changed', (data) => {
+      socket.broadcast.emit('obs_scene_changed', data);
+    });
+
+    // ========== /OBS BRIDGE ==========
+
     // Отключение
     socket.on('disconnect', () => {
       if (currentGameRoom) {
         console.log(`📤 Client ${socket.id} disconnected from ${currentGameRoom}`);
+      }
+      // Если отключился мост — сбрасываем
+      if (socket.id === obsBridgeSocketId) {
+        obsBridgeSocketId = null;
+        console.log(`🔗 OBS Bridge disconnected`);
+        io.emit('obs_status', { connected: false });
       }
       console.log(`❌ Client disconnected: ${socket.id}`);
     });

@@ -997,29 +997,15 @@ const isLocalNetwork = window.location.hostname === 'localhost'
     || window.location.hostname.startsWith('10.')
     || window.location.hostname.startsWith('172.');
 
-if (!isLocalNetwork) {
-    // Скрываем OBS-секцию на удалённом хостинге
-    const obsSection = document.getElementById('obsSection');
-    if (obsSection) obsSection.style.display = 'none';
-    // Скрываем разделитель перед OBS
-    const dividers = document.querySelectorAll('.cp-divider');
-    if (dividers.length >= 2) dividers[dividers.length - 1].style.display = 'none';
-} else {
-
 const OBSManager = (() => {
-    let obs = null;
-    let connected = false;
-    let scenes = [];
-    let currentScene = '';
+    let obsScenes = [];
+    let obsCurrentScene = '';
+    let obsConnected = false;
+    let localObs = null;
 
     const statusDot = document.getElementById('obsStatus');
     const connectBtn = document.getElementById('obsConnectBtn');
-    const obsSection = document.getElementById('obsSection');
-
-    // Загружаем настройки из localStorage
-    const savedObs = JSON.parse(localStorage.getItem('obs_settings') || '{}');
-    let obsUrl = savedObs.url || 'ws://192.168.0.121:4455';
-    let obsPassword = savedObs.password || '';
+    const obsSectionEl = document.getElementById('obsSection');
 
     function setStatus(status) {
         statusDot.classList.remove('connected', 'error');
@@ -1038,122 +1024,124 @@ const OBSManager = (() => {
     }
 
     function renderSceneButtons() {
-        // Удаляем старые кнопки сцен
-        obsSection.querySelectorAll('.obs-scene-btn').forEach(b => b.remove());
-
-        scenes.forEach(scene => {
+        obsSectionEl.querySelectorAll('.obs-scene-btn').forEach(b => b.remove());
+        obsScenes.forEach(scene => {
             const btn = document.createElement('button');
             btn.className = 'obs-scene-btn';
-            if (scene === currentScene) btn.classList.add('active-scene');
+            if (scene === obsCurrentScene) btn.classList.add('active-scene');
             btn.textContent = scene;
-            btn.addEventListener('click', () => switchScene(scene));
-            obsSection.appendChild(btn);
+            btn.addEventListener('click', () => doSwitchScene(scene));
+            obsSectionEl.appendChild(btn);
         });
     }
 
-    async function connect() {
-        // Показать промпт для настроек
-        const url = prompt('OBS WebSocket адрес:', obsUrl);
-        if (!url) return;
-        obsUrl = url;
+    function doSwitchScene(sceneName) {
+        if (isLocalNetwork && localObs) {
+            // Прямое подключение
+            localObs.call('SetCurrentProgramScene', { sceneName }).catch(err => {
+                UI.showToast('Ошибка переключения сцены', 'error');
+            });
+        } else {
+            // Через мост
+            socket.emit('obs_command', { action: 'switch_scene', sceneName });
+        }
+    }
 
-        const pass = prompt('OBS пароль (оставьте пустым, если нет):', obsPassword);
-        obsPassword = pass || '';
+    // === Режим моста (Render) ===
+    function setupBridgeMode() {
+        // Запрашиваем состояние OBS у моста
+        socket.emit('obs_command', { action: 'get_scenes' });
 
-        localStorage.setItem('obs_settings', JSON.stringify({ url: obsUrl, password: obsPassword }));
-
-        try {
-            if (obs) {
-                try { await obs.disconnect(); } catch(e) {}
+        socket.on('obs_status', (data) => {
+            obsConnected = data.connected;
+            if (data.connected) {
+                setStatus('connected');
+                obsScenes = data.scenes || [];
+                obsCurrentScene = data.currentScene || '';
+                renderSceneButtons();
+            } else {
+                setStatus('disconnected');
+                obsScenes = [];
+                renderSceneButtons();
             }
+        });
 
-            obs = new OBSWebSocket();
-
-            const connectParams = obsPassword
-                ? { rpcVersion: 1, authentication: obsPassword }
-                : { rpcVersion: 1 };
-
-            await obs.connect(obsUrl, obsPassword || undefined);
-            connected = true;
-            setStatus('connected');
-
-            // Получить список сцен
-            const { scenes: sceneList, currentProgramSceneName } = await obs.call('GetSceneList');
-            scenes = sceneList.map(s => s.sceneName).reverse();
-            currentScene = currentProgramSceneName;
+        socket.on('obs_scene_changed', (data) => {
+            obsCurrentScene = data.sceneName;
+            obsScenes = data.scenes || obsScenes;
             renderSceneButtons();
+        });
 
-            // Слушать переключение сцен
-            obs.on('CurrentProgramSceneChanged', (data) => {
-                currentScene = data.sceneName;
+        connectBtn.addEventListener('click', () => {
+            socket.emit('obs_command', { action: 'get_scenes' });
+            UI.showToast('Запрос состояния OBS отправлен');
+        });
+    }
+
+    // === Режим прямого подключения (локалка) ===
+    async function setupLocalMode() {
+        const savedObs = JSON.parse(localStorage.getItem('obs_settings') || '{}');
+        let obsUrl = savedObs.url || 'ws://192.168.0.121:4455';
+        let obsPassword = savedObs.password || '';
+
+        async function connectLocal(url, password) {
+            try {
+                if (localObs) { try { await localObs.disconnect(); } catch(e) {} }
+
+                localObs = new OBSWebSocket();
+                await localObs.connect(url, password || undefined);
+                obsConnected = true;
+                setStatus('connected');
+
+                const { scenes: sceneList, currentProgramSceneName } = await localObs.call('GetSceneList');
+                obsScenes = sceneList.map(s => s.sceneName).reverse();
+                obsCurrentScene = currentProgramSceneName;
                 renderSceneButtons();
-            });
 
-            obs.on('ConnectionClosed', () => {
-                connected = false;
-                setStatus('disconnected');
-                scenes = [];
-                renderSceneButtons();
-            });
+                localObs.on('CurrentProgramSceneChanged', (data) => {
+                    obsCurrentScene = data.sceneName;
+                    renderSceneButtons();
+                });
 
-        } catch (err) {
-            console.error('OBS connect error:', err);
-            setStatus('error');
-            UI.showToast('Ошибка подключения к OBS: ' + err.message, 'error');
+                localObs.on('ConnectionClosed', () => {
+                    obsConnected = false;
+                    setStatus('disconnected');
+                    obsScenes = [];
+                    renderSceneButtons();
+                });
+
+            } catch (err) {
+                console.error('OBS connect error:', err);
+                setStatus('error');
+                UI.showToast('Ошибка подключения к OBS: ' + err.message, 'error');
+            }
+        }
+
+        connectBtn.addEventListener('click', async () => {
+            const url = prompt('OBS WebSocket адрес:', obsUrl);
+            if (!url) return;
+            obsUrl = url;
+            const pass = prompt('OBS пароль (оставьте пустым):', obsPassword);
+            obsPassword = pass || '';
+            localStorage.setItem('obs_settings', JSON.stringify({ url: obsUrl, password: obsPassword }));
+            await connectLocal(obsUrl, obsPassword);
+        });
+
+        // Автоподключение
+        if (savedObs.url) {
+            await connectLocal(savedObs.url, savedObs.password || '');
         }
     }
 
-    async function switchScene(sceneName) {
-        if (!connected || !obs) {
-            UI.showToast('OBS не подключен', 'error');
-            return;
-        }
-        try {
-            await obs.call('SetCurrentProgramScene', { sceneName });
-        } catch (err) {
-            UI.showToast('Ошибка переключения сцены', 'error');
-            console.error(err);
-        }
+    // Выбираем режим
+    if (isLocalNetwork) {
+        setupLocalMode();
+    } else {
+        setupBridgeMode();
     }
 
-    // Автоподключение если были сохранены настройки
-    async function autoConnect() {
-        if (!savedObs.url) return;
-        try {
-            obs = new OBSWebSocket();
-            await obs.connect(savedObs.url, savedObs.password || undefined);
-            connected = true;
-            setStatus('connected');
-
-            const { scenes: sceneList, currentProgramSceneName } = await obs.call('GetSceneList');
-            scenes = sceneList.map(s => s.sceneName).reverse();
-            currentScene = currentProgramSceneName;
-            renderSceneButtons();
-
-            obs.on('CurrentProgramSceneChanged', (data) => {
-                currentScene = data.sceneName;
-                renderSceneButtons();
-            });
-
-            obs.on('ConnectionClosed', () => {
-                connected = false;
-                setStatus('disconnected');
-                scenes = [];
-                renderSceneButtons();
-            });
-        } catch (err) {
-            setStatus('disconnected');
-        }
-    }
-
-    connectBtn.addEventListener('click', connect);
-
-    // Автоподключение при загрузке
-    autoConnect();
-
-    return { connect, switchScene };
+    return { doSwitchScene };
 })();
-} // закрытие else для isLocalNetwork
 </script>
 </body>
 </html>
