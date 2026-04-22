@@ -1019,9 +1019,65 @@ body.has-control-panel .content {
 }
 
 /* === Мобильная адаптация панели === */
+/* === Мобильная адаптация панели === */
 @media (max-width: 768px) {
+    .control-panel {
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px 10px;
+        align-items: stretch;
+    }
+
+    .cp-divider {
+        display: none;
+    }
+
+    /* Таймер — горизонтальная строка */
+    .cp-timer {
+        order: 1;
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .timer-btn {
+        flex: 1;
+        max-width: 120px;
+    }
+
+    .timer-reset-btn {
+        flex: 0 0 40px;
+    }
+
+    /* Музыка — две строки: кнопки + название, прогресс-бар */
     .cp-music {
+        order: 2;
+        display: flex;
         flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+    }
+
+    .music-btn {
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+    }
+
+    .music-btn svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .music-track-name {
+        flex: 1;
+        min-width: 0;
+        max-width: none;
+        font-size: 12px;
+        text-align: left;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .music-volume {
@@ -1038,7 +1094,7 @@ body.has-control-panel .content {
         border-radius: 2px;
         outline: none;
         order: 10;
-        margin-top: 4px;
+        flex-basis: 100%;
     }
 
     .music-progress::-webkit-slider-thumb {
@@ -1050,8 +1106,80 @@ body.has-control-panel .content {
         cursor: pointer;
     }
 
+    /* OBS — горизонтальная строка с прокруткой */
+    .cp-obs {
+        order: 3;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 2px;
+    }
+
+    .cp-obs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .obs-status {
+        flex-shrink: 0;
+    }
+
+    .obs-connect-btn {
+        flex-shrink: 0;
+        font-size: 11px;
+        padding: 0 8px;
+        height: 28px;
+    }
+
+    .obs-scene-btn {
+        flex-shrink: 0;
+        font-size: 11px;
+        padding: 0 8px;
+        height: 28px;
+        white-space: nowrap;
+    }
+
+    body.has-control-panel .content {
+        padding-bottom: 170px;
+    }
+}
+
+@media (max-width: 400px) {
+    .timer-btn {
+        min-width: 50px;
+        font-size: 14px;
+        height: 36px;
+    }
+
+    .timer-reset-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+
+    .music-btn {
+        width: 28px;
+        height: 28px;
+    }
+
+    .music-btn svg {
+        width: 12px;
+        height: 12px;
+    }
+
     .music-track-name {
-        max-width: none;
-        flex: 1;
+        font-size: 11px;
+    }
+
+    .obs-connect-btn,
+    .obs-scene-btn {
+        font-size: 10px;
+        height: 26px;
+        padding: 0 6px;
+    }
+
+    body.has-control-panel .content {
+        padding-bottom: 180px;
     }
 }
