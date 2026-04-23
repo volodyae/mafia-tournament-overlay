@@ -1058,15 +1058,15 @@ body.has-control-panel .content {
         align-items: center;
     }
 
-    .music-btn {
-        width: 32px;
-        height: 32px;
+        .music-btn {
+        width: 48px;
+        height: 48px;
         flex-shrink: 0;
     }
 
     .music-btn svg {
-        width: 14px;
-        height: 14px;
+        width: 20px;
+        height: 20px;
     }
 
     .music-track-name {
@@ -1086,7 +1086,8 @@ body.has-control-panel .content {
 
     .music-progress {
         display: block;
-        width: 100%;
+        width: calc(100% - 24px);
+        margin: 4px auto 8px;
         height: 4px;
         -webkit-appearance: none;
         appearance: none;
@@ -1159,13 +1160,13 @@ body.has-control-panel .content {
     }
 
     .music-btn {
-        width: 28px;
-        height: 28px;
+        width: 42px;
+        height: 42px;
     }
 
     .music-btn svg {
-        width: 12px;
-        height: 12px;
+        width: 18px;
+        height: 18px;
     }
 
     .music-track-name {

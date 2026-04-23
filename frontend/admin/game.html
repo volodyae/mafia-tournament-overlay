@@ -1009,8 +1009,34 @@ const MusicPlayer = (() => {
     });
 
     playBtn.addEventListener('click', togglePlay);
-    prevBtn.addEventListener('click', () => { playTrack(currentIndex - 1); if (!isPlaying) togglePlay(); });
-    nextBtn.addEventListener('click', () => { playTrack(currentIndex + 1); if (!isPlaying) togglePlay(); });
+        prevBtn.addEventListener('click', () => {
+        if (tracks.length === 0) return;
+        let newIndex = currentIndex - 1;
+        if (newIndex < 0) newIndex = tracks.length - 1;
+        currentIndex = newIndex;
+        const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
+        audio.src = `${baseUrl}${tracks[currentIndex].url}`;
+        trackName.textContent = tracks[currentIndex].name;
+        progressSlider.value = 0;
+        if (isPlaying) {
+            fadeIn();
+        }
+    });
+
+    nextBtn.addEventListener('click', () => {
+        if (tracks.length === 0) return;
+        let newIndex = currentIndex + 1;
+        if (newIndex >= tracks.length) newIndex = 0;
+        currentIndex = newIndex;
+        const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
+        audio.src = `${baseUrl}${tracks[currentIndex].url}`;
+        trackName.textContent = tracks[currentIndex].name;
+        progressSlider.value = 0;
+        if (isPlaying) {
+            fadeIn();
+        }
+    });
+
     volumeSlider.addEventListener('input', () => {
         if (!fadeInterval) {
             audio.volume = volumeSlider.value / 100;
