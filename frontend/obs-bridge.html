@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Bridge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #020617;
+            color: #F9FAFB;
+            padding: 40px;
+            line-height: 1.6;
+        }
+        h1 { font-size: 24px; margin-bottom: 24px; }
+        .status-block {
+            background: #111827;
+            border: 1px solid #1F2937;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #6B7280;
+            flex-shrink: 0;
+        }
+        .status-dot.ok { background: #10B981; box-shadow: 0 0 8px rgba(16,185,129,0.5); }
+        .status-dot.err { background: #EF4444; }
+        .label { color: #9CA3AF; font-size: 14px; min-width: 140px; }
+        .value { font-weight: 600; }
+        .form-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+        input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #1F2937;
+            border-radius: 8px;
+            background: #020617;
+            color: #F9FAFB;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #3B82F6;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover { background: #2563EB; }
+        .log {
+            background: #111827;
+            border: 1px solid #1F2937;
+            border-radius: 12px;
+            padding: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #9CA3AF;
+        }
+        .log-entry { margin-bottom: 4px; }
+        .log-entry.ok { color: #10B981; }
+        .log-entry.err { color: #EF4444; }
+        .log-entry.cmd { color: #F59E0B; }
+        .scenes-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .scene-tag {
+            padding: 6px 12px;
+            background: #1F2937;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .scene-tag.active { background: #10B981; color: #111827; font-weight: 600; }
+        /* Мобильная адаптация */
+@media (max-width: 768px) {
+    body {
+        padding: 16px;
+    }
+
+    h1 {
+        font-size: 20px;
+    }
+
+    .status-block {
+        padding: 14px;
+    }
+
+    .form-row {
+        flex-direction: column;
+    }
+
+    .form-row input {
+        width: 100%;
+    }
+
+    .form-row button {
+        width: 100%;
+    }
+
+    .status-row {
+        flex-wrap: wrap;
+    }
+
+    .label {
+        min-width: 100px;
+        font-size: 13px;
+    }
+
+    .value {
+        font-size: 14px;
+    }
+
+    .scenes-list {
+        gap: 6px;
+    }
+
+    .scene-tag {
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+
+    .log {
+        font-size: 11px;
+        max-height: 200px;
+        padding: 12px;
+    }
+}
+
+@media (max-width: 400px) {
+    body {
+        padding: 12px;
+    }
+
+    h1 {
+        font-size: 18px;
+    }
+
+    .status-block {
+        padding: 10px;
+        border-radius: 8px;
+    }
+
+    .label {
+        min-width: 80px;
+        font-size: 12px;
+    }
+
+    .value {
+        font-size: 13px;
+    }
+
+    input {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+
+    button {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+}
+    </style>
+</head>
+<body>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+    <h1 style="margin:0;">🔗 OBS Bridge</h1>
+    <a href="/admin/index.html" style="color:#3B82F6; text-decoration:none; font-size:14px;">← Назад в админку</a>
+</div>
+
+    <p style="color:#9CA3AF; margin-bottom:24px; margin-top:0;">
+        Эта страница должна быть открыта на компьютере, где запущен OBS.
+        Она связывает сервер (Render) с OBS через WebSocket.
+    </p>
+
+    <!-- Сервер -->
+    <div class="status-block">
+        <h3 style="margin-bottom:12px;">📡 Сервер</h3>
+        <div class="status-row">
+            <div class="status-dot" id="serverDot"></div>
+            <span class="label">Статус:</span>
+            <span class="value" id="serverStatus">Отключен</span>
+        </div>
+    </div>
+
+    <!-- OBS -->
+    <div class="status-block">
+        <h3 style="margin-bottom:12px;">🎬 OBS WebSocket</h3>
+        <div class="form-row">
+            <input type="text" id="obsUrl" placeholder="ws://localhost:4455" value="ws://localhost:4455">
+            <input type="text" id="obsPass" placeholder="Пароль (если есть)" value="">
+            <button id="obsConnectBtn">Подключить</button>
+        </div>
+        <div class="status-row">
+            <div class="status-dot" id="obsDot"></div>
+            <span class="label">Статус:</span>
+            <span class="value" id="obsStatus">Отключен</span>
+        </div>
+        <div class="status-row">
+            <span class="label">Текущая сцена:</span>
+            <span class="value" id="currentScene">—</span>
+        </div>
+        <div class="scenes-list" id="scenesList"></div>
+    </div>
+
+    <!-- Лог -->
+    <h3 style="margin-bottom:12px;">📋 Лог событий</h3>
+    <div class="log" id="logBox"></div>
+
+    <script src="/config.js"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/obs-websocket-js@5/dist/obs-ws.min.js"></script>
+    <script>
+    const logBox = document.getElementById('logBox');
+
+    function log(msg, type = '') {
+        const el = document.createElement('div');
+        el.className = 'log-entry ' + type;
+        el.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        logBox.prepend(el);
+        if (logBox.children.length > 200) logBox.lastChild.remove();
+    }
+
+    // ========== СЕРВЕР (Socket.io) ==========
+    const serverDot = document.getElementById('serverDot');
+    const serverStatusEl = document.getElementById('serverStatus');
+
+    const socketUrl = window.OVERLAY_CONFIG?.SOCKET_URL || window.location.origin;
+    const socket = io(socketUrl);
+
+    socket.on('connect', () => {
+        serverDot.classList.add('ok');
+        serverDot.classList.remove('err');
+        serverStatusEl.textContent = 'Подключен';
+        log('Подключен к серверу', 'ok');
+        socket.emit('obs_bridge_register');
+    });
+
+    socket.on('disconnect', () => {
+        serverDot.classList.remove('ok');
+        serverDot.classList.add('err');
+        serverStatusEl.textContent = 'Отключен';
+        log('Отключен от сервера', 'err');
+    });
+
+    // Получаем команды от админки
+    socket.on('obs_command', async (data) => {
+        log(`Команда: ${data.action} ${data.sceneName || ''}`, 'cmd');
+
+        if (data.action === 'switch_scene' && data.sceneName) {
+            await switchScene(data.sceneName);
+        } else if (data.action === 'get_scenes') {
+            await sendSceneList();
+        }
+    });
+
+    // ========== OBS ==========
+    let obs = null;
+    let obsConnected = false;
+    let scenes = [];
+    let currentScene = '';
+
+    const obsDot = document.getElementById('obsDot');
+    const obsStatusEl = document.getElementById('obsStatus');
+    const currentSceneEl = document.getElementById('currentScene');
+    const scenesListEl = document.getElementById('scenesList');
+
+    document.getElementById('obsConnectBtn').addEventListener('click', connectOBS);
+
+    async function connectOBS() {
+        const url = document.getElementById('obsUrl').value.trim();
+        const pass = document.getElementById('obsPass').value.trim();
+
+        try {
+            if (obs) { try { await obs.disconnect(); } catch(e) {} }
+
+            obs = new OBSWebSocket();
+            await obs.connect(url, pass || undefined);
+            obsConnected = true;
+
+            obsDot.classList.add('ok');
+            obsDot.classList.remove('err');
+            obsStatusEl.textContent = 'Подключен';
+            log('Подключен к OBS', 'ok');
+
+            await sendSceneList();
+
+            obs.on('CurrentProgramSceneChanged', (data) => {
+                currentScene = data.sceneName;
+                currentSceneEl.textContent = currentScene;
+                renderScenes();
+                socket.emit('obs_scene_changed', { sceneName: currentScene, scenes });
+                log(`Сцена изменена: ${currentScene}`, 'ok');
+            });
+
+            obs.on('ConnectionClosed', () => {
+                obsConnected = false;
+                obsDot.classList.remove('ok');
+                obsDot.classList.add('err');
+                obsStatusEl.textContent = 'Отключен';
+                currentSceneEl.textContent = '—';
+                scenesListEl.innerHTML = '';
+                log('OBS отключен', 'err');
+                socket.emit('obs_status', { connected: false });
+            });
+
+        } catch (err) {
+            obsDot.classList.add('err');
+            obsDot.classList.remove('ok');
+            obsStatusEl.textContent = 'Ошибка';
+            log('Ошибка подключения к OBS: ' + err.message, 'err');
+        }
+    }
+
+    async function sendSceneList() {
+        if (!obs || !obsConnected) return;
+        try {
+            const result = await obs.call('GetSceneList');
+            scenes = result.scenes.map(s => s.sceneName).reverse();
+            currentScene = result.currentProgramSceneName;
+            currentSceneEl.textContent = currentScene;
+            renderScenes();
+            socket.emit('obs_status', { connected: true, scenes, currentScene });
+        } catch (err) {
+            log('Ошибка получения сцен: ' + err.message, 'err');
+        }
+    }
+
+    async function switchScene(sceneName) {
+        if (!obs || !obsConnected) {
+            log('OBS не подключен, невозможно переключить сцену', 'err');
+            return;
+        }
+        try {
+            await obs.call('SetCurrentProgramScene', { sceneName });
+            log(`Сцена переключена: ${sceneName}`, 'ok');
+        } catch (err) {
+            log('Ошибка переключения: ' + err.message, 'err');
+        }
+    }
+
+    function renderScenes() {
+        scenesListEl.innerHTML = scenes.map(s =>
+            `<div class="scene-tag ${s === currentScene ? 'active' : ''}">${s}</div>`
+        ).join('');
+    }
+
+    // Автоподключение к OBS при загрузке
+    setTimeout(() => connectOBS(), 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админка игры</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <style>
+        .game-section {
+            background: var(--bg-primary);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .game-section h3 {
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .seating-grid {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .seating-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .seating-select-wrapper {
+            flex: 1;
+        }
+
+        .role-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .role-btn.critical-toggle {
+            border-color: #F59E0B;
+            color: #F59E0B;
+        }
+        .role-btn.critical-toggle.active {
+            background: #F59E0B;
+            border-color: #F59E0B;
+            color: #111827;
+        }
+        .position-number {
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .role-btn {
+            padding: 8px 16px;
+            border: 2px solid var(--border);
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 600;
+            font-size: 14px;
+            color: #000000;
+        }
+
+        .role-btn.active {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
+
+        .role-btn.civilian {
+            border-color: #DC2626;
+        }
+
+        .role-btn.civilian.active {
+            background: #DC2626;
+            border-color: #DC2626;
+            color: white;
+        }
+
+        .role-btn.black {
+            border-color: #1F2937;
+        }
+
+        .role-btn.black.active {
+            background: #1F2937;
+            border-color: #1F2937;
+        }
+
+        .role-btn.yellow {
+            border-color: #EAB308;
+        }
+
+        .role-btn.yellow.active {
+            background: #EAB308;
+            border-color: #EAB308;
+            color: white;
+        }
+
+        .role-btn.eliminated-toggle {
+            border-color: var(--primary);
+            color: var(--primary);
+            margin-left: 12px;
+        }
+
+        .role-btn.eliminated-toggle.active {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .best-move-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .round-card {
+            background: var(--bg-secondary);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .round-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .round-actions {
+            display: grid;
+            gap: 12px;
+        }
+
+        .action-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .action-label {
+            min-width: 80px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .overlay-link {
+            background: var(--bg-secondary);
+            padding: 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .overlay-url {
+            flex: 1;
+            font-family: monospace;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        .nominees-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .nominee-tag {
+            background: var(--primary);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nominee-tag button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+        }
+
+        .game-section-row {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .game-section-row {
+                flex-direction: column;
+            }
+        }
+
+        .nominee-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .nominee-btn {
+            min-width: 40px;
+            min-height: 40px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            background: var(--bg-secondary);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .nominee-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+
+        .nominee-btn:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        @media (max-width: 640px) {
+            .best-move-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .action-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .action-label {
+                min-width: auto;
+            }
+        }
+
+        /* Мобильные правки */
+        @media (max-width: 768px) {
+            body {
+                background: #020617;
+            }
+
+            .container {
+                max-width: 100%;
+            }
+
+            .navbar {
+                padding: 12px 14px;
+                margin-bottom: 16px;
+            }
+
+            .navbar h1 {
+                font-size: 18px;
+                margin-bottom: 8px;
+            }
+
+            .content {
+                padding: 0 12px 32px;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .page-header h2 {
+                font-size: 20px;
+            }
+
+            .tournament-card {
+                padding: 14px;
+                border-radius: 10px;
+            }
+
+            .player-card {
+                padding: 12px;
+                gap: 12px;
+            }
+
+            .player-photo,
+            .player-placeholder {
+                width: 48px;
+                height: 48px;
+            }
+
+            .btn {
+                font-size: 14px;
+                padding: 10px 14px;
+                min-height: 40px;
+            }
+
+            .tournament-actions,
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .tournament-actions .btn,
+            .form-actions .btn {
+                width: 100%;
+            }
+
+            .game-section-row {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .game-section {
+                padding: 14px;
+                border-radius: 10px;
+                margin-bottom: 12px;
+            }
+
+            .nominee-btn {
+                min-width: 36px;
+                min-height: 36px;
+                font-size: 13px;
+                padding: 4px 8px;
+            }
+
+            .modal-content {
+                max-width: 100%;
+                border-radius: 10px;
+            }
+
+            .seating-item {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+
+            .position-number {
+                align-self: center;
+            }
+
+            .seating-select-wrapper {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .seating-select-wrapper .form-select,
+            .seating-player-select {
+                width: 100%;
+            }
+
+            .role-buttons {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: flex-start;
+                gap: 6px;
+                margin-top: 4px;
+            }
+
+            .role-btn {
+                flex: 0 0 auto;
+                padding: 6px 10px;
+                font-size: 13px;
+            }
+
+            .role-btn.eliminated-toggle {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Навигация -->
+        <nav class="navbar">
+    <h1>🏆 Админ-панель Мафии</h1>
+    <div class="nav-links">
+        <a href="index.html" class="nav-link active">Турниры</a>
+        <a href="players.html" class="nav-link">Игроки</a>
+        <a href="javascript:history.back()" class="nav-link">← Назад</a>
+        <a href="/obs-bridge.html" class="nav-link" id="obsBridgeLink" target="_blank">🔗 OBS Bridge</a>
+        <a href="users.html" class="nav-link" id="usersLink" style="display:none;">Пользователи</a>
+        <span style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
+            <span id="currentUser" style="color: var(--text-secondary); font-size: 14px;"></span>
+            <a href="#" class="nav-link" id="changePassLink">🔑</a>
+            <a href="#" class="nav-link" onclick="API.logout(); return false;">Выход</a>
+        </span>
+    </div>
+</nav>
+
+        <!-- Главный контент -->
+        <div class="content">
+            <div class="page-header">
+                <h2 id="gameTitle">Загрузка...</h2>
+            </div>
+
+            <!-- Ссылка на оверлей -->
+            <div class="game-section">
+                <h3>📺 Оверлей для OBS</h3>
+                <div class="overlay-link">
+                    <div class="overlay-url" id="overlayUrl">http://localhost:3000/overlay/index.html?gameId=...</div>
+                    <button class="btn btn-primary" id="copyOverlayBtn">📋 Копировать</button>
+                </div>
+                <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" id="openOverlayBtn">👁️ Открыть предпросмотр</button>
+                    <button class="btn btn-secondary" id="toggleOverlayVisibilityBtn">Скрыть оверлей</button>
+                </div>
+            </div>
+
+            <!-- Раздача ролей + рассадка -->
+            <div class="game-section" id="rolesSection" style="display: none;">
+                <h3>👥 Рассадка и раздача ролей</h3>
+                <div id="rolesGrid">
+                    <!-- Заполняется через JS -->
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+                    <button class="btn btn-success" id="saveSeatingBtn" style="display: none;">✅ Сохранить рассадку</button>
+                </div>
+            </div>
+
+            <!-- Лучший ход -->
+            <div class="game-section" id="bestMoveSection" style="display: none;">
+              <h3>⭐ Лучший ход</h3>
+              
+              <div id="bestMoveInfo" style="margin-bottom: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
+                <p style="color: var(--text-secondary);">ПУ</p>
+              </div>
+              
+              <div class="form-group">
+                <div id="suspectsButtons" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+                  <!-- Заполняется через JS -->
+                </div>
+              </div>
+              
+              <button class="btn btn-success" id="applyBestMoveBtn">✅ Сохранить ЛХ</button>
+            </div>
+
+            <!-- Блоки Круги + Выставление рядом -->
+            <div class="game-section-row">
+                <!-- Круги игры -->
+                <div class="game-section" id="roundsSection" style="display: none; flex: 1;">
+                    <h3>🌙 Управление кругами</h3>
+                    <div id="roundsList">
+                        <!-- Заполняется через JS -->
+                    </div>
+                    <button class="btn btn-primary" id="addRoundBtn">➕ Добавить следующий круг</button>
+                </div>
+
+                <!-- Выставление на голосование -->
+                <div class="game-section" id="nomineesSection" style="display: none; flex: 1;">
+                    <h3>🎯 Выставление на голосование</h3>
+                    <div class="form-group">
+                        <label>Добавить кандидата:</label>
+                        <div id="nomineeButtons" class="nominee-buttons">
+                            <!-- Кнопки 1–10 создаёт JS -->
+                        </div>
+                    </div>
+                    <div class="nominees-list" id="nomineesList">
+                        <!-- Заполняется через JS -->
+                    </div>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button class="btn btn-danger" id="clearNomineesBtn">🗑️ Очистить всех</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Результат игры и промежуточный итог -->
+            <div class="game-section" id="resultSection">
+                <h3>🏁 Результат игры</h3>
+                <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+                    <button class="btn btn-success" id="winRedBtn">Победа МИР</button>
+                    <button class="btn btn-danger" id="winBlackBtn">Победа МАФ</button>
+                    <button class="btn btn-secondary" id="winDrawBtn">Ничья</button>
+                </div>
+                <button class="btn btn-secondary" id="showStandingsBtn" disabled>
+                    Промежуточный итог
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления/редактирования круга -->
+<div id="roundModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="roundModalTitle">Круг 1</h3>
+            <button class="close-btn" id="closeRoundModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="roundForm">
+                <input type="hidden" id="roundNumber">
+
+                <div class="form-group">
+                    <label>👍 Голосование:</label>
+                    <div id="votedOutList" style="margin-bottom: 8px;">
+                        <!-- Заполняется через JS -->
+                    </div>
+                    <select id="addVotedOut" class="form-select">
+                        <option value="">+ Добавить игрока</option>
+                        <option value="nobody">❌ Никто не выбыл</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>🔫 Убит:</label>
+                    <select id="mafiaKill" class="form-select">
+                        <option value="">Выберите игрока</option>
+                        <option value="miss">❌ Промах</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>🎩 Проверка дона:</label>
+                    <select id="donCheck" class="form-select">
+                        <option value="">Выберите игрока</option>
+                        <option value="none">❌ Не проверял</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>⭐ Проверка шерифа:</label>
+                    <select id="sheriffCheck" class="form-select">
+                        <option value="">Выберите игрока</option>
+                        <option value="none">❌ Не проверял</option>
+                    </select>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="closeRoundBtn">Закрыть</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+    <!-- Модальное окно доп. баллов судьи -->
+    <div id="scoresModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Дополнительные баллы судьи</h3>
+                <button class="close-btn" id="closeScoresModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left; padding:4px 8px;">№</th>
+                            <th style="text-align:left; padding:4px 8px;">Игрок</th>
+                            <th style="text-align:left; padding:4px 8px;">Доп. балл</th>
+                            <th style="text-align:left; padding:4px 8px;">Штраф</th>
+                            <th style="text-align:left; padding:4px 8px;">ЖК/КК/Удал</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scoresTableBody">
+                        <!-- строки создаёт JS -->
+                    </tbody>
+                </table>
+                <div class="form-actions" style="margin-top:16px;">
+                    <button type="button" class="btn btn-secondary" id="cancelScoresBtn">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="confirmScoresBtn">Подтвердить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно смены пароля -->
+    <div id="changePasswordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Смена пароля</h3>
+                <button class="close-btn" id="closePasswordModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label>Текущий пароль:</label>
+                        <input type="password" id="currentPassword" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Новый пароль:</label>
+                        <input type="password" id="newPassword" class="form-input" placeholder="Мин. 6 символов" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Повторите новый пароль:</label>
+                        <input type="password" id="confirmPassword" class="form-input" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelPasswordBtn">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Сменить пароль</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Панель управления: Таймер + Музыка + OBS -->
+<div class="control-panel" id="controlPanel">
+    <!-- Таймер -->
+    <div class="cp-timer">
+        <button class="timer-btn" id="timerBtn30" data-seconds="30">30</button>
+        <button class="timer-btn" id="timerBtn60" data-seconds="60">60</button>
+        <button class="timer-reset-btn" id="timerResetBtn" title="Сброс">↺</button>
+    </div>
+
+    <div class="cp-divider"></div>
+
+    <!-- Музыка -->
+<div class="cp-music">
+    <button class="music-btn" id="musicPrevBtn" title="Предыдущий">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h2v12H3V2zm3.5 6 8.5 6V2l-8.5 6z"/></svg>
+    </button>
+    <button class="music-btn" id="musicPlayBtn" title="Играть">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="playIcon"><path d="M4 2l10 6-10 6V2z"/></svg>
+    </button>
+    <button class="music-btn" id="musicNextBtn" title="Следующий">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M11 2h2v12h-2V2zM2.5 2l8.5 6-8.5 6V2z"/></svg>
+    </button>
+    <div class="music-track-name" id="musicTrackName">Загрузка...</div>
+    <input type="range" class="music-progress" id="musicProgress" min="0" max="100" value="0" title="Перемотка">
+    <input type="range" class="music-volume" id="musicVolume" min="0" max="100" value="70" title="Громкость">
+</div>
+
+
+    <div class="cp-divider"></div>
+
+    <!-- OBS -->
+    <div class="cp-obs" id="obsSection">
+        <div class="obs-status" id="obsStatus" title="OBS отключен"></div>
+        <button class="obs-connect-btn" id="obsConnectBtn">OBS</button>
+    </div>
+</div>
+
+    <script src="js/ui.js"></script>
+    <script src="/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="js/game.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const user = API.getUser();
+        const el = document.getElementById('currentUser');
+        if (el && user) el.textContent = user.username;
+
+        const usersLink = document.getElementById('usersLink');
+        if (usersLink && API.isSuperadmin()) usersLink.style.display = '';
+
+        const changePassLink = document.getElementById('changePassLink');
+        if (changePassLink) {
+            changePassLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('currentPassword').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('confirmPassword').value = '';
+                document.getElementById('changePasswordModal').classList.add('active');
+            });
+        }
+
+        const closeBtn = document.getElementById('closePasswordModal');
+        if (closeBtn) closeBtn.addEventListener('click', () => {
+            document.getElementById('changePasswordModal').classList.remove('active');
+        });
+
+        const cancelBtn = document.getElementById('cancelPasswordBtn');
+        if (cancelBtn) cancelBtn.addEventListener('click', () => {
+            document.getElementById('changePasswordModal').classList.remove('active');
+        });
+
+        const modal = document.getElementById('changePasswordModal');
+        if (modal) modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('active');
+        });
+
+        const form = document.getElementById('changePasswordForm');
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const current = document.getElementById('currentPassword').value;
+                const newPass = document.getElementById('newPassword').value;
+                const confirmPass = document.getElementById('confirmPassword').value;
+
+                if (newPass.length < 6) {
+                    UI.showToast('Новый пароль должен быть не менее 6 символов', 'error');
+                    return;
+                }
+                if (newPass !== confirmPass) {
+                    UI.showToast('Пароли не совпадают', 'error');
+                    return;
+                }
+
+                try {
+                    await API.request('/auth/change-password', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            current_password: current,
+                            new_password: newPass
+                        })
+                    });
+                    UI.showToast('Пароль успешно изменён');
+                    document.getElementById('changePasswordModal').classList.remove('active');
+                } catch (error) {
+                    UI.showToast('Ошибка: ' + error.message, 'error');
+                }
+            });
+        }
+    });
+    </script>
+<script src="https://cdn.jsdelivr.net/npm/obs-websocket-js@5/dist/obs-ws.min.js"></script>
+<script>
+// ============================================================
+//  ПАНЕЛЬ УПРАВЛЕНИЯ: Таймер + Музыка + OBS
+// ============================================================
+
+document.body.classList.add('has-control-panel');
+
+// ================== ТАЙМЕР ==================
+
+const TimerManager = (() => {
+    let activeBtn = null;
+    let intervalId = null;
+    let remaining = 0;
+    let totalSeconds = 0;
+    let state = 'idle'; // idle | running | paused | finished
+    let beepPlayed = false;
+
+    function formatTime(sec) {
+        const s = Math.ceil(sec);
+        return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}`;
+    }
+
+    function updateDisplay() {
+        if (!activeBtn) return;
+        const display = Math.ceil(remaining);
+        activeBtn.textContent = state === 'idle' ? activeBtn.dataset.seconds : formatTime(remaining);
+    }
+
+    function updateClasses() {
+        [document.getElementById('timerBtn30'), document.getElementById('timerBtn60')].forEach(btn => {
+            btn.classList.remove('running', 'paused', 'warning', 'finished');
+        });
+
+        if (!activeBtn || state === 'idle') return;
+
+        if (state === 'finished') {
+            activeBtn.classList.add('finished');
+        } else if (state === 'paused') {
+            activeBtn.classList.add('paused');
+            if (remaining <= 10) activeBtn.classList.add('warning');
+        } else if (state === 'running') {
+            activeBtn.classList.add('running');
+            if (remaining <= 10) {
+                activeBtn.classList.remove('running');
+                activeBtn.classList.add('warning');
+            }
+        }
+    }
+
+    function tick() {
+        remaining -= 0.1;
+        if (remaining <= 10 && !beepPlayed) {
+            beepPlayed = true;
+        }
+        if (remaining <= 0) {
+            remaining = 0;
+            state = 'finished';
+            clearInterval(intervalId);
+            intervalId = null;
+        }
+        updateDisplay();
+        updateClasses();
+    }
+
+    function handleClick(btn) {
+        const seconds = parseInt(btn.dataset.seconds);
+
+        // Если этот таймер активен
+        if (activeBtn === btn) {
+            if (state === 'running') {
+                // Пауза
+                state = 'paused';
+                clearInterval(intervalId);
+                intervalId = null;
+            } else if (state === 'paused') {
+                // Возобновить
+                state = 'running';
+                intervalId = setInterval(tick, 100);
+            } else if (state === 'finished' || state === 'idle') {
+                // Перезапуск
+                remaining = seconds;
+                totalSeconds = seconds;
+                state = 'running';
+                beepPlayed = false;
+                intervalId = setInterval(tick, 100);
+            }
+        } else {
+            // Переключение на другой таймер
+            reset(true);
+            activeBtn = btn;
+            remaining = seconds;
+            totalSeconds = seconds;
+            state = 'running';
+            beepPlayed = false;
+            intervalId = setInterval(tick, 100);
+        }
+
+        updateDisplay();
+        updateClasses();
+    }
+
+    function reset(silent) {
+        if (intervalId) clearInterval(intervalId);
+        intervalId = null;
+        state = 'idle';
+        remaining = 0;
+        beepPlayed = false;
+
+        const btn30 = document.getElementById('timerBtn30');
+        const btn60 = document.getElementById('timerBtn60');
+        btn30.textContent = '30';
+        btn60.textContent = '60';
+        [btn30, btn60].forEach(b => b.classList.remove('running', 'paused', 'warning', 'finished'));
+        activeBtn = null;
+
+        if (!silent) {
+            // тихий сброс
+        }
+    }
+
+    return { handleClick, reset };
+})();
+
+document.getElementById('timerBtn30').addEventListener('click', function() { TimerManager.handleClick(this); });
+document.getElementById('timerBtn60').addEventListener('click', function() { TimerManager.handleClick(this); });
+document.getElementById('timerResetBtn').addEventListener('click', () => TimerManager.reset(false));
+
+// ================== МУЗЫКАЛЬНЫЙ ПЛЕЕР ==================
+
+const MusicPlayer = (() => {
+    let tracks = [];
+    let currentIndex = -1;
+    let audio = new Audio();
+    let isPlaying = false;
+    const FADE_DURATION = 1000;
+    let fadeInterval = null;
+
+    const playBtn = document.getElementById('musicPlayBtn');
+    const prevBtn = document.getElementById('musicPrevBtn');
+    const nextBtn = document.getElementById('musicNextBtn');
+    const trackName = document.getElementById('musicTrackName');
+    const volumeSlider = document.getElementById('musicVolume');
+    const progressSlider = document.getElementById('musicProgress');
+
+    const playSVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2l10 6-10 6V2z"/></svg>';
+    const pauseSVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h4v12H3V2zm6 0h4v12H9V2z"/></svg>';
+
+    audio.volume = volumeSlider.value / 100;
+
+    // Обновление прогресс-бара
+    audio.addEventListener('timeupdate', () => {
+        if (audio.duration && !isNaN(audio.duration)) {
+            progressSlider.value = (audio.currentTime / audio.duration) * 100;
+        }
+    });
+
+    // Перемотка
+    progressSlider.addEventListener('input', () => {
+        if (audio.duration && !isNaN(audio.duration)) {
+            audio.currentTime = (progressSlider.value / 100) * audio.duration;
+        }
+    });
+
+    async function loadTracks() {
+        try {
+            const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
+            const response = await fetch(`${baseUrl}/api/audio`, {
+                headers: {
+                    'Authorization': 'Bearer ' + (localStorage.getItem('auth_token') || '')
+                }
+            });
+            tracks = await response.json();
+
+            if (tracks.length === 0) {
+                trackName.textContent = 'Нет треков';
+            } else {
+                currentIndex = 0;
+                trackName.textContent = tracks[0].name;
+            }
+        } catch (err) {
+            trackName.textContent = 'Ошибка загрузки';
+            console.error('Music load error:', err);
+        }
+    }
+
+    function fadeIn(callback) {
+        if (fadeInterval) clearInterval(fadeInterval);
+        const targetVol = volumeSlider.value / 100;
+        audio.volume = 0;
+        audio.play();
+        let vol = 0;
+        const step = targetVol / (FADE_DURATION / 50);
+        fadeInterval = setInterval(() => {
+            vol += step;
+            if (vol >= targetVol) {
+                vol = targetVol;
+                clearInterval(fadeInterval);
+                fadeInterval = null;
+                if (callback) callback();
+            }
+            audio.volume = vol;
+        }, 50);
+    }
+
+    function fadeOut(callback) {
+        if (fadeInterval) clearInterval(fadeInterval);
+        let vol = audio.volume;
+        const step = vol / (FADE_DURATION / 50);
+        fadeInterval = setInterval(() => {
+            vol -= step;
+            if (vol <= 0) {
+                vol = 0;
+                audio.volume = 0;
+                audio.pause();
+                clearInterval(fadeInterval);
+                fadeInterval = null;
+                if (callback) callback();
+            }
+            audio.volume = Math.max(0, vol);
+        }, 50);
+    }
+
+    function playTrack(index) {
+        if (tracks.length === 0) return;
+        if (index < 0) index = tracks.length - 1;
+        if (index >= tracks.length) index = 0;
+        currentIndex = index;
+
+        const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
+        const url = `${baseUrl}${tracks[currentIndex].url}`;
+        trackName.textContent = tracks[currentIndex].name;
+        progressSlider.value = 0;
+
+        const wasPlaying = isPlaying;
+
+        if (wasPlaying) {
+            fadeOut(() => {
+                audio.src = url;
+                fadeIn();
+            });
+        } else {
+            audio.src = url;
+        }
+    }
+
+    function setPlayIcon() {
+        playBtn.innerHTML = playSVG;
+        playBtn.classList.remove('playing');
+    }
+
+    function setPauseIcon() {
+        playBtn.innerHTML = pauseSVG;
+        playBtn.classList.add('playing');
+    }
+
+    function togglePlay() {
+        if (tracks.length === 0) return;
+
+        if (isPlaying) {
+            fadeOut();
+            isPlaying = false;
+            setPlayIcon();
+        } else {
+            if (!audio.src || audio.ended) {
+                const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
+                audio.src = `${baseUrl}${tracks[currentIndex >= 0 ? currentIndex : 0].url}`;
+                if (currentIndex < 0) currentIndex = 0;
+                trackName.textContent = tracks[currentIndex].name;
+            }
+            fadeIn();
+            isPlaying = true;
+            setPauseIcon();
+        }
+    }
+
+    audio.addEventListener('ended', () => {
+        if (currentIndex < tracks.length - 1) {
+            currentIndex++;
+            const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
+            audio.src = `${baseUrl}${tracks[currentIndex].url}`;
+            trackName.textContent = tracks[currentIndex].name;
+            progressSlider.value = 0;
+            fadeIn();
+        } else {
+            isPlaying = false;
+            setPlayIcon();
+            progressSlider.value = 0;
+        }
+    });
+
+    playBtn.addEventListener('click', togglePlay);
+        prevBtn.addEventListener('click', () => {
+        if (tracks.length === 0) return;
+        let newIndex = currentIndex - 1;
+        if (newIndex < 0) newIndex = tracks.length - 1;
+        currentIndex = newIndex;
+        const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
+        audio.src = `${baseUrl}${tracks[currentIndex].url}`;
+        trackName.textContent = tracks[currentIndex].name;
+        progressSlider.value = 0;
+        if (isPlaying) {
+            fadeIn();
+        }
+    });
+
+    nextBtn.addEventListener('click', () => {
+        if (tracks.length === 0) return;
+        let newIndex = currentIndex + 1;
+        if (newIndex >= tracks.length) newIndex = 0;
+        currentIndex = newIndex;
+        const baseUrl = window.OVERLAY_CONFIG?.BASE_URL || '';
+        audio.src = `${baseUrl}${tracks[currentIndex].url}`;
+        trackName.textContent = tracks[currentIndex].name;
+        progressSlider.value = 0;
+        if (isPlaying) {
+            fadeIn();
+        }
+    });
+
+    volumeSlider.addEventListener('input', () => {
+        if (!fadeInterval) {
+            audio.volume = volumeSlider.value / 100;
+        }
+    });
+
+    loadTracks();
+
+    return { loadTracks };
+})();
+
+// ================== OBS WEBSOCKET ==================
+
+const isLocalNetwork = window.location.hostname === 'localhost'
+    || window.location.hostname === '127.0.0.1'
+    || window.location.hostname.startsWith('192.168.')
+    || window.location.hostname.startsWith('10.')
+    || window.location.hostname.startsWith('172.');
+
+function waitForSocket(callback) {
+    if (window.gameSocket && window.gameSocket.connected) {
+        callback(window.gameSocket);
+    } else {
+        const check = setInterval(() => {
+            if (window.gameSocket && window.gameSocket.connected) {
+                clearInterval(check);
+                callback(window.gameSocket);
+            }
+        }, 300);
+        // Таймаут 15 секунд
+        setTimeout(() => clearInterval(check), 15000);
+    }
+}
+
+const OBSManager = (() => {
+    let obsScenes = [];
+    let obsCurrentScene = '';
+    let obsConnected = false;
+    let localObs = null;
+
+    const statusDot = document.getElementById('obsStatus');
+    const connectBtn = document.getElementById('obsConnectBtn');
+    const obsSectionEl = document.getElementById('obsSection');
+
+    function setStatus(status) {
+        statusDot.classList.remove('connected', 'error');
+        if (status === 'connected') {
+            statusDot.classList.add('connected');
+            statusDot.title = 'OBS подключен';
+            connectBtn.textContent = 'OBS ✓';
+        } else if (status === 'error') {
+            statusDot.classList.add('error');
+            statusDot.title = 'Ошибка подключения';
+            connectBtn.textContent = 'OBS ✗';
+        } else {
+            statusDot.title = 'OBS отключен';
+            connectBtn.textContent = 'OBS';
+        }
+    }
+
+    function renderSceneButtons() {
+        obsSectionEl.querySelectorAll('.obs-scene-btn').forEach(b => b.remove());
+        obsScenes.forEach(scene => {
+            const btn = document.createElement('button');
+            btn.className = 'obs-scene-btn';
+            if (scene === obsCurrentScene) btn.classList.add('active-scene');
+            btn.textContent = scene;
+            btn.addEventListener('click', () => doSwitchScene(scene));
+            obsSectionEl.appendChild(btn);
+        });
+    }
+
+    function doSwitchScene(sceneName) {
+        if (isLocalNetwork && localObs) {
+            localObs.call('SetCurrentProgramScene', { sceneName }).catch(err => {
+                UI.showToast('Ошибка переключения сцены', 'error');
+            });
+        } else if (window.gameSocket) {
+            window.gameSocket.emit('obs_command', { action: 'switch_scene', sceneName });
+        }
+    }
+
+    // === Режим моста (Render) ===
+    function setupBridgeMode() {
+        waitForSocket((sock) => {
+            sock.emit('obs_command', { action: 'get_scenes' });
+
+            sock.on('obs_status', (data) => {
+                obsConnected = data.connected;
+                if (data.connected) {
+                    setStatus('connected');
+                    obsScenes = data.scenes || [];
+                    obsCurrentScene = data.currentScene || '';
+                    renderSceneButtons();
+                } else {
+                    setStatus('disconnected');
+                    obsScenes = [];
+                    renderSceneButtons();
+                }
+            });
+
+            sock.on('obs_scene_changed', (data) => {
+                obsCurrentScene = data.sceneName;
+                obsScenes = data.scenes || obsScenes;
+                renderSceneButtons();
+            });
+        });
+
+        connectBtn.addEventListener('click', () => {
+            if (window.gameSocket) {
+                window.gameSocket.emit('obs_command', { action: 'get_scenes' });
+                UI.showToast('Запрос состояния OBS отправлен');
+            } else {
+                UI.showToast('Сокет не подключен', 'error');
+            }
+        });
+    }
+
+    // === Режим прямого подключения (локалка) ===
+    async function setupLocalMode() {
+        const savedObs = JSON.parse(localStorage.getItem('obs_settings') || '{}');
+        let obsUrl = savedObs.url || 'ws://192.168.0.121:4455';
+        let obsPassword = savedObs.password || '';
+
+        async function connectLocal(url, password) {
+            try {
+                if (localObs) { try { await localObs.disconnect(); } catch(e) {} }
+
+                localObs = new OBSWebSocket();
+                await localObs.connect(url, password || undefined);
+                obsConnected = true;
+                setStatus('connected');
+
+                const { scenes: sceneList, currentProgramSceneName } = await localObs.call('GetSceneList');
+                obsScenes = sceneList.map(s => s.sceneName).reverse();
+                obsCurrentScene = currentProgramSceneName;
+                renderSceneButtons();
+
+                localObs.on('CurrentProgramSceneChanged', (data) => {
+                    obsCurrentScene = data.sceneName;
+                    renderSceneButtons();
+                });
+
+                localObs.on('ConnectionClosed', () => {
+                    obsConnected = false;
+                    setStatus('disconnected');
+                    obsScenes = [];
+                    renderSceneButtons();
+                });
+
+            } catch (err) {
+                console.error('OBS connect error:', err);
+                setStatus('error');
+                UI.showToast('Ошибка подключения к OBS: ' + err.message, 'error');
+            }
+        }
+
+        connectBtn.addEventListener('click', async () => {
+            const url = prompt('OBS WebSocket адрес:', obsUrl);
+            if (!url) return;
+            obsUrl = url;
+            const pass = prompt('OBS пароль (оставьте пустым):', obsPassword);
+            obsPassword = pass || '';
+            localStorage.setItem('obs_settings', JSON.stringify({ url: obsUrl, password: obsPassword }));
+            await connectLocal(obsUrl, obsPassword);
+        });
+
+        if (savedObs.url) {
+            await connectLocal(savedObs.url, savedObs.password || '');
+        }
+    }
+
+    if (isLocalNetwork) {
+        setupLocalMode();
+    } else {
+        setupBridgeMode();
+    }
+
+    return { doSwitchScene };
+})();
+</script>
+</body>
+</html>
