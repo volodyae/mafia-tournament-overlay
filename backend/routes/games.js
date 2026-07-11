@@ -4,16 +4,12 @@ const router = express.Router();
 const pool = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const Game = require('../models/Game');
-<<<<<<< HEAD
 const { requireAuth } = require('../middleware/auth');
-=======
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
 
 // Хелпер: достаём io из app в момент вызова, а не при загрузке модуля
 function getIO(req) {
   return req.app.get('io');
 }
-<<<<<<< HEAD
 // ============================================================
 // РАСЧЁТ АВТО-ШТРАФА ЗА КАРТОЧКИ / УДАЛЕНИЕ
 // ============================================================
@@ -110,8 +106,6 @@ async function getTournamentIdByGame(dbClient, gameId) {
   );
   return res.rows[0]?.tournament_id || null;
 }
-=======
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
 
 // Получить игру по номеру внутри турнира
 router.get('/by-number/:tournamentId/:gameNumber', async (req, res) => {
@@ -153,11 +147,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Создать игру
-<<<<<<< HEAD
 router.post('/', requireAuth, async (req, res) => {
-=======
-router.post('/', async (req, res) => {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   try {
     const { tournament_id, game_number, table_number, series_name } = req.body;
     const game = await Game.create({ tournament_id, game_number, table_number, series_name });
@@ -169,11 +159,7 @@ router.post('/', async (req, res) => {
 });
 
 // Скрыть / показать оверлей
-<<<<<<< HEAD
 router.post('/:id/overlay-visibility', requireAuth, async (req, res) => {
-=======
-router.post('/:id/overlay-visibility', async (req, res) => {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   try {
     const gameId = req.params.id;
     const { overlay_hidden } = req.body;
@@ -195,11 +181,7 @@ router.post('/:id/overlay-visibility', async (req, res) => {
 });
 
 // Создать или обновить рассадку игры, сохраняя роли
-<<<<<<< HEAD
 router.post('/:id/seating', requireAuth, async (req, res) => {
-=======
-router.post('/:id/seating', async (req, res) => {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   const client = await pool.connect();
 
   try {
@@ -251,11 +233,7 @@ router.post('/:id/seating', async (req, res) => {
 });
 
 // Назначить роли
-<<<<<<< HEAD
 router.post('/:id/roles', requireAuth, async (req, res) => {
-=======
-router.post('/:id/roles', async (req, res) => {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   const client = await pool.connect();
 
   try {
@@ -287,11 +265,7 @@ router.post('/:id/roles', async (req, res) => {
 });
 
 // Обновить список выставленных на голосование
-<<<<<<< HEAD
 router.put('/:id/nominees', requireAuth, async (req, res) => {
-=======
-router.put('/:id/nominees', async (req, res) => {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   try {
     const gameId = req.params.id;
     const { player_ids } = req.body;
@@ -329,11 +303,7 @@ router.put('/:id/nominees', async (req, res) => {
 });
 
 // Добавить круг
-<<<<<<< HEAD
 router.post('/:id/rounds', requireAuth, async (req, res) => {
-=======
-router.post('/:id/rounds', async (req, res) => {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   try {
     const gameId = req.params.id;
     const {
@@ -374,20 +344,15 @@ router.post('/:id/rounds', async (req, res) => {
       if (!round.mafia_miss && round.mafia_kill_player_id) {
         firstKilledPlayerId = round.mafia_kill_player_id;
       }
-<<<<<<< HEAD
 
       if (firstKilledPlayerId) {
         // Есть первый убитый — записываем его, подозреваемых не трогаем
-=======
-      if (firstKilledPlayerId) {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
         await pool.query(
           `INSERT INTO best_move (id, game_id, first_killed_player_id)
            VALUES ($1, $2, $3)
            ON CONFLICT (game_id) DO UPDATE SET first_killed_player_id = EXCLUDED.first_killed_player_id`,
           [uuidv4(), gameId, firstKilledPlayerId]
         );
-<<<<<<< HEAD
       } else {
         // Убийство отменено/промах — ЛХ невозможен, обнуляем всё
         await pool.query(
@@ -396,8 +361,6 @@ router.post('/:id/rounds', async (req, res) => {
            WHERE game_id = $1`,
           [gameId]
         );
-=======
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
       }
     }
 
@@ -409,11 +372,7 @@ router.post('/:id/rounds', async (req, res) => {
 });
 
 // Обновить круг
-<<<<<<< HEAD
 router.put('/:id/rounds/:roundNumber', requireAuth, async (req, res) => {
-=======
-router.put('/:id/rounds/:roundNumber', async (req, res) => {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   try {
     const gameId = req.params.id;
     const roundNumber = parseInt(req.params.roundNumber, 10);
@@ -447,20 +406,15 @@ router.put('/:id/rounds/:roundNumber', async (req, res) => {
       if (!round.mafia_miss && round.mafia_kill_player_id) {
         firstKilledPlayerId = round.mafia_kill_player_id;
       }
-<<<<<<< HEAD
 
       if (firstKilledPlayerId) {
         // Есть первый убитый — записываем его, подозреваемых не трогаем
-=======
-      if (firstKilledPlayerId) {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
         await pool.query(
           `INSERT INTO best_move (id, game_id, first_killed_player_id)
            VALUES ($1, $2, $3)
            ON CONFLICT (game_id) DO UPDATE SET first_killed_player_id = EXCLUDED.first_killed_player_id`,
           [uuidv4(), gameId, firstKilledPlayerId]
         );
-<<<<<<< HEAD
       } else {
         // Убийство отменено/промах — ЛХ невозможен, обнуляем всё
         await pool.query(
@@ -469,8 +423,6 @@ router.put('/:id/rounds/:roundNumber', async (req, res) => {
            WHERE game_id = $1`,
           [gameId]
         );
-=======
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
       }
     }
 
@@ -482,11 +434,7 @@ router.put('/:id/rounds/:roundNumber', async (req, res) => {
 });
 
 // Установить лучший ход
-<<<<<<< HEAD
 router.post('/:id/best-move', requireAuth, async (req, res) => {
-=======
-router.post('/:id/best-move', async (req, res) => {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   try {
     const gameId = req.params.id;
     const { first_killed_player_id, suspect_1, suspect_2, suspect_3 } = req.body;
@@ -511,11 +459,7 @@ router.post('/:id/best-move', async (req, res) => {
 });
 
 // Дисквалификация / восстановление игрока
-<<<<<<< HEAD
 router.post('/:id/player-elimination', requireAuth, async (req, res) => {
-=======
-router.post('/:id/player-elimination', async (req, res) => {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   try {
     const gameId = req.params.id;
     const { player_id, eliminated } = req.body;
@@ -535,7 +479,6 @@ router.post('/:id/player-elimination', async (req, res) => {
       [makeRemoved, gameId, player_id]
     );
 
-<<<<<<< HEAD
         if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Seating record not found for this player in game' });
     }
@@ -546,19 +489,12 @@ router.post('/:id/player-elimination', async (req, res) => {
       await recalcTournamentPenaltiesForPlayer(pool, tournamentId, player_id);
     }
 
-=======
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Seating record not found for this player in game' });
-    }
-
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating player elimination:', error);
     res.status(500).json({ error: error.message });
   }
 });
-<<<<<<< HEAD
 // Установить/снять критичность круга для игрока (для расчёта штрафа за удаление)
 router.post('/:id/player-critical', requireAuth, async (req, res) => {
   try {
@@ -628,11 +564,6 @@ router.get('/:id/card-penalties', requireAuth, async (req, res) => {
 
 // Установить карточку игроку
 router.post('/:id/player-card', requireAuth, async (req, res) => {
-=======
-
-// Установить карточку игроку
-router.post('/:id/player-card', async (req, res) => {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   try {
     const gameId = req.params.id;
     const { player_id, card } = req.body;
@@ -650,25 +581,17 @@ router.post('/:id/player-card', async (req, res) => {
       [finalCard, gameId, player_id]
     );
 
-<<<<<<< HEAD
         if (result.rows.length === 0) {
-=======
-    if (result.rows.length === 0) {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
       return res.status(404).json({ error: 'Seating record not found for this player in game' });
     }
 
     if (finalCard === 'red') {
-<<<<<<< HEAD
       // Красная карточка — удаляем игрока
-=======
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
       await pool.query(
         `UPDATE game_seating SET is_eliminated = TRUE, elimination_reason = 'removed'
          WHERE game_id = $1 AND player_id = $2`,
         [gameId, player_id]
       );
-<<<<<<< HEAD
     } else {
       // Карточка снята или изменена на жёлтую — снимаем удаление,
       // но только если игрок был удалён именно по красной карточке (reason = 'removed')
@@ -693,11 +616,6 @@ router.post('/:id/player-card', async (req, res) => {
 
     res.json(finalRow.rows[0]);
 
-=======
-    }
-
-    res.json(result.rows[0]);
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   } catch (error) {
     console.error('Error updating player card:', error);
     res.status(500).json({ error: error.message });
@@ -705,19 +623,11 @@ router.post('/:id/player-card', async (req, res) => {
 });
 
 // Инициализировать результат игры
-<<<<<<< HEAD
 router.post('/:id/result-init', requireAuth, async (req, res) => {
   const gameId = req.params.id;
   const { winner_team } = req.body;
 
   if (!['red', 'black', 'draw'].includes(winner_team)) {
-=======
-router.post('/:id/result-init', async (req, res) => {
-  const gameId = req.params.id;
-  const { winner_team } = req.body;
-
-  if (!['red', 'black'].includes(winner_team)) {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
     return res.status(400).json({ error: 'Invalid winner_team' });
   }
 
@@ -760,11 +670,7 @@ router.post('/:id/result-init', async (req, res) => {
 });
 
 // Подтвердить результаты игры и посчитать баллы
-<<<<<<< HEAD
 router.post('/:id/result-confirm', requireAuth, async (req, res) => {
-=======
-router.post('/:id/result-confirm', async (req, res) => {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   const gameId = req.params.id;
   const { judge_scores } = req.body;
   const io = getIO(req);
@@ -788,7 +694,6 @@ router.post('/:id/result-confirm', async (req, res) => {
     const winnerTeam = resultRes.rows[0].winner_team;
 
     const gameRes = await client.query(
-<<<<<<< HEAD
       `SELECT tournament_id, game_number FROM games WHERE id = $1`,
       [gameId]
     );
@@ -799,15 +704,6 @@ router.post('/:id/result-confirm', async (req, res) => {
     const seatingRes = await client.query(
       `SELECT position, player_id, role, team, card, is_eliminated, elimination_reason, is_critical
        FROM game_seating WHERE game_id = $1`,
-=======
-      `SELECT tournament_id FROM games WHERE id = $1`,
-      [gameId]
-    );
-    const tournamentId = gameRes.rows[0].tournament_id;
-
-    const seatingRes = await client.query(
-      `SELECT position, player_id, role, team FROM game_seating WHERE game_id = $1`,
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
       [gameId]
     );
 
@@ -890,14 +786,10 @@ router.post('/:id/result-confirm', async (req, res) => {
       if (!seat) continue;
 
       const judgeBonus = Number(js.bonus) || 0;
-<<<<<<< HEAD
       // Ручной штраф судьи (минусы) — приходит отдельным полем
       const penaltyScore = Number(js.penalty) || 0;
       // При ничьей никто не получает балл за победу
       const winScore = (winnerTeam !== 'draw' && seat.team === winnerTeam) ? 1.0 : 0.0;
-=======
-      const winScore = seat.team === winnerTeam ? 1.0 : 0.0;
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
 
       let lhScore = 0;
       if (firstKilledId && seat.player_id === firstKilledId && seat.team === 'red') {
@@ -913,16 +805,11 @@ router.post('/:id/result-confirm', async (req, res) => {
         else if (blackCount >= 2) lhScore = 0.3;
       }
 
-<<<<<<< HEAD
             let ciScore = 0;
-=======
-      let ciScore = 0;
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
       if (firstKilledId && seat.player_id === firstKilledId && seat.team === 'red') {
         ciScore = ciForFirstKilled;
       }
 
-<<<<<<< HEAD
       // Авто-штраф за карточки берём из модалки (судья мог его поправить).
       // Если по какой-то причине не пришёл — считаем сами как запасной вариант.
       let cardPenalty;
@@ -942,15 +829,6 @@ router.post('/:id/result-confirm', async (req, res) => {
              penalty_score = $5, card_penalty = $6, total_score = $7
          WHERE game_id = $8 AND player_id = $9`,
         [judgeBonus, winScore, lhScore, ciScore, penaltyScore, cardPenalty, total, gameId, seat.player_id]
-=======
-      const total = winScore + judgeBonus + lhScore + ciScore;
-
-      await client.query(
-        `UPDATE game_player_scores
-         SET judge_bonus = $1, win_score = $2, lh_score = $3, ci_score = $4, total_score = $5
-         WHERE game_id = $6 AND player_id = $7`,
-        [judgeBonus, winScore, lhScore, ciScore, total, gameId, seat.player_id]
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
       );
     }
 
