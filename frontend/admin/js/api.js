@@ -226,6 +226,7 @@ const API = {
     return this.request(`/games/${gameId}/player-card`, {
       method: 'POST', body: JSON.stringify({ player_id: playerId, card })
     });
+<<<<<<< HEAD
   },
   async setPlayerCritical(gameId, playerId, is_critical) {
     return this.request(`/games/${gameId}/player-critical`, {
@@ -243,3 +244,9 @@ const API = {
 };
 
 window.API = API;
+=======
+  }
+};
+
+window.API = API;
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f

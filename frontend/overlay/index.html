@@ -99,6 +99,7 @@
         .nominees-list { display: flex; gap: 11px; align-items: center; }
         .nominee-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 
+<<<<<<< HEAD
         /* ===== ROUNDS GRID ===== */
         .rounds-grid {
             display: grid;
@@ -153,6 +154,16 @@
             align-items: center;
             justify-content: center;
         }
+=======
+        /* ===== ROUNDS TABLE ===== */
+        .rounds-table { border-collapse: collapse; table-layout: fixed; width: auto; }
+        .rounds-table th { padding: 2px 0; text-align: center; font-size: 11px; font-weight: 600; color: var(--text-primary); opacity: 0.6; width: 32px; }
+        .rounds-table th:first-child { width: 28px; padding-right: 8px; }
+        .rounds-table td { padding: 3px 0; text-align: center; font-size: 14px; font-weight: 600; width: 32px; vertical-align: middle; height: 30px; }
+        .rounds-table td:first-child { width: 28px; padding-right: 8px; }
+        .rounds-table .action-icon { font-size: 16px; display: flex; align-items: center; justify-content: center; }
+        .round-cell { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; }
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
 
         /* ===== MULTI VOTED ===== */
         .voted-multi-container { position: relative; width: 22px; height: 28px; border-radius: 4px; overflow: hidden; }
@@ -259,8 +270,13 @@
 
         /* ===== ICONS ===== */
         .icon { display: inline-block; width: 34px; height: 34px; background-repeat: no-repeat; background-position: center; background-size: contain; }
+<<<<<<< HEAD
         .rounds-grid .icon { width: 26px; height: 26px; }
         .rounds-grid .icon-none { width: 16px; height: 16px; }
+=======
+        .rounds-table .icon { width: 26px; height: 26px; }
+        .rounds-table .icon-none { width: 16px; height: 16px; }
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
         .icon-kill { background-image: url('./icons/kill.svg'); }
         .icon-don-check { background-image: url('./icons/don-check.svg'); }
         .icon-sheriff-check { background-image: url('./icons/sheriff-check.svg'); }
@@ -572,8 +588,16 @@
                     <div class="nominees-title">Выставлены:</div>
                     <div class="nominees-list"></div>
                 </div>
+<<<<<<< HEAD
                         </div>
             <div class="rounds-grid" id="roundsGrid"></div>
+=======
+            </div>
+            <table class="rounds-table">
+                <thead><tr><th></th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead>
+                <tbody></tbody>
+            </table>
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
         </div>
 
         <div class="info-block-right animate-in">
@@ -600,9 +624,14 @@
         document.body.innerHTML = '<div style="color: white; text-align: center; padding: 50px; font-size: 24px;">❌ tournament или game не указаны в URL</div>';
     }
 
+<<<<<<< HEAD
     const API_BASE_URL = window.OVERLAY_CONFIG?.API_URL || (window.location.origin + '/api');
     const SOCKET_URL = window.OVERLAY_CONFIG?.SOCKET_URL || window.location.origin;
 
+=======
+    const API_BASE_URL = window.OVERLAY_CONFIG?.API_URL || 'http://192.168.0.121:3000/api';
+    const SOCKET_URL = window.OVERLAY_CONFIG?.SOCKET_URL || 'http://192.168.0.121:3000';
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
 
     let gameData = null;
     let socket = null;
@@ -784,6 +813,7 @@ prevRoles = newRoles;
     }
 
     function renderRounds() {
+<<<<<<< HEAD
         const grid = document.querySelector('#roundsGrid');
         if (!grid) return;
 
@@ -876,6 +906,76 @@ prevRoles = newRoles;
     }
 
    
+=======
+    const tbody = document.querySelector('.rounds-table tbody');
+    const maxRounds = 6;
+    const actions = [
+        { type: 'kill', iconClass: 'icon-kill' },
+        { type: 'don', iconClass: 'icon-don-check' },
+        { type: 'sheriff', iconClass: 'icon-sheriff-check' },
+        { type: 'voted', iconClass: 'icon-voted' }
+    ];
+
+    // Строим текущее состояние для сравнения
+    const currentData = {};
+    for (let col = 1; col <= maxRounds; col++) {
+        const round = (gameData.rounds || []).find(r => r.round_number === col);
+        if (!round) continue;
+        currentData[`kill_${col}`] = round.mafia_miss ? 'miss' : (round.mafia_kill_player_id || '');
+        currentData[`don_${col}`] = round.don_check_player_id || '';
+        currentData[`sheriff_${col}`] = round.sheriff_check_player_id || '';
+        currentData[`voted_${col}`] = JSON.stringify(round.voted_out_players || []);
+    }
+
+    const rows = actions.map(action => {
+        let cells = `<td class="action-icon"><span class="icon ${action.iconClass}"></span></td>`;
+        for (let col = 1; col <= maxRounds; col++) {
+            const round = (gameData.rounds || []).find(r => r.round_number === col);
+            if (!round) { cells += '<td><div class="round-cell"></div></td>'; continue; }
+
+            const cellKey = `${action.type}_${col}`;
+            const prevVal = prevRoundsData[cellKey];
+            const currVal = currentData[cellKey];
+            const changed = prevVal !== undefined && prevVal !== currVal;
+            const isNew = prevVal === undefined && currVal !== undefined && currVal !== '';
+
+            let content = '';
+            if (action.type === 'kill') {
+                if (round.mafia_miss) content = wrapRoundSymbol(null, 'neutral', isNew, true);
+                else if (round.mafia_kill_player_id) {
+                    const seat = gameData.seating.find(s => s.player_id === round.mafia_kill_player_id);
+                    if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNew);
+                }
+            } else if (action.type === 'don') {
+                if (round.don_check_player_id) {
+                    const seat = gameData.seating.find(s => s.player_id === round.don_check_player_id);
+                    if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNew);
+                } else content = wrapRoundSymbol(null, 'neutral', isNew, true);
+            } else if (action.type === 'sheriff') {
+                if (round.sheriff_check_player_id) {
+                    const seat = gameData.seating.find(s => s.player_id === round.sheriff_check_player_id);
+                    if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNew);
+                } else content = wrapRoundSymbol(null, 'neutral', isNew, true);
+            } else if (action.type === 'voted') {
+                const votedIds = Array.isArray(round.voted_out_players) ? round.voted_out_players : [];
+                if (round.nobody_voted_out || votedIds.length === 0) content = wrapRoundSymbol(null, 'neutral', isNew, true);
+                else if (votedIds.length === 1) {
+                    const seat = gameData.seating.find(s => s.player_id === votedIds[0]);
+                    if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNew);
+                } else content = renderMultiVoted(votedIds, isNew);
+            }
+
+            const animClass = changed ? 'round-cell-changed' : '';
+            cells += `<td><div class="round-cell ${animClass}">${content}</div></td>`;
+        }
+        return `<tr>${cells}</tr>`;
+    });
+
+    tbody.innerHTML = rows.join('');
+    prevRoundsData = currentData;
+}
+
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
     function wrapRoundNumber(value, teamClass, animate) {
         return `<div class="round-number-wrapper ${animate ? 'entry-anim' : ''}"><div class="round-bg ${teamClass}"></div><div class="round-gradient"></div><div class="round-number">${value}</div></div>`;
     }
@@ -960,7 +1060,11 @@ prevRoles = newRoles;
                 <div class="results-table-wrapper">
                     <div class="results-title">
                         <h2>РЕЗУЛЬТАТ ИГРЫ №${gameData.game_number}</h2>
+<<<<<<< HEAD
                         <div class="subtitle">${data.result.winner_team === 'red' ? 'ПОБЕДА МИРНЫХ' : (data.result.winner_team === 'black' ? 'ПОБЕДА МАФИИ' : 'НИЧЬЯ')}</div>
+=======
+                        <div class="subtitle">${data.result.winner_team === 'red' ? 'ПОБЕДА МИРНЫХ' : 'ПОБЕДА МАФИИ'}</div>
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
                     </div>
                     <table class="scores-table">
                         <thead>
@@ -971,7 +1075,10 @@ prevRoles = newRoles;
                                 <th class="col-nick">Игрок</th>
                                 <th class="col-num">Победа</th>
                                 <th class="col-num">Судья</th>
+<<<<<<< HEAD
                                 <th class="col-num">Штраф</th>
+=======
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
                                 <th class="col-num">ЛХ</th>
                                 <th class="col-num">Ci</th>
                                 <th class="col-total">Итог</th>
@@ -990,7 +1097,10 @@ prevRoles = newRoles;
                                     <td class="col-nick">${s.nickname}</td>
                                     <td class="col-num">${Number(s.win_score) === 1 ? '1' : ''}</td>
                                     <td class="col-num">${formatScore(s.judge_bonus)}</td>
+<<<<<<< HEAD
                                     <td class="col-num">${formatScore((Number(s.penalty_score) || 0) + (Number(s.card_penalty) || 0))}</td>
+=======
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
                                     <td class="col-num">${formatScore(s.lh_score)}</td>
                                     <td class="col-num">${formatScore(s.ci_score)}</td>
                                     <td class="col-total">${formatScoreTotal(s.total_score)}</td>

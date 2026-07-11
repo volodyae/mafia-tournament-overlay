@@ -29,6 +29,7 @@ class Tournament {
     return result.rows[0];
   }
 
+<<<<<<< HEAD
     // Добавить игроков в турнир
   static async addPlayers(tournamentId, playerIds) {
     const values = [];
@@ -43,6 +44,13 @@ class Tournament {
     await pool.query(
       `INSERT INTO tournament_players (id, tournament_id, player_id) VALUES ${values.join(',')} ON CONFLICT DO NOTHING`,
       params
+=======
+  // Добавить игроков в турнир
+  static async addPlayers(tournamentId, playerIds) {
+    const values = playerIds.map(playerId => `('${uuidv4()}', '${tournamentId}', '${playerId}')`).join(',');
+    await pool.query(
+      `INSERT INTO tournament_players (id, tournament_id, player_id) VALUES ${values} ON CONFLICT DO NOTHING`
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
     );
   }
 

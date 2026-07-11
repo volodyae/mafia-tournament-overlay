@@ -65,7 +65,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Подключение к WebSocket
 function connectWebSocket() {
   try {
+<<<<<<< HEAD
     const socketUrl = window.OVERLAY_CONFIG?.SOCKET_URL || window.location.origin;
+=======
+    const socketUrl = window.OVERLAY_CONFIG?.SOCKET_URL || 'http://192.168.0.121:3000';
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
     socket = io(socketUrl);
     window.gameSocket = socket; // делаем доступным для панели управления
     
@@ -172,7 +176,11 @@ function renderGameHeader() {
 
 // Ссылка на оверлей
 function renderOverlayLink() {
+<<<<<<< HEAD
   const base = window.OVERLAY_CONFIG?.BASE_URL || window.location.origin;
+=======
+  const base = window.OVERLAY_CONFIG?.BASE_URL || 'http://192.168.0.121:3000';
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   const url = `${base}/overlay/index.html?tournament=${tournamentId}&game=${gameNumber}`;
   overlayUrl.textContent = url;
 }
@@ -244,6 +252,7 @@ function renderRoles() {
                 Удален
             </button>
             <button 
+<<<<<<< HEAD
                 class="role-btn critical-toggle ${seat.is_critical ? 'active' : ''}"
                 type="button"
                 data-player-id="${seat.player_id}"
@@ -251,6 +260,8 @@ function renderRoles() {
                 Крит
             </button>
             <button 
+=======
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
                 class="role-btn card-yellow ${seat.card === 'yellow' ? 'active' : ''}"
                 type="button"
                 data-player-id="${seat.player_id}">
@@ -270,6 +281,7 @@ function renderRoles() {
 
   document.querySelectorAll('.role-btn').forEach(btn => {
     const isEliminateBtn = btn.classList.contains('eliminated-toggle');
+<<<<<<< HEAD
     const isCriticalBtn = btn.classList.contains('critical-toggle');
     const isCardYellow = btn.classList.contains('card-yellow');
     const isCardRed = btn.classList.contains('card-red');
@@ -290,6 +302,12 @@ function renderRoles() {
         }
       });
     } else if (isEliminateBtn) {
+=======
+    const isCardYellow = btn.classList.contains('card-yellow');
+    const isCardRed = btn.classList.contains('card-red');
+
+    if (isEliminateBtn) {
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
       btn.addEventListener('click', async () => {
         const playerId = btn.dataset.playerId;
         const isActive = btn.classList.contains('active');
@@ -505,8 +523,11 @@ function loadBestMoveData() {
       gameData.best_move.suspect_2,
       gameData.best_move.suspect_3
     ].filter(Boolean);
+<<<<<<< HEAD
   } else {
     selectedSuspects = [];
+=======
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   }
 }
 
@@ -735,12 +756,17 @@ addRoundBtn.addEventListener('click', () => {
 });
 
 // Модалка доп. баллов судьи
+<<<<<<< HEAD
 async function openScoresModal() {
+=======
+function openScoresModal() {
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   if (!gameData || !gameData.seating) {
     UI.showToast('Сначала сохраните рассадку', 'error');
     return;
   }
 
+<<<<<<< HEAD
   // Получаем предпосчитанный авто-штраф за карточки/удаление (с прогрессией ЖК)
   let cardPenalties = {};
   try {
@@ -756,12 +782,19 @@ async function openScoresModal() {
     .map(seat => {
       const autoPenalty = cardPenalties[seat.player_id] || 0;
       return `
+=======
+  scoresTableBody.innerHTML = gameData.seating
+    .slice()
+    .sort((a, b) => a.position - b.position)
+    .map(seat => `
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
       <tr>
         <td style="padding:4px 8px;">${seat.position}</td>
         <td style="padding:4px 8px;">${seat.nickname}</td>
         <td style="padding:4px 8px;">
           <input
             type="number"
+<<<<<<< HEAD
             class="form-input score-bonus"
             data-player-id="${seat.player_id}"
             value="0"
@@ -791,6 +824,18 @@ async function openScoresModal() {
       </tr>
     `;
     }).join('');
+=======
+            class="form-input"
+            data-player-id="${seat.player_id}"
+            value="0"
+            step="0.1"
+            min="-3"
+            max="2"
+            style="max-width:90px; padding:6px 8px; min-height:0;">
+        </td>
+      </tr>
+    `).join('');
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
 
   scoresModal.classList.add('active');
 }
@@ -959,6 +1004,7 @@ function setupEventListeners() {
       }
     });
   }
+<<<<<<< HEAD
   const winDrawBtn = document.getElementById('winDrawBtn');
   if (winDrawBtn) {
     winDrawBtn.addEventListener('click', async () => {
@@ -975,6 +1021,8 @@ function setupEventListeners() {
       }
     });
   }
+=======
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
 
   if (winBlackBtn) {
     winBlackBtn.addEventListener('click', async () => {
@@ -1014,6 +1062,7 @@ function setupEventListeners() {
   if (confirmScoresBtn) {
     confirmScoresBtn.addEventListener('click', async () => {
       try {
+<<<<<<< HEAD
         // Собираем по каждому игроку: доп.балл, ручной штраф, авто-штраф карточек
         const rows = scoresTableBody.querySelectorAll('tr');
         const judge_scores = [];
@@ -1037,6 +1086,13 @@ function setupEventListeners() {
             card_penalty: Number(cardInput ? cardInput.value : 0)
           });
         });
+=======
+        const inputs = scoresTableBody.querySelectorAll('input[data-player-id]');
+        const judge_scores = Array.from(inputs).map(input => ({
+          player_id: input.dataset.playerId,
+          bonus: Number(input.value || 0)
+        }));
+>>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
 
         await API.request(`/games/${gameIdFromData()}/result-confirm`, {
           method: 'POST',
