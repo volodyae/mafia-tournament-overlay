@@ -1,10 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Player = require('../models/Player');
-<<<<<<< HEAD
 const { requireAuth } = require('../middleware/auth');
-=======
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
 
 // GET /api/players - Получить всех игроков
 router.get('/', async (req, res) => {
@@ -41,11 +38,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/players - Создать игрока
-<<<<<<< HEAD
 router.post('/', requireAuth, async (req, res) => {
-=======
-router.post('/', async (req, res) => {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   try {
     const player = await Player.create(req.body);
     res.status(201).json(player);
@@ -55,11 +48,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/players/:id - Обновить игрока
-<<<<<<< HEAD
 router.put('/:id', requireAuth, async (req, res) => {
-=======
-router.put('/:id', async (req, res) => {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   try {
     const player = await Player.update(req.params.id, req.body);
     if (!player) {
@@ -72,11 +61,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/players/:id - Удалить игрока
-<<<<<<< HEAD
 router.delete('/:id', requireAuth, async (req, res) => {
-=======
-router.delete('/:id', async (req, res) => {
->>>>>>> b97b7072eb7decf4a1da26e2fa7ec060e7c7628f
   try {
     const player = await Player.delete(req.params.id);
     if (!player) {
