@@ -74,7 +74,7 @@ async function requireActiveSubscription(req, res, next) {
   }
 }
 
-// Middleware: проверка владельца турнира
+// Middleware: проверка доступа к турниру (владелец, доступ или суперадмин)
 async function requireTournamentOwner(req, res, next) {
   if (req.user.role === 'superadmin') {
     return next();
@@ -97,13 +97,24 @@ async function requireTournamentOwner(req, res, next) {
       return res.status(404).json({ error: 'Турнир не найден' });
     }
 
-    if (result.rows[0].owner_id !== req.user.id) {
-      return res.status(403).json({ error: 'Нет доступа к этому турниру' });
+    // Владелец — доступ есть
+    if (result.rows[0].owner_id === req.user.id) {
+      return next();
     }
 
-    next();
+    // Проверяем выданный доступ
+    const access = await pool.query(
+      'SELECT 1 FROM tournament_access WHERE tournament_id = $1 AND user_id = $2',
+      [tournamentId, req.user.id]
+    );
+
+    if (access.rows.length > 0) {
+      return next();
+    }
+
+    return res.status(403).json({ error: 'Нет доступа к этому турниру' });
   } catch (error) {
-    console.error('Tournament owner check error:', error);
+    console.error('Tournament access check error:', error);
     res.status(500).json({ error: 'Ошибка проверки доступа' });
   }
 }

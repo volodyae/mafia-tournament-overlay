@@ -621,6 +621,7 @@
 
 
     let gameData = null;
+    let currentGameNumber = gameNumber; // изменяемый номер игры
     let socket = null;
     let socketConnected = false;
     let previousEliminated = new Set();
@@ -669,6 +670,24 @@
             applyOverlayVisibility();
         } catch (error) {
             console.error('Error loading game data:', error);
+        }
+    }
+
+    async function loadGameNumber(num) {
+        currentGameNumber = num;
+        try {
+            const response = await fetch(`${API_BASE_URL}/games/by-number/${tournamentId}/${num}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const newData = await response.json();
+            const prevGameId = gameData?.id;
+            gameData = newData;
+            if (socketConnected && gameData?.id && gameData.id !== prevGameId) {
+                socket.emit('join_game', gameData.id);
+            }
+            renderOverlay();
+            applyOverlayVisibility();
+        } catch (error) {
+            console.error('Error loading game by number:', error);
         }
     }
 
@@ -1162,6 +1181,27 @@ prevRoles = newRoles;
         socket.on('show_tournament_standings', (data) => {
             if (!data || !data.tournamentId) return;
             showTournamentStandings(data.tournamentId);
+        });
+
+        socket.on('switch_overlay_game', (data) => {
+            if (!data || !gameData) return;
+            // Реагируем только если событие относится к игре, которую сейчас показываем
+            if (data.currentGameId && data.currentGameId !== gameData.id) return;
+
+            const nextNumber = parseInt(data.nextGameNumber, 10);
+            if (!nextNumber) return;
+
+            // Обновляем внутренний номер игры и URL (для корректной ручной перезагрузки)
+            window.overlayGameNumber = nextNumber;
+            const url = new URL(window.location.href);
+            url.searchParams.set('game', nextNumber);
+            history.replaceState(null, '', url.toString());
+
+            // Скрываем таблицу результатов, если открыта
+            hideResultsOverlay();
+
+            // Перезагружаем данные для новой игры
+            loadGameNumber(nextNumber);
         });
 
         socket.on('hide_results_overlay', () => {

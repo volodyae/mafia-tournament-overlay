@@ -107,6 +107,16 @@ module.exports = (io) => {
       });
     });
 
+    // Переключение оверлея на следующую игру
+    socket.on('switch_overlay_game', (data) => {
+      if (!data || !data.currentGameId || !data.nextGameNumber) return;
+      io.to(`game_${data.currentGameId}`).emit('switch_overlay_game', {
+        tournamentId: data.tournamentId,
+        currentGameId: data.currentGameId,
+        nextGameNumber: data.nextGameNumber
+      });
+    });
+
     // ========== OBS BRIDGE ==========
 
     // Мост регистрируется

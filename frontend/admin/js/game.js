@@ -141,9 +141,27 @@ async function loadGameData() {
     renderNominees();
     renderRounds();
     updateResultButtons();
+    updateResultButtons();
+    updateNextGameButton();
+    
   } catch (error) {
     console.error('Ошибка загрузки игры:', error);
     UI.showToast('Ошибка загрузки игры: ' + error.message, 'error');
+  }
+}
+
+function updateNextGameButton() {
+  const btn = document.getElementById('nextGameBtn');
+  if (!btn || !gameData) return;
+  const total = Number(gameData.total_games) || null;
+  // Кнопка видна всегда, но блокируется на последней игре
+  btn.style.display = 'inline-block';
+  if (total && gameNumber >= total) {
+    btn.disabled = true;
+    btn.title = 'Это последняя игра турнира';
+  } else {
+    btn.disabled = false;
+    btn.title = '';
   }
 }
 
@@ -1101,6 +1119,19 @@ function setupEventListeners() {
         UI.showToast('Ошибка инициализации результата игры', 'error');
         console.error(error);
       }
+    });
+  }
+  
+  const nextGameBtn = document.getElementById('nextGameBtn');
+  if (nextGameBtn) {
+    nextGameBtn.addEventListener('click', () => {
+      const nextNumber = gameNumber + 1;
+      socket.emit('switch_overlay_game', {
+        tournamentId,
+        currentGameId: gameIdFromData(),
+        nextGameNumber: nextNumber
+      });
+      UI.showToast(`Оверлей переключён на игру ${nextNumber}`);
     });
   }
 

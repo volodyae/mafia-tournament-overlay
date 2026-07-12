@@ -246,6 +246,20 @@ const API = {
       method: 'POST', body: JSON.stringify({ player_id: playerId, is_critical })
     });
   },
+async getTournamentAccess(tournamentId) {
+  return this.request(`/tournaments/${tournamentId}/access`);
+},
+async grantTournamentAccess(tournamentId, userId) {
+  return this.request(`/tournaments/${tournamentId}/access`, {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId })
+  });
+},
+async revokeTournamentAccess(tournamentId, userId) {
+  return this.request(`/tournaments/${tournamentId}/access/${userId}`, {
+    method: 'DELETE'
+  });
+},
   async getCardPenalties(gameId) {
     return this.request(`/games/${gameId}/card-penalties`);
   }

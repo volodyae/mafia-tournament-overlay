@@ -5,7 +5,8 @@ const { v4: uuidv4 } = require('uuid');
 const {
   requireAuth,
   requireActiveSubscription,
-  requireTournamentOwner
+  requireTournamentOwner,
+  requireSuperadmin
 } = require('../middleware/auth');
 
 // Получить список турниров (только свои, суперадмин видит все)
@@ -21,7 +22,11 @@ router.get('/', requireAuth, requireActiveSubscription, async (req, res) => {
       );
     } else {
       result = await pool.query(
-        `SELECT * FROM tournaments WHERE owner_id = $1 ORDER BY created_at DESC`,
+        `SELECT DISTINCT t.*
+         FROM tournaments t
+         LEFT JOIN tournament_access ta ON ta.tournament_id = t.id AND ta.user_id = $1
+         WHERE t.owner_id = $1 OR ta.user_id = $1
+         ORDER BY t.created_at DESC`,
         [req.user.id]
       );
     }
@@ -284,6 +289,62 @@ router.get('/:id/standings', async (req, res) => {
     res.json({ standings: result.rows });
   } catch (error) {
     console.error('Error getting tournament standings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+// Список пользователей с отметкой доступа к турниру (только суперадмин)
+router.get('/:id/access', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const tournamentId = req.params.id;
+    const result = await pool.query(
+      `SELECT u.id, u.username, u.role,
+              (ta.user_id IS NOT NULL) AS has_access
+       FROM users u
+       LEFT JOIN tournament_access ta
+              ON ta.user_id = u.id AND ta.tournament_id = $1
+       WHERE u.role <> 'superadmin'
+       ORDER BY u.username ASC`,
+      [tournamentId]
+    );
+    res.json({ users: result.rows });
+  } catch (error) {
+    console.error('Error getting tournament access list:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Выдать доступ пользователю (только суперадмин)
+router.post('/:id/access', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const tournamentId = req.params.id;
+    const { user_id } = req.body;
+    if (!user_id) {
+      return res.status(400).json({ error: 'user_id обязателен' });
+    }
+    await pool.query(
+      `INSERT INTO tournament_access (id, tournament_id, user_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (tournament_id, user_id) DO NOTHING`,
+      [uuidv4(), tournamentId, user_id]
+    );
+    res.json({ message: 'Доступ выдан' });
+  } catch (error) {
+    console.error('Error granting tournament access:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Отозвать доступ у пользователя (только суперадмин)
+router.delete('/:id/access/:userId', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const { id: tournamentId, userId } = req.params;
+    await pool.query(
+      `DELETE FROM tournament_access WHERE tournament_id = $1 AND user_id = $2`,
+      [tournamentId, userId]
+    );
+    res.json({ message: 'Доступ отозван' });
+  } catch (error) {
+    console.error('Error revoking tournament access:', error);
     res.status(500).json({ error: error.message });
   }
 });

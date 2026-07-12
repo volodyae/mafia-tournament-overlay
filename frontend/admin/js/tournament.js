@@ -269,3 +269,70 @@ function setupEventListeners() {
         });
     }
 }
+// === УПРАВЛЕНИЕ ДОСТУПОМ (только суперадмин) ===
+const accessModal = document.getElementById('accessModal');
+const manageAccessBtn = document.getElementById('manageAccessBtn');
+const closeAccessModalBtn = document.getElementById('closeAccessModal');
+const accessUsersList = document.getElementById('accessUsersList');
+
+async function openAccessModal() {
+    try {
+        const data = await API.getTournamentAccess(tournamentId);
+        renderAccessUsers(data.users || []);
+        accessModal.classList.add('active');
+    } catch (error) {
+        UI.showToast('Ошибка загрузки списка пользователей', 'error');
+        console.error(error);
+    }
+}
+
+function renderAccessUsers(users) {
+    if (users.length === 0) {
+        accessUsersList.innerHTML = '<div class="player-search-empty">Нет пользователей для выдачи доступа</div>';
+        return;
+    }
+
+    accessUsersList.innerHTML = users.map(u => `
+        <label class="player-search-item" style="cursor: pointer;">
+            <span class="player-search-name">${u.username}</span>
+            <input type="checkbox" class="access-checkbox" data-user-id="${u.id}" ${u.has_access ? 'checked' : ''}>
+        </label>
+    `).join('');
+
+    accessUsersList.querySelectorAll('.access-checkbox').forEach(cb => {
+        cb.addEventListener('change', async () => {
+            const userId = cb.dataset.userId;
+            try {
+                if (cb.checked) {
+                    await API.grantTournamentAccess(tournamentId, userId);
+                    UI.showToast('Доступ выдан');
+                } else {
+                    await API.revokeTournamentAccess(tournamentId, userId);
+                    UI.showToast('Доступ отозван');
+                }
+            } catch (error) {
+                UI.showToast('Ошибка изменения доступа', 'error');
+                console.error(error);
+                cb.checked = !cb.checked; // откатываем визуально при ошибке
+            }
+        });
+    });
+}
+
+// Показываем кнопку только суперадмину и вешаем обработчики
+document.addEventListener('DOMContentLoaded', () => {
+    if (manageAccessBtn && API.isSuperadmin()) {
+        manageAccessBtn.style.display = 'inline-block';
+        manageAccessBtn.addEventListener('click', openAccessModal);
+    }
+    if (closeAccessModalBtn) {
+        closeAccessModalBtn.addEventListener('click', () => {
+            accessModal.classList.remove('active');
+        });
+    }
+    if (accessModal) {
+        accessModal.addEventListener('click', (e) => {
+            if (e.target === accessModal) accessModal.classList.remove('active');
+        });
+    }
+});

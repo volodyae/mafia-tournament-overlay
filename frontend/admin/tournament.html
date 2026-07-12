@@ -170,12 +170,12 @@
         </nav>
 
         <!-- Главный контент -->
-        <div class="content">
-            <div class="page-header">
+            <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
                     <h2 id="tournamentName">Загрузка...</h2>
                     <p id="tournamentMeta" style="color: var(--text-secondary); margin-top: 4px;"></p>
                 </div>
+                <button class="btn btn-secondary" id="manageAccessBtn" style="display: none;">🔐 Доступ</button>
             </div>
 
             <!-- Список игр турнира -->
@@ -227,6 +227,23 @@
             <div id="modalPlayersList" class="players-list">
               <!-- Список игроков -->
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Модальное окно управления доступом -->
+    <div id="accessModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>🔐 Доступ к турниру</h3>
+          <button class="close-btn" id="closeAccessModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px;">
+            Отметьте пользователей, которым нужен доступ к управлению этим турниром.
+          </p>
+          <div id="accessUsersList" class="players-list" style="flex-direction: column; gap: 8px;">
+            <!-- Список пользователей -->
           </div>
         </div>
       </div>
