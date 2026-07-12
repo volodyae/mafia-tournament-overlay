@@ -151,18 +151,109 @@ function gameIdFromData() {
   return gameData.id;
 }
 
-// Проверяем, подтверждены ли результаты, и активируем кнопку
+// Проверяем, подтверждены ли результаты; если да — показываем редактируемую таблицу
 async function updateResultButtons() {
+  const editBlock = document.getElementById('resultEditBlock');
   try {
     const scoresData = await API.request(`/games/${gameIdFromData()}/scores`);
     if (scoresData && scoresData.result && scoresData.result.confirmed) {
-      if (showStandingsBtn) {
-        showStandingsBtn.disabled = false;
-      }
+      if (showStandingsBtn) showStandingsBtn.disabled = false;
+      renderResultEditTable(scoresData);
+      if (editBlock) editBlock.style.display = 'block';
+    } else {
+      if (editBlock) editBlock.style.display = 'none';
     }
   } catch (e) {
-    // Результаты ещё не созданы — это нормально
+    // Результаты ещё не созданы — прячем таблицу
+    if (editBlock) editBlock.style.display = 'none';
   }
+}
+
+// Текущий выбранный исход в редактируемой таблице
+let editWinnerTeam = null;
+
+// Отрисовка редактируемой таблицы результата
+function renderResultEditTable(scoresData) {
+  const body = document.getElementById('resultEditBody');
+  const label = document.getElementById('resultWinnerLabel');
+  if (!body) return;
+
+  const scores = scoresData.scores || [];
+  editWinnerTeam = scoresData.result.winner_team;
+
+  // Переключатель исхода
+  const teams = [
+    { key: 'red', text: 'Победа МИР', cls: 'btn-success' },
+    { key: 'black', text: 'Победа МАФ', cls: 'btn-danger' },
+    { key: 'draw', text: 'Ничья', cls: 'btn-secondary' }
+  ];
+  label.innerHTML = 'Исход: ' + teams.map(t =>
+    `<button class="btn ${t.cls} result-winner-btn" data-team="${t.key}"
+       style="padding:6px 12px; font-size:13px; margin-right:6px; ${editWinnerTeam === t.key ? '' : 'opacity:0.45;'}">
+       ${t.text}${editWinnerTeam === t.key ? ' ✓' : ''}
+     </button>`
+  ).join('');
+
+  label.querySelectorAll('.result-winner-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      editWinnerTeam = btn.dataset.team;
+      // Перерисовываем подсветку исхода и пересчитываем колонку "Победа" визуально
+      renderResultEditTable({
+        result: { winner_team: editWinnerTeam },
+        scores: collectResultRows(scores)
+      });
+    });
+  });
+
+  // Сортировка по позиции для стабильного вида
+  const sorted = scores.slice().sort((a, b) => a.position - b.position);
+
+  body.innerHTML = sorted.map(s => {
+    const win = (editWinnerTeam !== 'draw' && s.team === editWinnerTeam) ? 1 : 0;
+    return `
+      <tr data-player-id="${s.player_id}" data-team="${s.team}">
+        <td style="padding:4px 6px;">${s.position}</td>
+        <td style="padding:4px 6px;">${s.nickname}</td>
+        <td style="text-align:center; padding:4px 6px;" class="cell-win">${win === 1 ? '1' : '—'}</td>
+        <td style="text-align:center; padding:4px 6px;">
+          <input type="number" class="form-input res-bonus" value="${Number(s.judge_bonus) || 0}" step="0.1" min="0"
+                 style="max-width:70px; padding:4px 6px; min-height:0;">
+        </td>
+        <td style="text-align:center; padding:4px 6px;">
+          <input type="number" class="form-input res-penalty" value="${Number(s.penalty_score) || 0}" step="0.1" max="0"
+                 style="max-width:70px; padding:4px 6px; min-height:0;">
+        </td>
+        <td style="text-align:center; padding:4px 6px;">
+          <input type="number" class="form-input res-card" value="${Number(s.card_penalty) || 0}" step="0.05"
+                 style="max-width:70px; padding:4px 6px; min-height:0;">
+        </td>
+        <td style="text-align:center; padding:4px 6px;">${Number(s.lh_score) || 0}</td>
+        <td style="text-align:center; padding:4px 6px;">${Number(s.ci_score) || 0}</td>
+        <td style="text-align:center; padding:4px 6px; font-weight:700;" class="cell-total">${Number(s.total_score) || 0}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Собирает текущие значения из полей таблицы (для перерисовки при смене исхода)
+function collectResultRows(originalScores) {
+  const rows = document.querySelectorAll('#resultEditBody tr');
+  const map = {};
+  rows.forEach(tr => {
+    const pid = tr.dataset.playerId;
+    map[pid] = {
+      judge_bonus: Number(tr.querySelector('.res-bonus')?.value || 0),
+      penalty_score: Number(tr.querySelector('.res-penalty')?.value || 0),
+      card_penalty: Number(tr.querySelector('.res-card')?.value || 0)
+    };
+  });
+  // Мержим введённые значения обратно в исходные scores
+  return originalScores.map(s => ({
+    ...s,
+    judge_bonus: map[s.player_id]?.judge_bonus ?? s.judge_bonus,
+    penalty_score: map[s.player_id]?.penalty_score ?? s.penalty_score,
+    card_penalty: map[s.player_id]?.card_penalty ?? s.card_penalty
+  }));
 }
 
 // Заголовок
@@ -1057,6 +1148,51 @@ function setupEventListeners() {
       }
     });
   }
+const saveResultBtn = document.getElementById('saveResultBtn');
+if (saveResultBtn) {
+    saveResultBtn.addEventListener('click', async () => {
+        try {
+            const rows = document.querySelectorAll('#resultEditBody tr');
+            const judge_scores = [];
+            rows.forEach(tr => {
+                const playerId = tr.dataset.playerId;
+                if (!playerId) return;
+                let bonus = Number(tr.querySelector('.res-bonus')?.value) || 0;
+                let penalty = Number(tr.querySelector('.res-penalty')?.value) || 0;
+                const card_penalty = Number(tr.querySelector('.res-card')?.value) || 0;
+                // те же ограничения знаков, что и в модалке судьи
+                bonus = Math.max(bonus, 0);
+                penalty = Math.min(penalty, 0);
+                judge_scores.push({ player_id: playerId, bonus, penalty, card_penalty });
+            });
+
+            if (!editWinnerTeam) {
+                UI.showToast('Не выбран итог игры', 'error');
+                return;
+            }
+
+            // сначала фиксируем актуальный итог (на случай смены победителя переключателем)
+            await API.request(`/games/${gameIdFromData()}/result-init`, {
+                method: 'POST',
+                body: JSON.stringify({ winner_team: editWinnerTeam })
+            });
+
+            await API.request(`/games/${gameIdFromData()}/result-confirm`, {
+                method: 'POST',
+                body: JSON.stringify({ judge_scores })
+            });
+
+            UI.showToast('Изменения сохранены');
+            socket.emit('game_updated', { gameId: gameIdFromData() });
+
+            // перерисовываем блок актуальными данными из БД
+            await updateResultButtons();
+        } catch (error) {
+            UI.showToast('Ошибка сохранения изменений', 'error');
+            console.error(error);
+        }
+    });
+}
 
   // Кнопка «Промежуточный итог»
   if (showStandingsBtn) {

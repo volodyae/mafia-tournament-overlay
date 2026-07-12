@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админка игры</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>">
     <link rel="stylesheet" href="css/admin.css">
     <style>
         .game-section {
@@ -490,12 +491,41 @@
             <!-- Результат игры и промежуточный итог -->
             <div class="game-section" id="resultSection">
                 <h3>🏁 Результат игры</h3>
+
+                <!-- Кнопки выбора исхода (видны всегда) -->
                 <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
                     <button class="btn btn-success" id="winRedBtn">Победа МИР</button>
                     <button class="btn btn-danger" id="winBlackBtn">Победа МАФ</button>
                     <button class="btn btn-secondary" id="winDrawBtn">Ничья</button>
                 </div>
-                <button class="btn btn-secondary" id="showStandingsBtn" disabled>
+
+                <!-- Редактируемая таблица результата (показывается, если результат подтверждён) -->
+                <div id="resultEditBlock" style="display:none;">
+                    <div id="resultWinnerLabel" style="margin-bottom:12px; font-weight:600;"></div>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left; padding:4px 6px;">№</th>
+                                    <th style="text-align:left; padding:4px 6px;">Игрок</th>
+                                    <th style="text-align:center; padding:4px 6px;">Поб.</th>
+                                    <th style="text-align:center; padding:4px 6px;">Доп.</th>
+                                    <th style="text-align:center; padding:4px 6px;">Штраф</th>
+                                    <th style="text-align:center; padding:4px 6px;">Карт.</th>
+                                    <th style="text-align:center; padding:4px 6px;">ЛХ</th>
+                                    <th style="text-align:center; padding:4px 6px;">Ci</th>
+                                    <th style="text-align:center; padding:4px 6px;">Итог</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultEditBody">
+                                <!-- строки создаёт JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <button class="btn btn-success" id="saveResultBtn" style="margin-top:12px;">💾 Сохранить изменения</button>
+                </div>
+
+                <button class="btn btn-secondary" id="showStandingsBtn" disabled style="margin-top:12px;">
                     Промежуточный итог
                 </button>
             </div>

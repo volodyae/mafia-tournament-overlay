@@ -216,10 +216,13 @@ window.addPlayerToTournament = async (playerId) => {
         const response = await API.addPlayersToTournament(tournamentId, [playerId]);
         players = response.players;
         UI.showToast('Игрок добавлен');
-        
+
         renderPlayers();
         renderModalPlayersList();
-        await populateAvailablePlayersBySearch(playerSearchInput.value);
+
+        // Очищаем строку поиска после добавления
+        if (playerSearchInput) playerSearchInput.value = '';
+        await populateAvailablePlayersBySearch('');
     } catch (error) {
         UI.showToast('Ошибка добавления игрока', 'error');
         console.error(error);
