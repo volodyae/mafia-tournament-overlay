@@ -1142,6 +1142,8 @@ function setupEventListeners() {
         }
 
         socket.emit('game_scores_confirmed', { gameId: gameIdFromData(), tournamentId });
+        // показать редактируемую таблицу сразу, без перезагрузки
+        await updateResultButtons();
       } catch (error) {
         UI.showToast('Ошибка сохранения результатов', 'error');
         console.error(error);
