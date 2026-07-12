@@ -353,6 +353,12 @@ function renderRoles() {
                 data-player-id="${seat.player_id}">
                 КК
             </button>
+            <span class="foul-counter" title="Фолы (0-4)" style="display:inline-flex; align-items:center; gap:4px; margin-left:8px; font-weight:700;">
+                <button class="role-btn foul-minus" type="button" data-player-id="${seat.player_id}" style="padding:2px 8px;">−</button>
+                <span class="foul-value" data-player-id="${seat.player_id}" style="min-width:18px; text-align:center;">${seat.fouls || 0}</span>
+                <button class="role-btn foul-plus" type="button" data-player-id="${seat.player_id}" style="padding:2px 8px;">+</button>
+                <span style="font-size:12px; color:var(--text-secondary);">фол</span>
+            </span>
         </div>
     </div>
   `).join('');
@@ -364,8 +370,23 @@ function renderRoles() {
     const isCriticalBtn = btn.classList.contains('critical-toggle');
     const isCardYellow = btn.classList.contains('card-yellow');
     const isCardRed = btn.classList.contains('card-red');
+    const isFoulPlus = btn.classList.contains('foul-plus');
+    const isFoulMinus = btn.classList.contains('foul-minus');
 
-    if (isCriticalBtn) {
+    if (isFoulPlus || isFoulMinus) {
+      btn.addEventListener('click', async () => {
+        const playerId = btn.dataset.playerId;
+        const delta = isFoulPlus ? 1 : -1;
+        try {
+          await API.setPlayerFoul(gameIdFromData(), playerId, delta);
+          socket.emit('game_updated', { gameId: gameIdFromData() });
+          await loadGameData();
+        } catch (error) {
+          UI.showToast('Ошибка изменения фолов', 'error');
+          console.error(error);
+        }
+      });
+    } else if (isCriticalBtn) {
       btn.addEventListener('click', async () => {
         const playerId = btn.dataset.playerId;
         const isActive = btn.classList.contains('active');

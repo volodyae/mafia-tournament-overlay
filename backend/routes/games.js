@@ -526,6 +526,39 @@ router.post('/:id/player-critical', requireAuth, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Изменение количества фолов игрока (инкремент/декремент, диапазон 0..4)
+router.post('/:id/player-foul', requireAuth, async (req, res) => {
+  try {
+    const gameId = req.params.id;
+    const { player_id, delta } = req.body;
+
+    if (!player_id || (delta !== 1 && delta !== -1)) {
+      return res.status(400).json({ error: 'Некорректные параметры (нужны player_id и delta = +1 или -1)' });
+    }
+
+    // Текущее значение
+    const cur = await pool.query(
+      `SELECT fouls FROM game_seating WHERE game_id = $1 AND player_id = $2`,
+      [gameId, player_id]
+    );
+    if (cur.rows.length === 0) {
+      return res.status(404).json({ error: 'Игрок в рассадке не найден' });
+    }
+
+    const current = cur.rows[0].fouls || 0;
+    const newFouls = Math.max(0, Math.min(4, current + delta));
+
+    const result = await pool.query(
+      `UPDATE game_seating SET fouls = $1 WHERE game_id = $2 AND player_id = $3 RETURNING *`,
+      [newFouls, gameId, player_id]
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating fouls:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Превью авто-штрафа за карточки/удаление для всех игроков игры
 // (для предзаполнения модалки результата). Возвращает { player_id: penalty }

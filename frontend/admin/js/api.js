@@ -232,6 +232,12 @@ const API = {
       method: 'POST', body: JSON.stringify({ player_id: playerId, is_critical })
     });
   },
+  async setPlayerFoul(gameId, playerId, delta) {
+  return this.request(`/games/${gameId}/player-foul`, {
+    method: 'POST',
+    body: JSON.stringify({ player_id: playerId, delta })
+  });
+},
     async getGameScores(gameId) {
     return this.request(`/games/${gameId}/scores`);
   },

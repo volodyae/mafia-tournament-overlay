@@ -257,7 +257,22 @@
         }
         .player-card-badge.yellow-card { background: #FACC15; }
         .player-card-badge.red-card { background: #EF4444; }
-
+        .foul-dots {
+            position: absolute;
+            left: 6px;
+            bottom: 4px;
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            z-index: 4;
+        }
+        .foul-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #EF4444;
+            box-shadow: 0 0 4px rgba(0,0,0,0.7);
+        }
         /* ===== ICONS ===== */
         .icon { display: inline-block; width: 34px; height: 34px; background-repeat: no-repeat; background-position: center; background-size: contain; }
         .rounds-grid .icon { width: 26px; height: 26px; }
@@ -712,6 +727,11 @@ bottomPanel.innerHTML = gameData.seating.map(seat => {
     let cardBadgeHtml = '';
     if (seat.card === 'yellow') cardBadgeHtml = `<div class="player-card-badge yellow-card"></div>`;
     else if (seat.card === 'red') cardBadgeHtml = `<div class="player-card-badge red-card"></div>`;
+    const foulsCount = Number(seat.fouls) || 0;
+    const foulDotsHtml = foulsCount > 0
+        ? `<div class="foul-dots">${'<span class="foul-dot"></span>'.repeat(foulsCount)}</div>`
+        : '';
+
 
     return `
         <div class="player-card ${eliminated ? 'eliminated' : ''} ${justEliminated ? 'just-eliminated' : ''} ${roleChanged ? 'role-changed' : ''}" data-position="${seat.position}">
@@ -724,6 +744,7 @@ bottomPanel.innerHTML = gameData.seating.map(seat => {
                         ? `<img src="${seat.photo_url}" alt="${seat.nickname}" class="player-portrait" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div class="player-placeholder" style="display:none;">👤</div>`
                         : `<div class="player-placeholder">👤</div>`}
                     ${cardBadgeHtml}
+                    ${foulDotsHtml}
                 </div>
                 <div class="player-role-strip">
                     <div class="player-role-strip-inner ${stripClass} ${roleChanged ? 'strip-changed' : ''}"></div>
