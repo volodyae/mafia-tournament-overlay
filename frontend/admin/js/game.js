@@ -329,6 +329,12 @@ function renderRoles() {
                 `).join('')}
             </select>
         </div>
+            <span class="foul-counter" title="Фолы (0-4)" style="display:inline-flex; align-items:center; gap:4px; margin-left:8px; font-weight:700;">
+                <button class="role-btn foul-minus" type="button" data-player-id="${seat.player_id}" style="padding:2px 8px;">−</button>
+                <span class="foul-value" data-player-id="${seat.player_id}" style="min-width:18px; text-align:center;">${seat.fouls || 0}</span>
+                <button class="role-btn foul-plus" type="button" data-player-id="${seat.player_id}" style="padding:2px 8px;">+</button>
+                <span style="font-size:12px; color:var(--text-secondary);">фол</span>
+            </span>
         <div class="role-buttons">
             <button class="role-btn civilian ${!seat.role || seat.role === 'civilian' ? 'active' : ''}" 
                 data-position="${seat.position}" data-role="civilian" data-team="red">
@@ -371,12 +377,6 @@ function renderRoles() {
                 data-player-id="${seat.player_id}">
                 КК
             </button>
-            <span class="foul-counter" title="Фолы (0-4)" style="display:inline-flex; align-items:center; gap:4px; margin-left:8px; font-weight:700;">
-                <button class="role-btn foul-minus" type="button" data-player-id="${seat.player_id}" style="padding:2px 8px;">−</button>
-                <span class="foul-value" data-player-id="${seat.player_id}" style="min-width:18px; text-align:center;">${seat.fouls || 0}</span>
-                <button class="role-btn foul-plus" type="button" data-player-id="${seat.player_id}" style="padding:2px 8px;">+</button>
-                <span style="font-size:12px; color:var(--text-secondary);">фол</span>
-            </span>
         </div>
     </div>
   `).join('');
@@ -1126,15 +1126,19 @@ function setupEventListeners() {
   if (nextGameBtn) {
     nextGameBtn.addEventListener('click', () => {
       const nextNumber = gameNumber + 1;
+      // 1) Переключаем оверлей
       socket.emit('switch_overlay_game', {
         tournamentId,
         currentGameId: gameIdFromData(),
         nextGameNumber: nextNumber
       });
-      UI.showToast(`Оверлей переключён на игру ${nextNumber}`);
+      UI.showToast(`Переключение на игру ${nextNumber}...`);
+      // 2) Переключаем саму админку на следующую игру
+      setTimeout(() => {
+        window.location.href = `game.html?tournament=${tournamentId}&game=${nextNumber}`;
+      }, 300);
     });
   }
-
   // Модалка доп. баллов
   if (closeScoresModal) {
     closeScoresModal.addEventListener('click', () => {
