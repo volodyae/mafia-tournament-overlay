@@ -658,7 +658,7 @@
 
     async function loadGameData() {
         try {
-            const response = await fetch(`${API_BASE_URL}/games/by-number/${tournamentId}/${gameNumber}`);
+            const response = await fetch(`${API_BASE_URL}/games/by-number/${tournamentId}/${currentGameNumber}`);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const newData = await response.json();
             const prevGameId = gameData?.id;
@@ -675,20 +675,7 @@
 
     async function loadGameNumber(num) {
         currentGameNumber = num;
-        try {
-            const response = await fetch(`${API_BASE_URL}/games/by-number/${tournamentId}/${num}`);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const newData = await response.json();
-            const prevGameId = gameData?.id;
-            gameData = newData;
-            if (socketConnected && gameData?.id && gameData.id !== prevGameId) {
-                socket.emit('join_game', gameData.id);
-            }
-            renderOverlay();
-            applyOverlayVisibility();
-        } catch (error) {
-            console.error('Error loading game by number:', error);
-        }
+        await loadGameData();
     }
 
     function getEliminationInfo(playerId) {
@@ -1192,7 +1179,7 @@ prevRoles = newRoles;
             if (!nextNumber) return;
 
             // Обновляем внутренний номер игры и URL (для корректной ручной перезагрузки)
-            window.overlayGameNumber = nextNumber;
+            currentGameNumber = nextNumber;
             const url = new URL(window.location.href);
             url.searchParams.set('game', nextNumber);
             history.replaceState(null, '', url.toString());
