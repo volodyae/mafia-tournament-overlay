@@ -772,19 +772,24 @@ document.body.classList.add('has-control-panel');
 const TimerManager = (() => {
     let activeBtn = null;
     let intervalId = null;
-    let remaining = 0;
+    let endTimestamp = 0;   // абсолютное время окончания (мс)
+    let remaining = 0;      // сек, вычисляется от endTimestamp
     let totalSeconds = 0;
-    let state = 'idle'; // idle | running | paused | finished
-    let beepPlayed = false;
+    let state = 'idle';     // idle | running | paused | finished
 
     function formatTime(sec) {
         const s = Math.ceil(sec);
         return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}`;
     }
 
+    function recalcRemaining() {
+        if (state === 'running') {
+            remaining = Math.max(0, (endTimestamp - Date.now()) / 1000);
+        }
+    }
+
     function updateDisplay() {
         if (!activeBtn) return;
-        const display = Math.ceil(remaining);
         activeBtn.textContent = state === 'idle' ? activeBtn.dataset.seconds : formatTime(remaining);
     }
 
@@ -792,7 +797,6 @@ const TimerManager = (() => {
         [document.getElementById('timerBtn30'), document.getElementById('timerBtn60')].forEach(btn => {
             btn.classList.remove('running', 'paused', 'warning', 'finished');
         });
-
         if (!activeBtn || state === 'idle') return;
 
         if (state === 'finished') {
@@ -801,19 +805,13 @@ const TimerManager = (() => {
             activeBtn.classList.add('paused');
             if (remaining <= 10) activeBtn.classList.add('warning');
         } else if (state === 'running') {
-            activeBtn.classList.add('running');
-            if (remaining <= 10) {
-                activeBtn.classList.remove('running');
-                activeBtn.classList.add('warning');
-            }
+            if (remaining <= 10) activeBtn.classList.add('warning');
+            else activeBtn.classList.add('running');
         }
     }
 
     function tick() {
-        remaining -= 0.1;
-        if (remaining <= 10 && !beepPlayed) {
-            beepPlayed = true;
-        }
+        recalcRemaining();
         if (remaining <= 0) {
             remaining = 0;
             state = 'finished';
@@ -824,37 +822,38 @@ const TimerManager = (() => {
         updateClasses();
     }
 
+    function startRunning(seconds) {
+        totalSeconds = seconds;
+        endTimestamp = Date.now() + seconds * 1000;
+        remaining = seconds;
+        state = 'running';
+        if (intervalId) clearInterval(intervalId);
+        intervalId = setInterval(tick, 200);
+    }
+
     function handleClick(btn) {
         const seconds = parseInt(btn.dataset.seconds);
 
-        // Если этот таймер активен
         if (activeBtn === btn) {
             if (state === 'running') {
-                // Пауза
+                // Пауза: фиксируем остаток
+                recalcRemaining();
                 state = 'paused';
                 clearInterval(intervalId);
                 intervalId = null;
             } else if (state === 'paused') {
-                // Возобновить
+                // Возобновить от зафиксированного остатка
+                endTimestamp = Date.now() + remaining * 1000;
                 state = 'running';
-                intervalId = setInterval(tick, 100);
-            } else if (state === 'finished' || state === 'idle') {
-                // Перезапуск
-                remaining = seconds;
-                totalSeconds = seconds;
-                state = 'running';
-                beepPlayed = false;
-                intervalId = setInterval(tick, 100);
+                intervalId = setInterval(tick, 200);
+            } else {
+                // finished или idle -> перезапуск
+                startRunning(seconds);
             }
         } else {
-            // Переключение на другой таймер
             reset(true);
             activeBtn = btn;
-            remaining = seconds;
-            totalSeconds = seconds;
-            state = 'running';
-            beepPlayed = false;
-            intervalId = setInterval(tick, 100);
+            startRunning(seconds);
         }
 
         updateDisplay();
@@ -866,7 +865,7 @@ const TimerManager = (() => {
         intervalId = null;
         state = 'idle';
         remaining = 0;
-        beepPlayed = false;
+        endTimestamp = 0;
 
         const btn30 = document.getElementById('timerBtn30');
         const btn60 = document.getElementById('timerBtn60');
@@ -874,11 +873,14 @@ const TimerManager = (() => {
         btn60.textContent = '60';
         [btn30, btn60].forEach(b => b.classList.remove('running', 'paused', 'warning', 'finished'));
         activeBtn = null;
-
-        if (!silent) {
-            // тихий сброс
-        }
     }
+
+    // Мгновенная перерисовка при возврате на вкладку
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && state === 'running') {
+            tick();
+        }
+    });
 
     return { handleClick, reset };
 })();
