@@ -6,6 +6,7 @@
     <title>Админка игры</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>">
     <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="css/theme.css">
     <style>
         .game-section {
             background: var(--bg-primary);
@@ -414,37 +415,79 @@
 
         <!-- Главный контент -->
         <div class="content">
-            <div class="page-header">
-                <h2 id="gameTitle">Загрузка...</h2>
-            </div>
+<!-- ШАПКА ИГРЫ -->
+<div class="game-topbar" id="gameTopbar">
 
-            <!-- Ссылка на оверлей -->
-            <div class="game-section">
-                <h3>📺 Оверлей для OBS</h3>
-                <div class="overlay-link">
-                    <div class="overlay-url" id="overlayUrl">http://localhost:3000/overlay/index.html?gameId=...</div>
-                    <button class="btn btn-primary" id="copyOverlayBtn">📋 Копировать</button>
-                </div>
-                <div style="display:flex; gap:12px; flex-wrap:wrap;">
-                    <button class="btn btn-secondary" id="openOverlayBtn">👁️ Открыть предпросмотр</button>
-                    <button class="btn btn-secondary" id="toggleOverlayVisibilityBtn">Скрыть оверлей</button>
-                </div>
-            </div>
+  <div class="gt-games">
+    <button class="gt-nav-btn" id="prevGameBtn" title="Предыдущая игра" disabled>
+      <svg class="ic" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="gt-game-label">
+      <div class="gt-game-num" id="gtGameNum">Игра —</div>
+      <div class="gt-game-sub" id="gtGameSub"></div>
+    </div>
+    <button class="gt-nav-btn" id="nextGameBtn" title="Следующая игра">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+  </div>
 
-            <!-- Раздача ролей + рассадка -->
-            <div class="game-section" id="rolesSection" style="display: none;">
-                <h3>👥 Рассадка и раздача ролей</h3>
-                <div id="rolesGrid">
+  <div class="gt-divider"></div>
+
+  <div class="gt-timers">
+    <button class="timer-btn" id="timerBtn30" data-seconds="30">30</button>
+    <button class="timer-btn" id="timerBtn60" data-seconds="60">60</button>
+    <button class="timer-reset-btn" id="timerResetBtn" title="Сброс">↺</button>
+  </div>
+
+  <div class="gt-obs" id="obsSection">
+    <div class="obs-status" id="obsStatus" title="OBS отключен"></div>
+    <button class="obs-connect-btn" id="obsConnectBtn">OBS</button>
+  </div>
+
+</div>
+
+<!-- Ссылка на оверлей -->
+<div class="game-section">
+    <h3>
+        <svg class="ic" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
+        Оверлей для OBS
+    </h3>
+    <div class="overlay-link">
+        <div class="overlay-url" id="overlayUrl">http://localhost:3000/overlay/index.html?gameId=...</div>
+        <button class="btn btn-primary" id="copyOverlayBtn">
+            <svg class="ic ic-sm" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+            Копировать
+        </button>
+    </div>
+</div>
+
+
+<!-- Раздача ролей + рассадка -->
+<div class="game-section" id="rolesSection" style="display: none;">
+    <div class="roles-head">
+        <h3>
+            <svg class="ic" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Рассадка и роли
+        </h3>
+        <div class="roles-toggle" id="rolesToggle">
+            <span>Показать роли</span>
+            <span class="switch"></span>
+        </div>
+    </div>
+    <div id="rolesGrid">
                     <!-- Заполняется через JS -->
                 </div>
                 <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
-                    <button class="btn btn-success" id="saveSeatingBtn" style="display: none;">✅ Сохранить рассадку</button>
+                    <button class="btn btn-success" id="saveSeatingBtn" style="display: none;">Сохранить рассадку</button>
                 </div>
             </div>
 
             <!-- Лучший ход -->
             <div class="game-section" id="bestMoveSection" style="display: none;">
-              <h3>⭐ Лучший ход</h3>
+              <h3>
+    <svg class="ic" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 16.5 13.5 18.5 21 12 16.5 5.5 21 7.5 13.5 2 9 9 9"/></svg>
+    Лучший ход
+</h3>
               
               <div id="bestMoveInfo" style="margin-bottom: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
                 <p style="color: var(--text-secondary);">ПУ</p>
@@ -456,23 +499,32 @@
                 </div>
               </div>
               
-              <button class="btn btn-success" id="applyBestMoveBtn">✅ Сохранить ЛХ</button>
+              <button class="btn btn-success" id="applyBestMoveBtn">Сохранить ЛХ</button>
             </div>
 
             <!-- Блоки Круги + Выставление рядом -->
             <div class="game-section-row">
                 <!-- Круги игры -->
                 <div class="game-section" id="roundsSection" style="display: none; flex: 1;">
-                    <h3>🌙 Управление кругами</h3>
+                    <h3>
+    <svg class="ic" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    Круги игры
+</h3>
                     <div id="roundsList">
                         <!-- Заполняется через JS -->
                     </div>
-                    <button class="btn btn-primary" id="addRoundBtn">➕ Добавить следующий круг</button>
+                    <button class="btn btn-primary" id="addRoundBtn">
+    <svg class="ic ic-sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Добавить круг
+</button>
                 </div>
 
                 <!-- Выставление на голосование -->
                 <div class="game-section" id="nomineesSection" style="display: none; flex: 1;">
-                    <h3>🎯 Выставление на голосование</h3>
+                    <h3>
+    <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+    Выставление на голосование
+</h3>
                     <div class="form-group">
                         <label>Добавить кандидата:</label>
                         <div id="nomineeButtons" class="nominee-buttons">
@@ -483,15 +535,17 @@
                         <!-- Заполняется через JS -->
                     </div>
                     <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                        <button class="btn btn-danger" id="clearNomineesBtn">🗑️ Очистить всех</button>
+                        <button class="btn btn-danger" id="clearNomineesBtn">Очистить всех</button>
                     </div>
                 </div>
             </div>
 
             <!-- Результат игры и промежуточный итог -->
             <div class="game-section" id="resultSection">
-                <h3>🏁 Результат игры</h3>
-
+                <h3>
+    <svg class="ic" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+    Результат игры
+</h3>
                 <!-- Кнопки выбора исхода (видны всегда) -->
                 <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
                     <button class="btn btn-success" id="winRedBtn">Победа МИР</button>
@@ -522,13 +576,12 @@
                             </tbody>
                         </table>
                     </div>
-                    <button class="btn btn-success" id="saveResultBtn" style="margin-top:12px;">💾 Сохранить изменения</button>
+                    <button class="btn btn-success" id="saveResultBtn" style="margin-top:12px;">Сохранить изменения</button>
                 </div>
 
                 <button class="btn btn-secondary" id="showStandingsBtn" disabled style="margin-top:12px;">
                     Промежуточный итог
                 </button>
-                <button class="btn btn-primary" id="nextGameBtn" style="display:none;">▶ Следующая игра</button>
             </div>
         </div>
     </div>
@@ -545,7 +598,7 @@
                 <input type="hidden" id="roundNumber">
 
                 <div class="form-group">
-                    <label>👍 Голосование:</label>
+                    <label>Голосование:</label>
                     <div id="votedOutList" style="margin-bottom: 8px;">
                         <!-- Заполняется через JS -->
                     </div>
@@ -556,7 +609,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>🔫 Убит:</label>
+                    <label>Убит:</label>
                     <select id="mafiaKill" class="form-select">
                         <option value="">Выберите игрока</option>
                         <option value="miss">❌ Промах</option>
@@ -564,7 +617,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>🎩 Проверка дона:</label>
+                    <label>Проверка дона:</label>
                     <select id="donCheck" class="form-select">
                         <option value="">Выберите игрока</option>
                         <option value="none">❌ Не проверял</option>
@@ -572,7 +625,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>⭐ Проверка шерифа:</label>
+                    <label>Проверка шерифа:</label>
                     <select id="sheriffCheck" class="form-select">
                         <option value="">Выберите игрока</option>
                         <option value="none">❌ Не проверял</option>
@@ -650,14 +703,6 @@
 
     <!-- Панель управления: Таймер + Музыка + OBS -->
 <div class="control-panel" id="controlPanel">
-    <!-- Таймер -->
-    <div class="cp-timer">
-        <button class="timer-btn" id="timerBtn30" data-seconds="30">30</button>
-        <button class="timer-btn" id="timerBtn60" data-seconds="60">60</button>
-        <button class="timer-reset-btn" id="timerResetBtn" title="Сброс">↺</button>
-    </div>
-
-    <div class="cp-divider"></div>
 
     <!-- Музыка -->
 <div class="cp-music">
@@ -674,15 +719,6 @@
     <input type="range" class="music-progress" id="musicProgress" min="0" max="100" value="0" title="Перемотка">
     <input type="range" class="music-volume" id="musicVolume" min="0" max="100" value="70" title="Громкость">
 </div>
-
-
-    <div class="cp-divider"></div>
-
-    <!-- OBS -->
-    <div class="cp-obs" id="obsSection">
-        <div class="obs-status" id="obsStatus" title="OBS отключен"></div>
-        <button class="obs-connect-btn" id="obsConnectBtn">OBS</button>
-    </div>
 </div>
 
     <script src="js/ui.js"></script>

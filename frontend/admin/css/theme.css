@@ -1,0 +1,614 @@
+/* ============================================================
+   ЕДИНАЯ ТЁМНАЯ ТЕМА — редизайн админки игры
+   Акцент: янтарно-золотой. Фон: глубокий тёмно-синий (slate).
+   ============================================================ */
+
+:root {
+  /* Фоны */
+  --bg-0: #0F172A;   /* самый тёмный — подложка страницы */
+  --bg-1: #1E293B;   /* карточки, панели */
+  --bg-2: #273449;   /* вложенные блоки, инпуты */
+  --bg-3: #334155;   /* hover, границы активных */
+
+  /* Текст */
+  --tx-0: #F1F5F9;   /* основной */
+  --tx-1: #94A3B8;   /* вторичный, подписи */
+  --tx-2: #64748B;   /* приглушённый */
+
+  /* Акцент */
+  --acc:      #F59E0B;
+  --acc-soft: rgba(245, 158, 11, 0.14);
+  --acc-line: rgba(245, 158, 11, 0.35);
+
+  /* Семантика (используем сдержанно) */
+  --ok:   #10B981;
+  --bad:  #EF4444;
+  --warn: #EAB308;
+
+  /* Геометрия */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --gap: 12px;
+
+  --line: #2B3A52;   /* базовая граница */
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+/* Сброс общего фона под тему */
+body {
+  background: var(--bg-0) !important;
+  color: var(--tx-0) !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Переопределяем старые переменные admin.css, чтобы вложенные
+   компоненты (кнопки, инпуты) сразу подхватили тему */
+:root {
+  --bg-primary: var(--bg-1);
+  --bg-secondary: var(--bg-2);
+  --primary: var(--acc);
+  --border: var(--line);
+  --text-secondary: var(--tx-1);
+}
+
+/* ---------- Иконки (единый линейный набор) ---------- */
+.ic {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+.ic-sm { width: 15px; height: 15px; }
+.ic-lg { width: 22px; height: 22px; }
+
+/* ---------- Кнопки (переопределение) ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--tx-0);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, opacity .15s;
+}
+.btn:hover { background: var(--bg-3); }
+.btn:disabled { opacity: .4; cursor: default; }
+
+.btn-primary { background: var(--acc); border-color: var(--acc); color: #1A1206; }
+.btn-primary:hover { background: #FBBF24; }
+
+.btn-secondary { background: var(--bg-2); }
+
+.btn-success { background: transparent; border-color: var(--ok); color: var(--ok); }
+.btn-success:hover { background: rgba(16,185,129,0.12); }
+
+.btn-danger { background: transparent; border-color: var(--bad); color: var(--bad); }
+.btn-danger:hover { background: rgba(239,68,68,0.12); }
+
+/* ---------- Секции ---------- */
+.game-section {
+  background: var(--bg-1) !important;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md) !important;
+  box-shadow: var(--shadow) !important;
+}
+.game-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--tx-0);
+  font-size: 16px;
+  letter-spacing: .2px;
+}
+
+/* Инпуты и селекты */
+.form-input, .form-select {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  color: var(--tx-0);
+  border-radius: var(--r-sm);
+}
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px var(--acc-soft);
+}
+
+/* ============================================================
+   ШАПКА ИГРЫ (game topbar)
+   ============================================================ */
+.game-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+
+/* Навигация по играм */
+.gt-games {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gt-nav-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--tx-0);
+  cursor: pointer;
+  transition: .15s;
+}
+.gt-nav-btn:hover:not(:disabled) { background: var(--bg-3); border-color: var(--acc-line); }
+.gt-nav-btn:disabled { opacity: .35; cursor: default; }
+
+.gt-game-label {
+  min-width: 92px;
+  text-align: center;
+  line-height: 1.1;
+}
+.gt-game-num { font-size: 18px; font-weight: 700; }
+.gt-game-sub { font-size: 11px; color: var(--tx-1); text-transform: uppercase; letter-spacing: .5px; }
+
+.gt-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--line);
+  margin: 0 4px;
+}
+
+/* Таймеры */
+.gt-timers {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.timer-btn {
+  min-width: 62px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--tx-0);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: .12s;
+}
+.timer-btn:hover { border-color: var(--acc-line); }
+.timer-btn.running { border-color: var(--acc); color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
+.timer-btn.paused  { border-color: var(--tx-1); color: var(--tx-1); border-style: dashed; }
+.timer-btn.warning { border-color: var(--bad); color: var(--bad); box-shadow: 0 0 0 3px rgba(239,68,68,0.16); }
+.timer-btn.finished { background: var(--bad); border-color: var(--bad); color: #fff; }
+.timer-reset-btn {
+  width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--bg-2); color: var(--tx-1);
+  font-size: 18px; cursor: pointer; transition: .15s;
+}
+.timer-reset-btn:hover { color: var(--acc); border-color: var(--acc-line); }
+
+/* Зона OBS в шапке */
+.gt-obs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.obs-status {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--tx-2); flex-shrink: 0;
+}
+.obs-status.connected { background: var(--ok); box-shadow: 0 0 8px rgba(16,185,129,0.6); }
+.obs-status.error { background: var(--bad); }
+.obs-connect-btn {
+  height: 34px; padding: 0 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--bg-2); color: var(--tx-0);
+  font-weight: 600; font-size: 13px; cursor: pointer; transition: .15s;
+}
+.obs-connect-btn:hover { border-color: var(--acc-line); }
+.obs-scene-btn {
+  height: 34px; padding: 0 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: transparent; color: var(--tx-1);
+  font-weight: 600; font-size: 13px; cursor: pointer; transition: .15s;
+}
+.obs-scene-btn:hover { color: var(--tx-0); border-color: var(--acc-line); }
+.obs-scene-btn.active-scene {
+  background: var(--acc); border-color: var(--acc); color: #1A1206;
+}
+
+/* Мобильная шапка */
+@media (max-width: 768px) {
+  .game-topbar { gap: 10px; padding: 10px 12px; }
+  .gt-obs { margin-left: 0; width: 100%; }
+  .gt-divider { display: none; }
+  .timer-btn { min-width: 56px; height: 44px; font-size: 17px; }
+  .gt-nav-btn, .timer-reset-btn { width: 40px; height: 40px; }
+}
+/* ============================================================
+   СТРОКА ИГРОКА (новый вид)
+   Порядок: Номер → Ник → Фолы (4 полоски) → Контролы
+   ============================================================ */
+
+/* Тумблер "Показать роли" в шапке секции */
+.roles-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.roles-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--tx-1);
+  font-size: 13px;
+  font-weight: 600;
+}
+.roles-toggle .switch {
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  position: relative;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.roles-toggle .switch::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--tx-1);
+  transition: transform .15s, background .15s;
+}
+.roles-toggle.on .switch { background: var(--acc); }
+.roles-toggle.on .switch::after { transform: translateX(18px); background: #1A1206; }
+.roles-toggle.on { color: var(--tx-0); }
+
+/* Одна строка игрока */
+.pl-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-2);
+  margin-bottom: 8px;
+  transition: border-color .15s, opacity .15s;
+}
+.pl-row.is-out {
+  opacity: .5;
+}
+.pl-row.is-out .pl-name { text-decoration: line-through; }
+
+/* Номер */
+.pl-num {
+  width: 30px; height: 30px;
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-3);
+  color: var(--tx-0);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* Селект игрока (ник) */
+.pl-name-wrap { flex: 1; min-width: 120px; }
+.pl-name-wrap .form-select {
+  width: 100%;
+  padding: 8px 10px;
+  min-height: 0;
+}
+
+/* Фолы — 4 вертикальные полоски + маленькая "−" */
+.pl-fouls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.foul-bars {
+  display: inline-flex;
+  gap: 3px;
+  cursor: pointer;
+  padding: 4px 2px;
+  align-items: flex-end;
+}
+.foul-bar {
+  width: 5px;
+  height: 20px;
+  border-radius: 2px;
+  background: var(--bg-3);
+  transition: background .12s;
+}
+.foul-bar.filled { background: var(--bad); }
+.foul-minus-btn {
+  width: 24px; height: 24px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  color: var(--tx-1);
+  cursor: pointer;
+  font-size: 16px; line-height: 1;
+  transition: .15s;
+}
+.foul-minus-btn:hover { color: var(--bad); border-color: var(--bad); }
+
+/* Группа контролов справа */
+.pl-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Компактные кнопки контролов */
+.pl-btn {
+  height: 32px;
+  min-width: 34px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  color: var(--tx-1);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: .12s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.pl-btn:hover { color: var(--tx-0); border-color: var(--acc-line); }
+
+/* Роли */
+.pl-btn.role-civ.active  { background: var(--bad);  border-color: var(--bad);  color: #fff; }
+.pl-btn.role-maf.active,
+.pl-btn.role-don.active   { background: #0F172A;    border-color: var(--tx-1); color: #fff; }
+.pl-btn.role-sher.active  { background: var(--warn); border-color: var(--warn); color: #1A1206; }
+
+/* Карты / крит / удаление */
+.pl-btn.card-yellow.active { background: var(--warn); border-color: var(--warn); color: #1A1206; }
+.pl-btn.card-red.active    { background: var(--bad);  border-color: var(--bad);  color: #fff; }
+.pl-btn.critical-toggle.active   { background: var(--acc); border-color: var(--acc); color: #1A1206; }
+.pl-btn.eliminated-toggle.active { background: var(--bad); border-color: var(--bad); color: #fff; }
+
+/* Группа ролей — скрыта по умолчанию, показывается при .roles-visible на секции */
+.pl-roles { display: none; gap: 6px; }
+#rolesSection.roles-visible .pl-roles { display: inline-flex; }
+
+/* Мобильная строка */
+@media (max-width: 768px) {
+  .pl-row {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+  }
+  .pl-name-wrap { flex: 1 1 100%; order: 1; }
+  .pl-num { order: 0; }
+  .pl-fouls { order: 2; }
+  .pl-controls { order: 3; flex: 1; }
+  .pl-btn { height: 36px; }
+}
+/* ============================================================
+   СТРОКА ИГРОКА (новый вид)
+   Порядок: Номер → Ник → Фолы (4 полоски) → Контролы
+   ============================================================ */
+
+/* Тумблер "Показать роли" в шапке секции */
+.roles-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.roles-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--tx-1);
+  font-size: 13px;
+  font-weight: 600;
+}
+.roles-toggle .switch {
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  position: relative;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.roles-toggle .switch::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--tx-1);
+  transition: transform .15s, background .15s;
+}
+.roles-toggle.on .switch { background: var(--acc); }
+.roles-toggle.on .switch::after { transform: translateX(18px); background: #1A1206; }
+.roles-toggle.on { color: var(--tx-0); }
+
+/* Одна строка игрока */
+.pl-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-2);
+  margin-bottom: 8px;
+  transition: border-color .15s, opacity .15s;
+}
+.pl-row.is-out {
+  opacity: .5;
+}
+.pl-row.is-out .pl-name { text-decoration: line-through; }
+
+/* Номер */
+.pl-num {
+  width: 30px; height: 30px;
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-3);
+  color: var(--tx-0);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* Селект игрока (ник) */
+.pl-name-wrap { flex: 1; min-width: 120px; }
+.pl-name-wrap .form-select {
+  width: 100%;
+  padding: 8px 10px;
+  min-height: 0;
+}
+
+/* Фолы — 4 вертикальные полоски + маленькая "−" */
+.pl-fouls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.foul-bars {
+  display: inline-flex;
+  gap: 3px;
+  cursor: pointer;
+  padding: 4px 2px;
+  align-items: flex-end;
+}
+.foul-bar {
+  width: 5px;
+  height: 20px;
+  border-radius: 2px;
+  background: var(--bg-3);
+  transition: background .12s;
+}
+.foul-bar.filled { background: var(--bad); }
+.foul-minus-btn {
+  width: 24px; height: 24px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  color: var(--tx-1);
+  cursor: pointer;
+  font-size: 16px; line-height: 1;
+  transition: .15s;
+}
+.foul-minus-btn:hover { color: var(--bad); border-color: var(--bad); }
+
+/* Группа контролов справа */
+.pl-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Компактные кнопки контролов */
+.pl-btn {
+  height: 32px;
+  min-width: 34px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  color: var(--tx-1);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: .12s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.pl-btn:hover { color: var(--tx-0); border-color: var(--acc-line); }
+
+/* Роли */
+.pl-btn.role-civ.active  { background: var(--bad);  border-color: var(--bad);  color: #fff; }
+.pl-btn.role-maf.active,
+.pl-btn.role-don.active   { background: #0F172A;    border-color: var(--tx-1); color: #fff; }
+.pl-btn.role-sher.active  { background: var(--warn); border-color: var(--warn); color: #1A1206; }
+
+/* Карты / крит / удаление */
+.pl-btn.card-yellow.active { background: var(--warn); border-color: var(--warn); color: #1A1206; }
+.pl-btn.card-red.active    { background: var(--bad);  border-color: var(--bad);  color: #fff; }
+.pl-btn.critical-toggle.active   { background: var(--acc); border-color: var(--acc); color: #1A1206; }
+.pl-btn.eliminated-toggle.active { background: var(--bad); border-color: var(--bad); color: #fff; }
+
+/* Группа ролей — скрыта по умолчанию, показывается при .roles-visible на секции */
+.pl-roles { display: none; gap: 6px; }
+#rolesSection.roles-visible .pl-roles { display: inline-flex; }
+
+/* Мобильная строка */
+@media (max-width: 768px) {
+  .pl-row {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+  }
+  .pl-name-wrap { flex: 1 1 100%; order: 1; }
+  .pl-num { order: 0; }
+  .pl-fouls { order: 2; }
+  .pl-controls { order: 3; flex: 1; }
+  .pl-btn { height: 36px; }
+}

@@ -155,8 +155,7 @@ function updateNextGameButton() {
   if (!btn || !gameData) return;
   const total = Number(gameData.total_games) || null;
   // Кнопка видна всегда, но блокируется на последней игре
-  btn.style.display = 'inline-block';
-  if (total && gameNumber >= total) {
+    if (total && gameNumber >= total) {
     btn.disabled = true;
     btn.title = 'Это последняя игра турнира';
   } else {
@@ -276,7 +275,10 @@ function collectResultRows(originalScores) {
 
 // Заголовок
 function renderGameHeader() {
-  gameTitle.textContent = `Игра ${gameData.game_number} ${gameData.series_name ? '- ' + gameData.series_name : ''}`;
+  const numEl = document.getElementById('gtGameNum');
+  const subEl = document.getElementById('gtGameSub');
+  if (numEl) numEl.textContent = `Игра ${gameData.game_number}`;
+  if (subEl) subEl.textContent = gameData.series_name || '';
 }
 
 // Ссылка на оверлей
@@ -287,8 +289,7 @@ function renderOverlayLink() {
 }
 
 function updateOverlayVisibilityButton() {
-  if (!toggleOverlayVisibilityBtn || !gameData) return;
-  toggleOverlayVisibilityBtn.textContent = gameData.overlay_hidden ? 'Отобразить оверлей' : 'Скрыть оверлей';
+  return; // кнопка удалена, функция оставлена для совместимости вызова
 }
 
 // === Рассадка + роли ===
@@ -300,9 +301,9 @@ function renderRoles() {
     rolesGrid.innerHTML = Array.from({ length: 10 }, (_, i) => {
       const position = i + 1;
       return `
-        <div class="seating-item" style="margin-bottom: 16px;">
-          <div class="position-number">${position}</div>
-          <div style="flex: 1;">
+        <div class="pl-row">
+          <div class="pl-num">${position}</div>
+          <div class="pl-name-wrap">
             <select class="form-select seating-player-select" data-position="${position}" onchange="updateAvailablePlayers()">
               <option value="">Выберите игрока</option>
               ${tournamentPlayers.map(p => `<option value="${p.id}">${p.nickname}</option>`).join('')}
@@ -316,74 +317,59 @@ function renderRoles() {
     return;
   }
 
-  rolesGrid.innerHTML = gameData.seating.map(seat => `
-    <div class="seating-item seating-line" style="margin-bottom: 16px;">
-        <div class="position-number">${seat.position}</div>
-        <div class="seating-select-wrapper">
+  rolesGrid.innerHTML = gameData.seating.map(seat => {
+    const fouls = seat.fouls || 0;
+    const out = seat.is_eliminated;
+    const bars = Array.from({ length: 4 }, (_, i) =>
+      `<div class="foul-bar ${i < fouls ? 'filled' : ''}"></div>`
+    ).join('');
+
+    return `
+    <div class="pl-row ${out ? 'is-out' : ''}" data-position="${seat.position}">
+        <div class="pl-num">${seat.position}</div>
+
+        <div class="pl-name-wrap">
             <select class="form-select seating-player-select" data-position="${seat.position}" onchange="updateAvailablePlayers()">
                 <option value="">Выберите игрока</option>
                 ${tournamentPlayers.map(p => `
-                    <option value="${p.id}" ${p.id === seat.player_id ? 'selected' : ''}>
-                        ${p.nickname}
-                    </option>
+                    <option value="${p.id}" ${p.id === seat.player_id ? 'selected' : ''}>${p.nickname}</option>
                 `).join('')}
             </select>
         </div>
-            <span class="foul-counter" title="Фолы (0-4)" style="display:inline-flex; align-items:center; gap:4px; margin-left:8px; font-weight:700;">
-                <button class="role-btn foul-minus" type="button" data-player-id="${seat.player_id}" style="padding:2px 8px;">−</button>
-                <span class="foul-value" data-player-id="${seat.player_id}" style="min-width:18px; text-align:center;">${seat.fouls || 0}</span>
-                <button class="role-btn foul-plus" type="button" data-player-id="${seat.player_id}" style="padding:2px 8px;">+</button>
-                <span style="font-size:12px; color:var(--text-secondary);">фол</span>
-            </span>
-        <div class="role-buttons">
-            <button class="role-btn civilian ${!seat.role || seat.role === 'civilian' ? 'active' : ''}" 
-                data-position="${seat.position}" data-role="civilian" data-team="red">
-                Мир
-            </button>
-            <button class="role-btn black ${seat.role === 'mafia' ? 'active' : ''}" 
-                    data-position="${seat.position}" data-role="mafia" data-team="black">
-                Маф
-            </button>
-            <button class="role-btn black ${seat.role === 'don' ? 'active' : ''}" 
-                    data-position="${seat.position}" data-role="don" data-team="black">
-                Дон
-            </button>
-            <button class="role-btn yellow ${seat.role === 'sheriff' ? 'active' : ''}" 
-                    data-position="${seat.position}" data-role="sheriff" data-team="red">
-                Шер
-            </button>
-            <button 
-                class="role-btn eliminated-toggle ${seat.is_eliminated && seat.elimination_reason === 'removed' ? 'active' : ''}"
-                type="button"
-                data-player-id="${seat.player_id}">
-                Удален
-            </button>
-            <button 
-                class="role-btn critical-toggle ${seat.is_critical ? 'active' : ''}"
-                type="button"
-                data-player-id="${seat.player_id}"
-                title="Критический круг (штраф за удаление -1 вместо -0.5)">
-                Крит
-            </button>
-            <button 
-                class="role-btn card-yellow ${seat.card === 'yellow' ? 'active' : ''}"
-                type="button"
-                data-player-id="${seat.player_id}">
-                ЖК
-            </button>
-            <button 
-                class="role-btn card-red ${seat.card === 'red' ? 'active' : ''}"
-                type="button"
-                data-player-id="${seat.player_id}">
-                КК
-            </button>
+
+        <div class="pl-fouls" title="Фолы (0-4). Клик по полоскам +1, «−» убирает">
+            <div class="foul-bars foul-plus" data-player-id="${seat.player_id}">${bars}</div>
+            <button class="foul-minus-btn foul-minus" type="button" data-player-id="${seat.player_id}">−</button>
+        </div>
+
+        <div class="pl-controls">
+            <div class="pl-roles">
+                <button class="pl-btn role-civ ${!seat.role || seat.role === 'civilian' ? 'active' : ''}"
+                    data-position="${seat.position}" data-role="civilian" data-team="red">Мир</button>
+                <button class="pl-btn role-maf ${seat.role === 'mafia' ? 'active' : ''}"
+                    data-position="${seat.position}" data-role="mafia" data-team="black">Маф</button>
+                <button class="pl-btn role-don ${seat.role === 'don' ? 'active' : ''}"
+                    data-position="${seat.position}" data-role="don" data-team="black">Дон</button>
+                <button class="pl-btn role-sher ${seat.role === 'sheriff' ? 'active' : ''}"
+                    data-position="${seat.position}" data-role="sheriff" data-team="red">Шер</button>
+            </div>
+
+            <button class="pl-btn card-yellow ${seat.card === 'yellow' ? 'active' : ''}"
+                type="button" data-player-id="${seat.player_id}" title="Жёлтая карточка">ЖК</button>
+            <button class="pl-btn card-red ${seat.card === 'red' ? 'active' : ''}"
+                type="button" data-player-id="${seat.player_id}" title="Красная карточка">КК</button>
+            <button class="pl-btn critical-toggle ${seat.is_critical ? 'active' : ''}"
+                type="button" data-player-id="${seat.player_id}" title="Критический круг">Крит</button>
+            <button class="pl-btn eliminated-toggle ${out && seat.elimination_reason === 'removed' ? 'active' : ''}"
+                type="button" data-player-id="${seat.player_id}" title="Удалён">Удал</button>
         </div>
     </div>
-  `).join('');
+    `;
+  }).join('');
 
   saveSeatingBtn.style.display = 'inline-block';
 
-  document.querySelectorAll('.role-btn').forEach(btn => {
+  document.querySelectorAll('.pl-btn, .foul-plus, .foul-minus').forEach(btn => {
     const isEliminateBtn = btn.classList.contains('eliminated-toggle');
     const isCriticalBtn = btn.classList.contains('critical-toggle');
     const isCardYellow = btn.classList.contains('card-yellow');
@@ -407,9 +393,7 @@ function renderRoles() {
     } else if (isCriticalBtn) {
       btn.addEventListener('click', async () => {
         const playerId = btn.dataset.playerId;
-        const isActive = btn.classList.contains('active');
-        const newCritical = !isActive;
-
+        const newCritical = !btn.classList.contains('active');
         try {
           await API.setPlayerCritical(gameIdFromData(), playerId, newCritical);
           socket.emit('game_updated', { gameId: gameIdFromData() });
@@ -422,9 +406,7 @@ function renderRoles() {
     } else if (isEliminateBtn) {
       btn.addEventListener('click', async () => {
         const playerId = btn.dataset.playerId;
-        const isActive = btn.classList.contains('active');
-        const newEliminated = !isActive;
-
+        const newEliminated = !btn.classList.contains('active');
         try {
           await API.setPlayerElimination(gameIdFromData(), playerId, newEliminated);
           socket.emit('game_updated', { gameId: gameIdFromData() });
@@ -444,31 +426,16 @@ function renderRoles() {
         const hasRed = rBtn.classList.contains('active');
 
         let newCard = 'none';
-
         if (isCardYellow) {
-          if (hasRed) {
-            newCard = 'red';
-          } else if (hasYellow) {
-            newCard = 'red';
-          } else {
-            newCard = 'yellow';
-          }
+          if (hasRed) newCard = 'red';
+          else if (hasYellow) newCard = 'red';
+          else newCard = 'yellow';
         } else if (isCardRed) {
           newCard = hasRed ? 'none' : 'red';
         }
 
         try {
           await API.setPlayerCard(gameIdFromData(), playerId, newCard);
-
-          yBtn.classList.remove('active');
-          rBtn.classList.remove('active');
-
-          if (newCard === 'yellow') {
-            yBtn.classList.add('active');
-          } else if (newCard === 'red') {
-            rBtn.classList.add('active');
-          }
-
           socket.emit('game_updated', { gameId: gameIdFromData() });
           await loadGameData();
         } catch (error) {
@@ -477,18 +444,11 @@ function renderRoles() {
         }
       });
     } else {
+      // Кнопки ролей
       btn.addEventListener('click', async () => {
         const position = btn.dataset.position;
-        
-        document.querySelectorAll(`.role-btn[data-position="${position}"]`).forEach(b => {
-          if (!b.classList.contains('eliminated-toggle') &&
-              !b.classList.contains('card-yellow') &&
-              !b.classList.contains('card-red')) {
-            b.classList.remove('active');
-          }
-        });
+        document.querySelectorAll(`.pl-btn[data-position="${position}"]`).forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-
         await applyRolesInstant();
       });
     }
@@ -567,7 +527,7 @@ async function applyRolesInstant() {
   const changedPositions = [];
 
   for (let position = 1; position <= 10; position++) {
-    const activeBtn = document.querySelector(`.role-btn[data-position="${position}"].active`);
+    const activeBtn = document.querySelector(`.pl-btn[data-position="${position}"].active`);
     
     let role = 'civilian';
     let team = 'red';
@@ -800,30 +760,30 @@ document.getElementById('clearNomineesBtn').addEventListener('click', async () =
 
 function renderRounds() {
   if (!gameData.rounds || gameData.rounds.length === 0) {
-    roundsList.innerHTML = '<div class="empty-state"><p>Нет кругов. Добавьте первый круг.</p></div>';
+    roundsList.innerHTML = '<p style="color: var(--text-secondary); margin-bottom:12px;">Нет кругов. Добавьте первый круг.</p>';
     return;
   }
-  
+
   roundsList.innerHTML = gameData.rounds.map(round => {
-    const mafiaKill = round.mafia_miss ? '❌ Промах' : round.mafia_kill_player_id ? getPlayerName(round.mafia_kill_player_id) : '-';
-    const donCheck = round.don_check_player_id ? getPlayerName(round.don_check_player_id) : '❌';
-    const sheriffCheck = round.sheriff_check_player_id ? getPlayerName(round.sheriff_check_player_id) : '❌';
-    const votedOut = round.nobody_voted_out ? '❌ Никто' : (round.voted_out_players && round.voted_out_players.length > 0
-      ? round.voted_out_players.map(id => getPlayerName(id)).join(', ') : '-');
-    
+    const mafiaKill = round.mafia_miss ? 'Промах' : round.mafia_kill_player_id ? getPlayerName(round.mafia_kill_player_id) : '—';
+    const donCheck = round.don_check_player_id ? getPlayerName(round.don_check_player_id) : '—';
+    const sheriffCheck = round.sheriff_check_player_id ? getPlayerName(round.sheriff_check_player_id) : '—';
+    const votedOut = round.nobody_voted_out ? 'Никто' : (round.voted_out_players && round.voted_out_players.length > 0
+      ? round.voted_out_players.map(id => getPlayerName(id)).join(', ') : '—');
+
     return `
-      <div class="card" style="margin-bottom: 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h4>🌙 Круг ${round.round_number}</h4>
-          <button class="btn btn-secondary" onclick="editRound(${round.round_number})" style="padding: 6px 12px; font-size: 14px;">
-            ✏️ Редактировать
+      <div style="background: var(--bg-2); border:1px solid var(--line); border-radius: var(--r-sm); padding: 14px; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong style="font-size:15px;">Круг ${round.round_number}</strong>
+          <button class="pl-btn" onclick="editRound(${round.round_number})" title="Редактировать">
+            <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
           </button>
         </div>
-        <div style="margin-top: 12px;">
-          <p><strong>🔫Убит:</strong> ${mafiaKill}</p>
-          <p><strong>🎩 Проверка дона:</strong> ${donCheck}</p>
-          <p><strong>⭐ Проверка шерифа:</strong> ${sheriffCheck}</p>
-          <p><strong>👍 Голосование:</strong> ${votedOut}</p>
+        <div style="display:grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; color: var(--tx-1);">
+          <span>Убит:</span><span style="color:var(--tx-0);">${mafiaKill}</span>
+          <span>Проверка Дона:</span><span style="color:var(--tx-0);">${donCheck}</span>
+          <span>Проверка Шерифа:</span><span style="color:var(--tx-0);">${sheriffCheck}</span>
+          <span>Голосование:</span><span style="color:var(--tx-0);">${votedOut}</span>
         </div>
       </div>
     `;
@@ -938,13 +898,13 @@ function populateRoundSelects() {
   ).join('');
 
   document.getElementById('mafiaKill').innerHTML = 
-    '<option value="">Выберите игрока</option><option value="miss">❌ Промах</option>' + aliveOptions;
+    '<option value="">Выберите игрока</option><option value="miss">Промах</option>' + aliveOptions;
   
   document.getElementById('donCheck').innerHTML = 
-    '<option value="">Выберите игрока</option><option value="none">❌ Не проверял</option>' + allOptions;
+    '<option value="">Выберите игрока</option><option value="none">Не проверял</option>' + allOptions;
   
   document.getElementById('sheriffCheck').innerHTML = 
-    '<option value="">Выберите игрока</option><option value="none">❌ Не проверял</option>' + allOptions;
+    '<option value="">Выберите игрока</option><option value="none">Не проверял</option>' + allOptions;
 
   const votedSet = new Set(votedOutPlayers);
 
@@ -1054,25 +1014,6 @@ function setupEventListeners() {
     UI.showToast('Ссылка скопирована');
   });
 
-  openOverlayBtn.addEventListener('click', () => {
-    window.open(overlayUrl.textContent, '_blank');
-  });
-
-  if (toggleOverlayVisibilityBtn) {
-    toggleOverlayVisibilityBtn.addEventListener('click', async () => {
-      try {
-        const newHidden = !gameData.overlay_hidden;
-        await API.setOverlayVisibility(gameIdFromData(), newHidden);
-        UI.showToast(newHidden ? 'Оверлей скрыт' : 'Оверлей отображается');
-        socket.emit('game_updated', { gameId: gameIdFromData() });
-        await loadGameData();
-      } catch (error) {
-        UI.showToast('Ошибка переключения видимости оверлея', 'error');
-        console.error(error);
-      }
-    });
-  }
-
   // Кнопки результата игры
   if (winRedBtn) {
     winRedBtn.addEventListener('click', async () => {
@@ -1139,6 +1080,15 @@ function setupEventListeners() {
       }, 300);
     });
   }
+
+  const rolesToggle = document.getElementById('rolesToggle');
+if (rolesToggle) {
+  rolesToggle.addEventListener('click', () => {
+    const on = rolesToggle.classList.toggle('on');
+    rolesSection.classList.toggle('roles-visible', on);
+  });
+}
+
   // Модалка доп. баллов
   if (closeScoresModal) {
     closeScoresModal.addEventListener('click', () => {
