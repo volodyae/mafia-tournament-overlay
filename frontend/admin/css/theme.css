@@ -204,10 +204,28 @@ body {
   transition: .12s;
 }
 .timer-btn:hover { border-color: var(--acc-line); }
-.timer-btn.running { border-color: var(--acc); color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
-.timer-btn.paused  { border-color: var(--tx-1); color: var(--tx-1); border-style: dashed; }
-.timer-btn.warning { border-color: var(--bad); color: var(--bad); box-shadow: 0 0 0 3px rgba(239,68,68,0.16); }
-.timer-btn.finished { background: var(--bad); border-color: var(--bad); color: #fff; }
+.timer-btn.running {
+  background: var(--acc-soft);
+  border-color: var(--acc);
+  color: #FFFFFF;
+  box-shadow: 0 0 0 3px var(--acc-soft);
+}
+.timer-btn.paused {
+  border-color: var(--tx-1);
+  color: var(--tx-0);
+  border-style: dashed;
+}
+.timer-btn.warning {
+  background: rgba(239,68,68,0.15);
+  border-color: var(--bad);
+  color: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(239,68,68,0.16);
+}
+.timer-btn.finished {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: #fff;
+}
 .timer-reset-btn {
   width: 36px; height: 36px;
   display: inline-flex; align-items: center; justify-content: center;

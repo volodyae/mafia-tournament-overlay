@@ -1,7 +1,7 @@
 -- c:\mafia-overlay\backend\database\init.sql
 
 -- Создание базы данных (выполнить отдельно)
-CREATE DATABASE mafia_overlay;
+-- CREATE DATABASE mafia_overlay;
 
 -- Подключиться к базе: \c mafia_overlay
 
