@@ -302,13 +302,38 @@ router.put('/:id/nominees', requireAuth, async (req, res) => {
   }
 });
 
+// Синхронизация best_move по первому кругу (логика прежняя, вынесена из маршрутов)
+async function syncBestMoveFromRound(gameId, round) {
+  if (!round || round.round_number !== 1) return;
+
+  const firstKilledPlayerId =
+    !round.mafia_miss && round.mafia_kill_player_id ? round.mafia_kill_player_id : null;
+
+  if (firstKilledPlayerId) {
+    await pool.query(
+      `INSERT INTO best_move (id, game_id, first_killed_player_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (game_id) DO UPDATE SET first_killed_player_id = EXCLUDED.first_killed_player_id`,
+      [uuidv4(), gameId, firstKilledPlayerId]
+    );
+  } else {
+    await pool.query(
+      `UPDATE best_move
+       SET first_killed_player_id = NULL, suspect_1 = NULL, suspect_2 = NULL, suspect_3 = NULL
+       WHERE game_id = $1`,
+      [gameId]
+    );
+  }
+}
+
 // Добавить круг
 router.post('/:id/rounds', requireAuth, async (req, res) => {
   try {
     const gameId = req.params.id;
     const {
       round_number, mafia_kill_player_id, mafia_miss,
-      don_check_player_id, sheriff_check_player_id,
+      don_check_player_id, don_check_none,
+      sheriff_check_player_id, sheriff_check_none,
       voted_out_players, nobody_voted_out
     } = req.body;
 
@@ -318,52 +343,31 @@ router.post('/:id/rounds', requireAuth, async (req, res) => {
       `INSERT INTO game_rounds (
         id, game_id, round_number,
         mafia_kill_player_id, mafia_miss,
-        don_check_player_id, sheriff_check_player_id,
+        don_check_player_id, don_check_none,
+        sheriff_check_player_id, sheriff_check_none,
         voted_out_players, nobody_voted_out
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
       ON CONFLICT (game_id, round_number) DO UPDATE SET
         mafia_kill_player_id = EXCLUDED.mafia_kill_player_id,
         mafia_miss = EXCLUDED.mafia_miss,
         don_check_player_id = EXCLUDED.don_check_player_id,
+        don_check_none = EXCLUDED.don_check_none,
         sheriff_check_player_id = EXCLUDED.sheriff_check_player_id,
+        sheriff_check_none = EXCLUDED.sheriff_check_none,
         voted_out_players = EXCLUDED.voted_out_players,
         nobody_voted_out = EXCLUDED.nobody_voted_out
       RETURNING *`,
       [
         uuidv4(), gameId, round_number,
         mafia_kill_player_id || null, mafia_miss === true,
-        don_check_player_id || null, sheriff_check_player_id || null,
+        don_check_player_id || null, don_check_none === true,
+        sheriff_check_player_id || null, sheriff_check_none === true,
         JSON.stringify(votedOutArray), nobody_voted_out === true
       ]
     );
 
     const round = result.rows[0];
-
-    if (round.round_number === 1) {
-      let firstKilledPlayerId = null;
-      if (!round.mafia_miss && round.mafia_kill_player_id) {
-        firstKilledPlayerId = round.mafia_kill_player_id;
-      }
-
-      if (firstKilledPlayerId) {
-        // Есть первый убитый — записываем его, подозреваемых не трогаем
-        await pool.query(
-          `INSERT INTO best_move (id, game_id, first_killed_player_id)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (game_id) DO UPDATE SET first_killed_player_id = EXCLUDED.first_killed_player_id`,
-          [uuidv4(), gameId, firstKilledPlayerId]
-        );
-      } else {
-        // Убийство отменено/промах — ЛХ невозможен, обнуляем всё
-        await pool.query(
-          `UPDATE best_move
-           SET first_killed_player_id = NULL, suspect_1 = NULL, suspect_2 = NULL, suspect_3 = NULL
-           WHERE game_id = $1`,
-          [gameId]
-        );
-      }
-    }
-
+    await syncBestMoveFromRound(gameId, round);
     res.json(round);
   } catch (error) {
     console.error('Error adding round:', error);
@@ -371,59 +375,51 @@ router.post('/:id/rounds', requireAuth, async (req, res) => {
   }
 });
 
-// Обновить круг
+// Обновить круг — обновляются ТОЛЬКО переданные поля
 router.put('/:id/rounds/:roundNumber', requireAuth, async (req, res) => {
   try {
     const gameId = req.params.id;
     const roundNumber = parseInt(req.params.roundNumber, 10);
-    const {
-      mafia_kill_player_id, mafia_miss,
-      don_check_player_id, sheriff_check_player_id,
-      voted_out_players, nobody_voted_out
-    } = req.body;
+    const b = req.body || {};
 
-    const votedOutArray = Array.isArray(voted_out_players) ? voted_out_players : [];
+    const sets = [];
+    const params = [];
+    const add = (col, val) => { params.push(val); sets.push(`${col} = $${params.length}`); };
 
-    const result = await pool.query(
-      `UPDATE game_rounds SET
-        mafia_kill_player_id = $1, mafia_miss = $2,
-        don_check_player_id = $3, sheriff_check_player_id = $4,
-        voted_out_players = $5, nobody_voted_out = $6
-       WHERE game_id = $7 AND round_number = $8
-       RETURNING *`,
-      [
-        mafia_kill_player_id || null, mafia_miss === true,
-        don_check_player_id || null, sheriff_check_player_id || null,
-        JSON.stringify(votedOutArray), nobody_voted_out === true,
-        gameId, roundNumber
-      ]
-    );
+    if ('mafia_kill_player_id' in b)    add('mafia_kill_player_id', b.mafia_kill_player_id || null);
+    if ('mafia_miss' in b)              add('mafia_miss', b.mafia_miss === true);
+    if ('don_check_player_id' in b)     add('don_check_player_id', b.don_check_player_id || null);
+    if ('don_check_none' in b)          add('don_check_none', b.don_check_none === true);
+    if ('sheriff_check_player_id' in b) add('sheriff_check_player_id', b.sheriff_check_player_id || null);
+    if ('sheriff_check_none' in b)      add('sheriff_check_none', b.sheriff_check_none === true);
+    if ('voted_out_players' in b) {
+      add('voted_out_players', JSON.stringify(Array.isArray(b.voted_out_players) ? b.voted_out_players : []));
+    }
+    if ('nobody_voted_out' in b)        add('nobody_voted_out', b.nobody_voted_out === true);
 
-    const round = result.rows[0];
+    let round;
+    if (sets.length === 0) {
+      const r = await pool.query(
+        'SELECT * FROM game_rounds WHERE game_id = $1 AND round_number = $2',
+        [gameId, roundNumber]
+      );
+      round = r.rows[0];
+    } else {
+      params.push(gameId, roundNumber);
+      const r = await pool.query(
+        `UPDATE game_rounds SET ${sets.join(', ')}
+         WHERE game_id = $${params.length - 1} AND round_number = $${params.length}
+         RETURNING *`,
+        params
+      );
+      round = r.rows[0];
+    }
 
-    if (round && round.round_number === 1) {
-      let firstKilledPlayerId = null;
-      if (!round.mafia_miss && round.mafia_kill_player_id) {
-        firstKilledPlayerId = round.mafia_kill_player_id;
-      }
+    if (!round) return res.status(404).json({ error: 'Круг не найден' });
 
-      if (firstKilledPlayerId) {
-        // Есть первый убитый — записываем его, подозреваемых не трогаем
-        await pool.query(
-          `INSERT INTO best_move (id, game_id, first_killed_player_id)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (game_id) DO UPDATE SET first_killed_player_id = EXCLUDED.first_killed_player_id`,
-          [uuidv4(), gameId, firstKilledPlayerId]
-        );
-      } else {
-        // Убийство отменено/промах — ЛХ невозможен, обнуляем всё
-        await pool.query(
-          `UPDATE best_move
-           SET first_killed_player_id = NULL, suspect_1 = NULL, suspect_2 = NULL, suspect_3 = NULL
-           WHERE game_id = $1`,
-          [gameId]
-        );
-      }
+    // ЛХ трогаем только если менялся отстрел
+    if ('mafia_kill_player_id' in b || 'mafia_miss' in b) {
+      await syncBestMoveFromRound(gameId, round);
     }
 
     res.json(round);

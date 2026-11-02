@@ -824,10 +824,10 @@ prevRoles = newRoles;
         grid.style.setProperty('--rounds-count', columns);
 
         const actions = [
+            { type: 'voted', iconClass: 'icon-voted' },
             { type: 'kill', iconClass: 'icon-kill' },
             { type: 'don', iconClass: 'icon-don-check' },
-            { type: 'sheriff', iconClass: 'icon-sheriff-check' },
-            { type: 'voted', iconClass: 'icon-voted' }
+            { type: 'sheriff', iconClass: 'icon-sheriff-check' }
         ];
 
         // Текущее состояние для сравнения (диф анимаций)
@@ -836,9 +836,10 @@ prevRoles = newRoles;
             const round = rounds.find(r => r.round_number === col);
             if (!round) continue;
             currentData[`kill_${col}`] = round.mafia_miss ? 'miss' : (round.mafia_kill_player_id || '');
-            currentData[`don_${col}`] = round.don_check_player_id || '';
-            currentData[`sheriff_${col}`] = round.sheriff_check_player_id || '';
-            currentData[`voted_${col}`] = JSON.stringify(round.voted_out_players || []);
+            currentData[`don_${col}`] = round.don_check_player_id || (round.don_check_none ? 'none' : '');
+            currentData[`sheriff_${col}`] = round.sheriff_check_player_id || (round.sheriff_check_none ? 'none' : '');
+            const vo = Array.isArray(round.voted_out_players) ? round.voted_out_players : [];
+            currentData[`voted_${col}`] = vo.length ? JSON.stringify(vo) : (round.nobody_voted_out ? 'nobody' : '');
         }
 
         let html = '';
@@ -879,19 +880,19 @@ prevRoles = newRoles;
                     if (round.don_check_player_id) {
                         const seat = gameData.seating.find(s => s.player_id === round.don_check_player_id);
                         if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNew);
-                    } else content = wrapRoundSymbol(null, 'neutral', isNew, true);
+                    } else if (round.don_check_none) content = wrapRoundSymbol(null, 'neutral', isNew, true);
                 } else if (action.type === 'sheriff') {
                     if (round.sheriff_check_player_id) {
                         const seat = gameData.seating.find(s => s.player_id === round.sheriff_check_player_id);
                         if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNew);
-                    } else content = wrapRoundSymbol(null, 'neutral', isNew, true);
+                    } else if (round.sheriff_check_none) content = wrapRoundSymbol(null, 'neutral', isNew, true);
                 } else if (action.type === 'voted') {
                     const votedIds = Array.isArray(round.voted_out_players) ? round.voted_out_players : [];
-                    if (round.nobody_voted_out || votedIds.length === 0) content = wrapRoundSymbol(null, 'neutral', isNew, true);
-                    else if (votedIds.length === 1) {
+                    if (votedIds.length === 1) {
                         const seat = gameData.seating.find(s => s.player_id === votedIds[0]);
                         if (seat) content = wrapRoundNumber(seat.position, seat.team === 'red' ? 'team-red' : 'team-black', isNew);
-                    } else content = renderMultiVoted(votedIds, isNew);
+                    } else if (votedIds.length > 1) content = renderMultiVoted(votedIds, isNew);
+                    else if (round.nobody_voted_out) content = wrapRoundSymbol(null, 'neutral', isNew, true);
                 }
 
                 const animClass = changed ? 'round-cell-changed' : '';

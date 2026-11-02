@@ -13,6 +13,7 @@ let tournamentPlayers = [];
 let socket = null; // локальная переменная для удобства
 let currentNominees = [];
 let votedOutPlayers = [];
+let nobodyVotedOut = false; // явный выбор "Никто не выбыл"
 let selectedFirstKilled = null;
 let selectedSuspects = [];
 
@@ -766,8 +767,8 @@ function renderRounds() {
 
   roundsList.innerHTML = gameData.rounds.map(round => {
     const mafiaKill = round.mafia_miss ? 'Промах' : round.mafia_kill_player_id ? getPlayerName(round.mafia_kill_player_id) : '—';
-    const donCheck = round.don_check_player_id ? getPlayerName(round.don_check_player_id) : '—';
-    const sheriffCheck = round.sheriff_check_player_id ? getPlayerName(round.sheriff_check_player_id) : '—';
+    const donCheck = round.don_check_player_id ? getPlayerName(round.don_check_player_id) : (round.don_check_none ? 'Не проверял' : '—');
+    const sheriffCheck = round.sheriff_check_player_id ? getPlayerName(round.sheriff_check_player_id) : (round.sheriff_check_none ? 'Не проверял' : '—');
     const votedOut = round.nobody_voted_out ? 'Никто' : (round.voted_out_players && round.voted_out_players.length > 0
       ? round.voted_out_players.map(id => getPlayerName(id)).join(', ') : '—');
 
@@ -795,6 +796,7 @@ window.editRound = (roundNumber) => {
   if (!round) return;
   
   votedOutPlayers = round.voted_out_players || [];
+  nobodyVotedOut = round.nobody_voted_out === true;
   
   document.getElementById('roundModalTitle').textContent = `Редактировать круг ${roundNumber}`;
   document.getElementById('roundNumber').value = roundNumber;
@@ -802,9 +804,9 @@ window.editRound = (roundNumber) => {
   populateRoundSelects();
   
   document.getElementById('mafiaKill').value = round.mafia_miss ? 'miss' : (round.mafia_kill_player_id || '');
-  document.getElementById('donCheck').value = round.don_check_player_id || 'none';
-  document.getElementById('sheriffCheck').value = round.sheriff_check_player_id || 'none';
-  
+  document.getElementById('donCheck').value = round.don_check_player_id || (round.don_check_none ? 'none' : '');
+  document.getElementById('sheriffCheck').value = round.sheriff_check_player_id || (round.sheriff_check_none ? 'none' : '');
+
   renderVotedOutList();
   roundModal.classList.add('active');
   roundForm.dataset.mode = 'edit';
@@ -812,6 +814,7 @@ window.editRound = (roundNumber) => {
 
 addRoundBtn.addEventListener('click', () => {
   votedOutPlayers = [];
+  nobodyVotedOut = false;
   const nextRoundNumber = (gameData.rounds?.length || 0) + 1;
   
   document.getElementById('roundModalTitle').textContent = `Круг ${nextRoundNumber}`;
@@ -921,7 +924,9 @@ function renderVotedOutList() {
   const votedOutList = document.getElementById('votedOutList');
   
   if (votedOutPlayers.length === 0) {
-    votedOutList.innerHTML = '';
+    votedOutList.innerHTML = nobodyVotedOut
+      ? '<div class="nominee-tag"><span>Никто не выбыл</span></div>'
+      : '';
     return;
   }
 
@@ -948,6 +953,7 @@ document.getElementById('addVotedOut').addEventListener('change', async (e) => {
 
   if (value === 'nobody') {
     votedOutPlayers = [];
+    nobodyVotedOut = true;
     renderVotedOutList();
     e.target.value = '';
     await saveRound();
@@ -961,6 +967,7 @@ document.getElementById('addVotedOut').addEventListener('change', async (e) => {
   }
 
   votedOutPlayers.push(value);
+  nobodyVotedOut = false;
   renderVotedOutList();
   e.target.value = '';
   await saveRound();
@@ -982,10 +989,12 @@ async function saveRound() {
     round_number: roundNumber,
     mafia_kill_player_id: mafiaKillValue === 'miss' ? null : (mafiaKillValue || null),
     mafia_miss: mafiaKillValue === 'miss',
-    don_check_player_id: donCheckValue === 'none' ? null : (donCheckValue || null),
-    sheriff_check_player_id: sheriffCheckValue === 'none' ? null : (sheriffCheckValue || null),
-    voted_out_players: votedOutPlayers.length > 0 ? votedOutPlayers : [],
-    nobody_voted_out: votedOutPlayers.length === 0
+    don_check_player_id: (donCheckValue && donCheckValue !== 'none') ? donCheckValue : null,
+    don_check_none: donCheckValue === 'none',
+    sheriff_check_player_id: (sheriffCheckValue && sheriffCheckValue !== 'none') ? sheriffCheckValue : null,
+    sheriff_check_none: sheriffCheckValue === 'none',
+    voted_out_players: votedOutPlayers,
+    nobody_voted_out: votedOutPlayers.length === 0 && nobodyVotedOut
   };
 
   try {
