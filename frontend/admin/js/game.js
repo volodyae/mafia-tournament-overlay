@@ -333,6 +333,8 @@ function renderRoles() {
       seat.is_critical ? '<span class="pl-flag f-crit">Крит</span>' : ''
     ].join('');
     const expanded = Number(plExpanded) === Number(seat.position);
+    const outNow = isPlayerOut(seat.player_id);
+    const nominated = (gameData.nominees || []).some(n => n.player_id === seat.player_id);
 
     return `
     <div class="pl-row ${out ? 'is-out' : ''} ${expanded ? 'expanded' : ''}" data-position="${seat.position}">
@@ -348,6 +350,8 @@ function renderRoles() {
         </div>
 
         <div class="pl-flags">${flags}</div>
+        <button class="pl-nom ${nominated ? 'active' : ''} ${outNow ? 'is-hidden' : ''}" type="button"
+            data-player-id="${seat.player_id}" title="Выставить / снять">Выст.</button>
 
         <div class="pl-fouls" title="Фолы (0-4). Клик по полоскам +1, «−» убирает">
             <div class="foul-bars foul-plus" data-player-id="${seat.player_id}">${bars}</div>
@@ -1277,11 +1281,11 @@ let phaseBusy = false;
 let bmPick = [];
 
 const PHASE_STEPS = [
-  { key: 'vote',    label: 'Голосование' },
-  { key: 'kill',    label: 'Отстрел' },
-  { key: 'don',     label: 'Дон' },
-  { key: 'sheriff', label: 'Шериф' },
-  { key: 'bm',      label: 'ЛХ' }
+  { key: 'vote',    label: 'Голосование',     icon: 'vote' },
+  { key: 'kill',    label: 'Отстрел',         icon: 'kill' },
+  { key: 'don',     label: 'Проверка Дона',   icon: 'don' },
+  { key: 'sheriff', label: 'Проверка Шерифа', icon: 'sheriff' },
+  { key: 'bm',      label: 'Лучший ход',      icon: null }
 ];
 
 function ppRound(n) { return (gameData.rounds || []).find(r => r.round_number === n) || null; }
@@ -1339,6 +1343,7 @@ function ppIsPickable(seat, step, n) {
     const r1 = ppRound(1);
     return !(r1 && seat.player_id === r1.mafia_kill_player_id);
   }
+  if (step === 'don' || step === 'sheriff') return true; // проверять можно и выбывших
   if (seat.is_eliminated) return false;
   for (const r of gameData.rounds || []) {
     const killedBefore = !r.mafia_miss && r.mafia_kill_player_id === seat.player_id && r.round_number < n;
@@ -1386,6 +1391,7 @@ function applyPickHighlight() {
     const seat = gameData.seating.find(s => String(s.position) === row.dataset.position);
     const can = active && seat && ppIsPickable(seat, step, phaseState.round);
     row.classList.toggle('pickable', !!can);
+    row.classList.toggle('pick-dead', !!(can && seat && (step === 'don' || step === 'sheriff') && ppIsDeadAtNight(seat, phaseState.round)));
     row.classList.toggle('picked', !!(active && seat && ppIsPicked(seat.player_id, step, r)));
   });
 }
@@ -1405,34 +1411,40 @@ function renderPhasePanel() {
 
   const chips = ppSteps(r).map(s => {
     const val = ppStepValue(r, s.key);
-    const sep = s.key === 'kill' ? '<span class="pp-sep">Ночь</span>' : '';
-    return `${sep}<button type="button" class="pp-chip ${step === s.key ? 'active' : ''} ${ppStepFilled(r, s.key) ? 'filled' : ''}" data-step="${s.key}">${s.label}${val !== '' ? ` <b>${val}</b>` : ''}</button>`;
+    const isNone = ['✕', 'промах', '—'].includes(val);
+    const icon = s.icon
+      ? `<span class="pp-ic pp-ic-${s.icon}"></span>`
+      : '<span class="pp-ic-text">ЛХ</span>';
+    const value = isNone
+      ? '<span class="pp-ic pp-ic-none"></span>'
+      : (val !== '' ? `<span class="pp-val">${val}</span>` : '');
+    return `<button type="button" class="pp-chip ${step === s.key ? 'active' : ''} ${ppStepFilled(r, s.key) ? 'filled' : ''}" data-step="${s.key}" title="${s.label}">${icon}${value}</button>`;
   }).join('');
+
+  // Идёт подсчёт: шаг «Голосование», не заполнен, есть выставленные
+  const counting = step === 'vote' && !ppStepFilled(r, 'vote') && vcNominees(n).length > 0;
 
   let hint = '', buttons = '';
   switch (step) {
     case 'vote':
-      hint = 'Голосование: нажмите на выбывшего';
-      buttons = btn('nobody', 'Никто не выбыл');
+      if (!counting) buttons = btn('nobody', 'Никто не выбыл');
       break;
     case 'kill':
-      hint = 'Отстрел: нажмите на игрока';
       buttons = btn('miss', 'Промах');
       break;
     case 'don':
-      hint = 'Проверка Дона' + (ppRoleOut('don', n) ? ' — Дон выбыл' : '');
+      hint = ppRoleOut('don', n) ? 'Дон выбыл' : '';
       buttons = btn('don-none', 'Не проверял');
       break;
     case 'sheriff':
-      hint = 'Проверка Шерифа' + (ppRoleOut('sheriff', n) ? ' — Шериф выбыл' : '');
+      hint = ppRoleOut('sheriff', n) ? 'Шериф выбыл' : '';
       buttons = btn('sheriff-none', 'Не проверял');
       break;
     case 'bm':
-      hint = `«Игрок №${ppNum(r.mafia_kill_player_id)}, ваш Лучший ход» — отметьте до 3 номеров`;
-      buttons = btn('bm-save', `Сохранить ЛХ (${bmPick.length})`, 'primary') + btn('bm-skip', 'Пропустить');
+      hint = `ЛХ №${ppNum(r.mafia_kill_player_id)}`;
+      buttons = btn('bm-save', `Сохранить (${bmPick.length})`, 'primary') + btn('bm-skip', 'Пропустить');
       break;
     case 'done':
-      hint = `Круг ${n} заполнен`;
       buttons = btn('next-round', `Круг ${n + 1} →`, 'primary');
       break;
   }
@@ -1440,6 +1452,11 @@ function renderPhasePanel() {
     buttons += btn('clear', 'Очистить');
   }
 
+  const action = (hint || buttons)
+    ? `<div class="pp-action">${hint ? `<span class="pp-hint">${hint}</span>` : ''}<div class="pp-buttons">${buttons}</div></div>`
+    : '';
+
+  panel.classList.toggle('pp-unstick', counting);
   panel.innerHTML = `
     <div class="pp-top">
       <div class="pp-round">
@@ -1453,10 +1470,7 @@ function renderPhasePanel() {
       </div>
       <div class="pp-steps">${chips}</div>
     </div>
-    <div class="pp-action">
-      <span class="pp-hint">${hint}</span>
-      <div class="pp-buttons">${buttons}</div>
-    </div>`;
+    ${counting ? vcRender(n) : action + vcNomineesRow(n)}`;
 
   applyPickHighlight();
 }
@@ -1502,7 +1516,8 @@ async function ppPick(playerId) {
   }
 }
 
-async function ppAction(act) {
+async function ppAction(act, el) {
+  if (act.startsWith('nom-') || act.startsWith('vc-')) return vcAction(act, el);
   const step = ppCurrentStep();
   const gid = gameIdFromData();
   switch (act) {
@@ -1574,7 +1589,7 @@ document.getElementById('phasePanel')?.addEventListener('click', (e) => {
   const chip = e.target.closest('[data-step]');
   if (chip) { phaseState.step = chip.dataset.step; renderPhasePanel(); return; }
   const act = e.target.closest('[data-act]');
-  if (act) ppAction(act.dataset.act);
+  if (act) ppAction(act.dataset.act, act);
 });
 
 // Клик по строке игрока в режиме выбора
@@ -1612,3 +1627,228 @@ document.addEventListener('click', (e) => {
   window.addEventListener('resize', set);
   if (window.ResizeObserver) new ResizeObserver(set).observe(tb);
 })();
+
+// ============================================================
+// ВЫСТАВЛЕНИЕ И ПОДСЧЁТ ГОЛОСОВ (этап 3)
+// ============================================================
+var VOTE_CLEAR_NOMINEES = true; // очищать выставленных после подтверждения итога
+var voteState = null;
+
+// Кнопка «Выст.» в строке игрока
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.pl-nom');
+  if (!btn || btn.classList.contains('is-hidden')) return;
+  toggleNominee(btn);
+});
+
+// Живые на момент дневного голосования круга n
+function vcAlive(n) {
+  return gameData.seating.filter(s => ppIsPickable(s, 'vote', n));
+}
+
+// Выставленные (живые) в порядке выставления
+function vcNominees(n) {
+  const alive = vcAlive(n);
+  return (gameData.nominees || [])
+    .slice()
+    .sort((a, b) => (a.position || 0) - (b.position || 0))
+    .filter(nm => alive.some(s => s.player_id === nm.player_id))
+    .map(nm => nm.player_id);
+}
+
+var VC_ICON_RESET = '<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>';
+var VC_ICON_CLEAR = '<svg viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>';
+
+// Выставленные вне подсчёта: только номера
+function vcNomineesRow(n) {
+  const ids = vcNominees(n);
+  if (!ids.length) return '';
+  const items = ids.map(id =>
+    `<button type="button" class="pp-nom" data-act="nom-remove" data-id="${id}" title="Снять">${ppNum(id)}</button>`).join('');
+  return `<div class="pp-noms"><span class="pp-ic pp-ic-vote"></span>${items}<button type="button" class="vc-icon" data-act="nom-clear" title="Очистить">${VC_ICON_CLEAR}</button></div>`;
+}
+
+function vcState(n) {
+  const gid = gameIdFromData();
+  const ids = vcNominees(n);
+  const key = gid + '|' + n + '|' + ids.join(',');
+  if (!voteState || voteState.key !== key) {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem('vote_' + gid) || 'null'); } catch (e) {}
+    voteState = (saved && saved.key === key)
+      ? saved
+      : { key, stage: 'main', candidates: ids, counts: ids.map(() => null), raise: null };
+  }
+  return voteState;
+}
+
+function vcStore() {
+  localStorage.setItem('vote_' + gameIdFromData(), JSON.stringify(voteState));
+}
+
+// Последнему кандидату — все оставшиеся голоса (п. 4.4.9)
+function vcAutoFill(st, alive) {
+  const k = st.candidates.length;
+  if (!k || st.stage === 'raise') return;
+  const before = st.counts.slice(0, k - 1);
+  st.counts[k - 1] = before.every(v => v !== null)
+    ? alive - before.reduce((a, v) => a + v, 0)
+    : null;
+}
+
+function vcResult(st, alive) {
+  if (!st.candidates.length || st.counts.some(v => v === null)) return null;
+  const max = Math.max(...st.counts);
+  const leaders = st.candidates.filter((_, i) => st.counts[i] === max);
+  if (leaders.length === 1) return { type: 'out', ids: leaders };
+  if (st.stage === 'main' || leaders.length < st.candidates.length) return { type: 'revote', ids: leaders };
+  if (leaders.length >= alive) return { type: 'nobody', note: 'Ничья между всеми живыми — подъём не проводится' };
+  return { type: 'raise', ids: leaders };
+}
+
+function vcRender(n) {
+  const st = vcState(n);
+  const k = st.candidates.length;
+  if (!k) return '';
+  const alive = vcAlive(n).length;
+  const list = ids => ids.map(ppNum).join(', ');
+  const btn = (act, text, cls = 'secondary') =>
+    `<button type="button" class="btn btn-${cls}" data-act="${act}">${text}</button>`;
+  const reset = `<button type="button" class="vc-icon" data-act="vc-reset" title="Сбросить подсчёт">${VC_ICON_RESET}</button>`;
+  const actions = (primary, withNobody) =>
+    `<div class="vc-actions">${primary}${withNobody ? btn('vc-nobody', 'Никто не выбыл') : ''}</div>`;
+  const plain = ids => ids.map(id => `<span class="pp-nom">${ppNum(id)}</span>`).join('');
+
+  // 1-й день, один кандидат (4.4.12)
+  if (st.stage === 'main' && k === 1 && n === 1) {
+    return `<div class="vc-cands">${plain(st.candidates)}</div>${actions(btn('vc-nobody', 'Никто не выбыл', 'primary'), false)}`;
+  }
+
+  // Подъём
+  if (st.stage === 'raise') {
+    const need = Math.floor(alive / 2) + 1;
+    const nums = Array.from({ length: alive + 1 }, (_, v) =>
+      `<button type="button" class="vc-num ${st.raise === v ? 'sel' : ''}" data-act="vc-raise" data-v="${v}">${v}</button>`).join('');
+    let primary = '', withNobody = true;
+    if (st.raise !== null) {
+      if (st.raise >= need) primary = btn('vc-confirm', `Выбывают ${list(st.candidates)}`, 'primary');
+      else { primary = btn('vc-confirm', 'Никто не выбыл', 'primary'); withNobody = false; }
+    }
+    return `<div class="vc-cands"><span class="vc-tag">Подъём · ${need}+</span>${plain(st.candidates)}${reset}</div>
+      <div class="vc-nums">${nums}</div>${actions(primary, withNobody)}`;
+  }
+
+  // Подсчёт / переголосование
+  vcAutoFill(st, alive);
+  const active = st.counts.findIndex(v => v === null);
+
+  const cands = st.candidates.map((id, i) => {
+    const c = st.counts[i];
+    const dis = (c === null || i === k - 1) ? 'disabled' : '';
+    return `<button type="button" class="vc-cand ${i === active ? 'active' : ''} ${c !== null ? 'set' : ''}" data-act="vc-edit" data-i="${i}" ${dis}><span class="vc-c-num">${ppNum(id)}</span><span class="vc-c-cnt">${c !== null ? c : ''}</span></button>`;
+  }).join('');
+
+  let nums = '';
+  if (active > -1) {
+    const left = alive - st.counts.slice(0, active).reduce((a, v) => a + (v || 0), 0);
+    nums = '<div class="vc-nums">' + Array.from({ length: left + 1 }, (_, v) =>
+      `<button type="button" class="vc-num" data-act="vc-set" data-i="${active}" data-v="${v}">${v}</button>`).join('') + '</div>';
+  }
+
+  const res = vcResult(st, alive);
+  let primary = '', withNobody = true;
+  if (res && res.type === 'out')    primary = btn('vc-confirm', `Выбывает №${ppNum(res.ids[0])}`, 'primary');
+  if (res && res.type === 'revote') primary = btn('vc-revote', 'Переголосование', 'primary');
+  if (res && res.type === 'raise')  primary = btn('vc-to-raise', 'Подъём', 'primary');
+  if (res && res.type === 'nobody') { primary = btn('vc-nobody', 'Никто не выбыл', 'primary'); withNobody = false; }
+
+  const tag = st.stage === 'revote' ? '<span class="vc-tag">Переголос.</span>' : '';
+  return `<div class="vc-cands">${tag}${cands}${reset}</div>${nums}${actions(primary, withNobody)}`;
+}
+
+async function vcAction(act, el) {
+  const n = phaseState.round;
+  const gid = gameIdFromData();
+  const alive = vcAlive(n).length;
+  const st = vcState(n);
+  vcAutoFill(st, alive);
+  const i = el ? parseInt(el.dataset.i, 10) : NaN;
+  const v = el ? parseInt(el.dataset.v, 10) : NaN;
+
+  switch (act) {
+    case 'nom-remove':
+      return window.removeNominee(el.dataset.id);
+    case 'nom-clear':
+      currentNominees = [];
+      return updateNomineesOnServer();
+    case 'vc-set':
+      st.counts[i] = v;
+      for (let j = i + 1; j < st.counts.length; j++) st.counts[j] = null;
+      break;
+    case 'vc-edit':
+      for (let j = i; j < st.counts.length; j++) st.counts[j] = null;
+      break;
+    case 'vc-revote': {
+      const res = vcResult(st, alive);
+      if (!res || res.type !== 'revote') return;
+      st.stage = 'revote';
+      st.candidates = res.ids;
+      st.counts = res.ids.map(() => null);
+      break;
+    }
+    case 'vc-to-raise': {
+      const res = vcResult(st, alive);
+      if (!res || res.type !== 'raise') return;
+      st.stage = 'raise';
+      st.candidates = res.ids;
+      st.counts = [];
+      st.raise = null;
+      break;
+    }
+    case 'vc-raise':
+      st.raise = v;
+      break;
+    case 'vc-reset':
+      localStorage.removeItem('vote_' + gid);
+      voteState = null;
+      renderPhasePanel();
+      return;
+    case 'vc-confirm': {
+      let ids;
+      if (st.stage === 'raise') {
+        if (st.raise === null) return;
+        ids = st.raise >= Math.floor(alive / 2) + 1 ? st.candidates.slice() : [];
+      } else {
+        const res = vcResult(st, alive);
+        if (!res || res.type !== 'out') return;
+        ids = res.ids;
+      }
+      return vcFinish(ids);
+    }
+    case 'vc-nobody':
+      return vcFinish([]);
+  }
+  vcStore();
+  renderPhasePanel();
+}
+
+async function vcFinish(ids) {
+  const gid = gameIdFromData();
+  const n = phaseState.round;
+  localStorage.removeItem('vote_' + gid);
+  voteState = null;
+  await ppSave(ids.length
+    ? { voted_out_players: ids, nobody_voted_out: false }
+    : { voted_out_players: [], nobody_voted_out: true });
+  // Очищаем выставленных, только если круг реально сохранился
+  if (VOTE_CLEAR_NOMINEES && ppStepFilled(ppRound(n), 'vote') && (gameData.nominees || []).length) {
+    currentNominees = [];
+    await updateNomineesOnServer();
+  }
+}
+
+// Игрок уже не в игре к моменту ночных проверок круга n (убит раньше, заголосован днём или убит этой ночью)
+function ppIsDeadAtNight(seat, n) {
+  const r = ppRound(n);
+  return !ppIsPickable(seat, 'kill', n) || !!(r && !r.mafia_miss && r.mafia_kill_player_id === seat.player_id);
+}
