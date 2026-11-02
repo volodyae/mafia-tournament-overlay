@@ -563,14 +563,6 @@ async function applyRolesInstant() {
     }
   }
 
-  const donCount = roles.filter(r => r.role === 'don').length;
-  const sheriffCount = roles.filter(r => r.role === 'sheriff').length;
-  const mafiaCount = roles.filter(r => r.role === 'mafia').length;
-
-  if (donCount !== 1 || sheriffCount !== 1 || mafiaCount < 2 || mafiaCount > 3) {
-    UI.showToast('Распределение ролей сейчас не соответствует стандарту (1 Дон, 1 Шериф, 2–3 мафии)', 'error');
-  }
-
   try {
     await API.assignRoles(gameIdFromData(), roles);
     socket.emit('game_updated', { gameId: gameIdFromData() });
