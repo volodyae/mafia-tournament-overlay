@@ -141,6 +141,8 @@ async function loadGameData() {
     renderBestMove();
     renderNominees();
     renderRounds();
+    ppSyncFromData();
+    renderPhasePanel();
     updateResultButtons();
     updateResultButtons();
     updateNextGameButton();
@@ -325,8 +327,15 @@ function renderRoles() {
       `<div class="foul-bar ${i < fouls ? 'filled' : ''}"></div>`
     ).join('');
 
+    const flags = [
+      seat.card === 'yellow' ? '<span class="pl-flag f-yellow">ЖК</span>' : '',
+      seat.card === 'red' ? '<span class="pl-flag f-red">КК</span>' : '',
+      seat.is_critical ? '<span class="pl-flag f-crit">Крит</span>' : ''
+    ].join('');
+    const expanded = Number(plExpanded) === Number(seat.position);
+
     return `
-    <div class="pl-row ${out ? 'is-out' : ''}" data-position="${seat.position}">
+    <div class="pl-row ${out ? 'is-out' : ''} ${expanded ? 'expanded' : ''}" data-position="${seat.position}">
         <div class="pl-num">${seat.position}</div>
 
         <div class="pl-name-wrap">
@@ -338,10 +347,16 @@ function renderRoles() {
             </select>
         </div>
 
+        <div class="pl-flags">${flags}</div>
+
         <div class="pl-fouls" title="Фолы (0-4). Клик по полоскам +1, «−» убирает">
             <div class="foul-bars foul-plus" data-player-id="${seat.player_id}">${bars}</div>
             <button class="foul-minus-btn foul-minus" type="button" data-player-id="${seat.player_id}">−</button>
         </div>
+
+        <button class="pl-more" type="button" data-position="${seat.position}" aria-label="Карточки и статус">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+        </button>
 
         <div class="pl-controls">
             <div class="pl-roles">
@@ -354,15 +369,16 @@ function renderRoles() {
                 <button class="pl-btn role-sher ${seat.role === 'sheriff' ? 'active' : ''}"
                     data-position="${seat.position}" data-role="sheriff" data-team="red">Шер</button>
             </div>
-
-            <button class="pl-btn card-yellow ${seat.card === 'yellow' ? 'active' : ''}"
-                type="button" data-player-id="${seat.player_id}" title="Жёлтая карточка">ЖК</button>
-            <button class="pl-btn card-red ${seat.card === 'red' ? 'active' : ''}"
-                type="button" data-player-id="${seat.player_id}" title="Красная карточка">КК</button>
-            <button class="pl-btn critical-toggle ${seat.is_critical ? 'active' : ''}"
-                type="button" data-player-id="${seat.player_id}" title="Критический круг">Крит</button>
-            <button class="pl-btn eliminated-toggle ${out && seat.elimination_reason === 'removed' ? 'active' : ''}"
-                type="button" data-player-id="${seat.player_id}" title="Удалён">Удал</button>
+            <div class="pl-extra">
+                <button class="pl-btn card-yellow ${seat.card === 'yellow' ? 'active' : ''}"
+                    type="button" data-player-id="${seat.player_id}" title="Жёлтая карточка">ЖК</button>
+                <button class="pl-btn card-red ${seat.card === 'red' ? 'active' : ''}"
+                    type="button" data-player-id="${seat.player_id}" title="Красная карточка">КК</button>
+                <button class="pl-btn critical-toggle ${seat.is_critical ? 'active' : ''}"
+                    type="button" data-player-id="${seat.player_id}" title="Критический круг">Крит</button>
+                <button class="pl-btn eliminated-toggle ${out && seat.elimination_reason === 'removed' ? 'active' : ''}"
+                    type="button" data-player-id="${seat.player_id}" title="Удалён">Удал</button>
+            </div>
         </div>
     </div>
     `;
@@ -456,6 +472,7 @@ function renderRoles() {
   });
 
   updateAvailablePlayers();
+  applyPickHighlight();
 }
 
 window.updateAvailablePlayers = () => {
@@ -624,8 +641,8 @@ window.toggleSuspect = (playerId) => {
 };
 
 document.getElementById('applyBestMoveBtn').addEventListener('click', async () => {
-  if (selectedSuspects.length !== 3) {
-    UI.showToast('Выберите ровно 3 подозреваемых', 'error');
+  if (selectedSuspects.length === 0) {
+    UI.showToast('Выберите хотя бы 1 номер', 'error');
     return;
   }
   
@@ -1262,3 +1279,344 @@ function animateRoleChange(positions) {
     });
   });
 }
+// ================== ПАНЕЛЬ КРУГА (этап 2) ==================
+let phaseState = { gameId: null, round: 1, step: null }; // step: null = автоматически
+let phaseBusy = false;
+let bmPick = [];
+
+const PHASE_STEPS = [
+  { key: 'vote',    label: 'Голосование' },
+  { key: 'kill',    label: 'Отстрел' },
+  { key: 'don',     label: 'Дон' },
+  { key: 'sheriff', label: 'Шериф' },
+  { key: 'bm',      label: 'ЛХ' }
+];
+
+function ppRound(n) { return (gameData.rounds || []).find(r => r.round_number === n) || null; }
+function ppSeat(id) { return gameData.seating.find(s => s.player_id === id) || null; }
+function ppNum(id) { const s = ppSeat(id); return s ? s.position : '?'; }
+function ppMaxRound() { return Math.max(0, ...(gameData.rounds || []).map(r => r.round_number)); }
+
+function ppBmSkipped() { return localStorage.getItem('bm_skip_' + gameIdFromData()) === '1'; }
+function ppBmDone() {
+  const bm = gameData.best_move;
+  return ppBmSkipped() || !!(bm && (bm.suspect_1 || bm.suspect_2 || bm.suspect_3));
+}
+function ppHasBm(r) { return !!(r && r.round_number === 1 && r.mafia_kill_player_id && !r.mafia_miss); }
+
+function ppStepFilled(r, key) {
+  if (!r) return false;
+  switch (key) {
+    case 'vote':    return (r.voted_out_players || []).length > 0 || r.nobody_voted_out === true;
+    case 'kill':    return !!r.mafia_kill_player_id || r.mafia_miss === true;
+    case 'don':     return !!r.don_check_player_id || r.don_check_none === true;
+    case 'sheriff': return !!r.sheriff_check_player_id || r.sheriff_check_none === true;
+    case 'bm':      return ppBmDone();
+  }
+  return false;
+}
+
+function ppSteps(r) { return PHASE_STEPS.filter(s => s.key !== 'bm' || ppHasBm(r)); }
+function ppAutoStep(r) {
+  const s = ppSteps(r).find(s => !ppStepFilled(r, s.key));
+  return s ? s.key : 'done';
+}
+function ppCurrentStep() { return phaseState.step || ppAutoStep(ppRound(phaseState.round)); }
+
+function ppStepValue(r, key) {
+  if (key === 'bm') {
+    const bm = gameData.best_move;
+    const arr = bm ? [bm.suspect_1, bm.suspect_2, bm.suspect_3].filter(Boolean).map(ppNum) : [];
+    return arr.length ? arr.join(',') : (ppBmSkipped() ? '—' : '');
+  }
+  if (!r) return '';
+  switch (key) {
+    case 'vote':
+      if ((r.voted_out_players || []).length) return r.voted_out_players.map(ppNum).join(',');
+      return r.nobody_voted_out ? '✕' : '';
+    case 'kill':    return r.mafia_kill_player_id ? ppNum(r.mafia_kill_player_id) : (r.mafia_miss ? 'промах' : '');
+    case 'don':     return r.don_check_player_id ? ppNum(r.don_check_player_id) : (r.don_check_none ? '✕' : '');
+    case 'sheriff': return r.sheriff_check_player_id ? ppNum(r.sheriff_check_player_id) : (r.sheriff_check_none ? '✕' : '');
+  }
+  return '';
+}
+
+// Можно ли выбрать игрока на этом шаге круга n
+function ppIsPickable(seat, step, n) {
+  if (step === 'bm') {
+    const r1 = ppRound(1);
+    return !(r1 && seat.player_id === r1.mafia_kill_player_id);
+  }
+  if (seat.is_eliminated) return false;
+  for (const r of gameData.rounds || []) {
+    const killedBefore = !r.mafia_miss && r.mafia_kill_player_id === seat.player_id && r.round_number < n;
+    const voted = !r.nobody_voted_out && (r.voted_out_players || []).includes(seat.player_id);
+    const votedInRange = step === 'vote' ? r.round_number < n : r.round_number <= n;
+    if (killedBefore || (voted && votedInRange)) return false;
+  }
+  return true;
+}
+
+function ppIsPicked(id, step, r) {
+  if (step === 'bm') return bmPick.includes(id);
+  if (!r) return false;
+  return (step === 'vote' && (r.voted_out_players || []).includes(id)) ||
+         (step === 'kill' && r.mafia_kill_player_id === id) ||
+         (step === 'don' && r.don_check_player_id === id) ||
+         (step === 'sheriff' && r.sheriff_check_player_id === id);
+}
+
+// Активная роль выбыла (или убита этой ночью) — подсказка судье
+function ppRoleOut(role, n) {
+  const seat = gameData.seating.find(s => s.role === role);
+  if (!seat) return false;
+  const r = ppRound(n);
+  return !ppIsPickable(seat, 'kill', n) || (r && !r.mafia_miss && r.mafia_kill_player_id === seat.player_id);
+}
+
+function ppSyncFromData() {
+  const gid = gameIdFromData();
+  if (phaseState.gameId !== gid) {
+    phaseState = { gameId: gid, round: Math.max(1, ppMaxRound()), step: null };
+  }
+  const bm = gameData.best_move;
+  bmPick = bm ? [bm.suspect_1, bm.suspect_2, bm.suspect_3].filter(Boolean) : [];
+}
+
+function applyPickHighlight() {
+  const grid = document.getElementById('rolesGrid');
+  if (!grid || !gameData || !gameData.seating || !gameData.seating.length) return;
+  const step = ppCurrentStep();
+  const active = step !== 'done';
+  const r = ppRound(phaseState.round);
+  grid.classList.toggle('pick-mode', active);
+  grid.querySelectorAll('.pl-row[data-position]').forEach(row => {
+    const seat = gameData.seating.find(s => String(s.position) === row.dataset.position);
+    const can = active && seat && ppIsPickable(seat, step, phaseState.round);
+    row.classList.toggle('pickable', !!can);
+    row.classList.toggle('picked', !!(active && seat && ppIsPicked(seat.player_id, step, r)));
+  });
+}
+
+function renderPhasePanel() {
+  const panel = document.getElementById('phasePanel');
+  if (!panel || !gameData) return;
+  if (!gameData.seating || !gameData.seating.length) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+
+  const n = phaseState.round;
+  const r = ppRound(n);
+  const step = ppCurrentStep();
+  const max = ppMaxRound();
+  const btn = (act, text, cls = 'secondary') =>
+    `<button type="button" class="btn btn-${cls}" data-act="${act}">${text}</button>`;
+
+  const chips = ppSteps(r).map(s => {
+    const val = ppStepValue(r, s.key);
+    const sep = s.key === 'kill' ? '<span class="pp-sep">Ночь</span>' : '';
+    return `${sep}<button type="button" class="pp-chip ${step === s.key ? 'active' : ''} ${ppStepFilled(r, s.key) ? 'filled' : ''}" data-step="${s.key}">${s.label}${val !== '' ? ` <b>${val}</b>` : ''}</button>`;
+  }).join('');
+
+  let hint = '', buttons = '';
+  switch (step) {
+    case 'vote':
+      hint = 'Голосование: нажмите на выбывшего';
+      buttons = btn('nobody', 'Никто не выбыл');
+      break;
+    case 'kill':
+      hint = 'Отстрел: нажмите на игрока';
+      buttons = btn('miss', 'Промах');
+      break;
+    case 'don':
+      hint = 'Проверка Дона' + (ppRoleOut('don', n) ? ' — Дон выбыл' : '');
+      buttons = btn('don-none', 'Не проверял');
+      break;
+    case 'sheriff':
+      hint = 'Проверка Шерифа' + (ppRoleOut('sheriff', n) ? ' — Шериф выбыл' : '');
+      buttons = btn('sheriff-none', 'Не проверял');
+      break;
+    case 'bm':
+      hint = `«Игрок №${ppNum(r.mafia_kill_player_id)}, ваш Лучший ход» — отметьте до 3 номеров`;
+      buttons = btn('bm-save', `Сохранить ЛХ (${bmPick.length})`, 'primary') + btn('bm-skip', 'Пропустить');
+      break;
+    case 'done':
+      hint = `Круг ${n} заполнен`;
+      buttons = btn('next-round', `Круг ${n + 1} →`, 'primary');
+      break;
+  }
+  if (['vote', 'kill', 'don', 'sheriff'].includes(step) && ppStepFilled(r, step)) {
+    buttons += btn('clear', 'Очистить');
+  }
+
+  panel.innerHTML = `
+    <div class="pp-top">
+      <div class="pp-round">
+        <button type="button" class="gt-nav-btn" data-nav="-1" ${n <= 1 ? 'disabled' : ''}>
+          <svg class="ic" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <span>Круг ${n}</span>
+        <button type="button" class="gt-nav-btn" data-nav="1" ${n > max ? 'disabled' : ''}>
+          <svg class="ic" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="pp-steps">${chips}</div>
+    </div>
+    <div class="pp-action">
+      <span class="pp-hint">${hint}</span>
+      <div class="pp-buttons">${buttons}</div>
+    </div>`;
+
+  applyPickHighlight();
+}
+
+async function ppSave(fields) {
+  if (phaseBusy) return;
+  phaseBusy = true;
+  try {
+    const n = phaseState.round;
+    if (ppRound(n)) await API.updateRound(gameIdFromData(), n, fields);
+    else await API.addRound(gameIdFromData(), { round_number: n, ...fields });
+    socket.emit('game_updated', { gameId: gameIdFromData() });
+    phaseState.step = null;
+    await loadGameData();
+  } catch (e) {
+    UI.showToast('Ошибка сохранения круга', 'error');
+    console.error(e);
+  } finally {
+    phaseBusy = false;
+  }
+}
+
+async function ppPick(playerId) {
+  const step = ppCurrentStep();
+  const r = ppRound(phaseState.round);
+  if (step === 'vote') {
+    const cur = (r && r.voted_out_players) || [];
+    const next = cur.includes(playerId) ? cur.filter(x => x !== playerId) : [...cur, playerId];
+    return ppSave({ voted_out_players: next, nobody_voted_out: false });
+  }
+  if (step === 'kill')    return ppSave({ mafia_kill_player_id: playerId, mafia_miss: false });
+  if (step === 'don')     return ppSave({ don_check_player_id: playerId, don_check_none: false });
+  if (step === 'sheriff') return ppSave({ sheriff_check_player_id: playerId, sheriff_check_none: false });
+  if (step === 'bm') {
+    const i = bmPick.indexOf(playerId);
+    if (i > -1) bmPick.splice(i, 1);
+    else {
+      if (bmPick.length >= 3) { UI.showToast('Максимум 3 номера', 'error'); return; }
+      bmPick.push(playerId);
+    }
+    bmPick.sort((a, b) => ppNum(a) - ppNum(b));
+    renderPhasePanel();
+  }
+}
+
+async function ppAction(act) {
+  const step = ppCurrentStep();
+  const gid = gameIdFromData();
+  switch (act) {
+    case 'nobody':       return ppSave({ voted_out_players: [], nobody_voted_out: true });
+    case 'miss':         return ppSave({ mafia_kill_player_id: null, mafia_miss: true });
+    case 'don-none':     return ppSave({ don_check_player_id: null, don_check_none: true });
+    case 'sheriff-none': return ppSave({ sheriff_check_player_id: null, sheriff_check_none: true });
+    case 'clear': {
+      const map = {
+        vote:    { voted_out_players: [], nobody_voted_out: false },
+        kill:    { mafia_kill_player_id: null, mafia_miss: false },
+        don:     { don_check_player_id: null, don_check_none: false },
+        sheriff: { sheriff_check_player_id: null, sheriff_check_none: false }
+      };
+      if (!map[step]) return;
+      await ppSave(map[step]);
+      phaseState.step = step;
+      renderPhasePanel();
+      return;
+    }
+    case 'bm-save': {
+      const r1 = ppRound(1);
+      if (!r1 || !r1.mafia_kill_player_id) return;
+      if (!bmPick.length) { UI.showToast('Отметьте номера или нажмите «Пропустить»', 'error'); return; }
+      if (phaseBusy) return;
+      phaseBusy = true;
+      try {
+        await API.setBestMove(gid, {
+          first_killed_player_id: r1.mafia_kill_player_id,
+          suspect_1: bmPick[0] || null,
+          suspect_2: bmPick[1] || null,
+          suspect_3: bmPick[2] || null
+        });
+        localStorage.removeItem('bm_skip_' + gid);
+        socket.emit('game_updated', { gameId: gid });
+        phaseState.step = null;
+        await loadGameData();
+      } catch (e) {
+        UI.showToast('Ошибка сохранения ЛХ', 'error');
+        console.error(e);
+      } finally {
+        phaseBusy = false;
+      }
+      return;
+    }
+    case 'bm-skip':
+      localStorage.setItem('bm_skip_' + gid, '1');
+      phaseState.step = null;
+      renderPhasePanel();
+      return;
+    case 'next-round':
+      phaseState.round = Math.min(phaseState.round + 1, ppMaxRound() + 1);
+      phaseState.step = null;
+      renderPhasePanel();
+      return;
+  }
+}
+
+// Клики по панели (делегирование — навешиваем один раз)
+document.getElementById('phasePanel')?.addEventListener('click', (e) => {
+  const nav = e.target.closest('[data-nav]');
+  if (nav && !nav.disabled) {
+    const n = phaseState.round + parseInt(nav.dataset.nav, 10);
+    phaseState.round = Math.max(1, Math.min(n, ppMaxRound() + 1));
+    phaseState.step = null;
+    renderPhasePanel();
+    return;
+  }
+  const chip = e.target.closest('[data-step]');
+  if (chip) { phaseState.step = chip.dataset.step; renderPhasePanel(); return; }
+  const act = e.target.closest('[data-act]');
+  if (act) ppAction(act.dataset.act);
+});
+
+// Клик по строке игрока в режиме выбора
+document.getElementById('rolesGrid')?.addEventListener('click', (e) => {
+  const grid = e.currentTarget;
+  if (!grid.classList.contains('pick-mode')) return;
+  if (e.target.closest('button, select, .foul-bars')) return;
+  const row = e.target.closest('.pl-row.pickable');
+  if (!row) return;
+  const seat = gameData.seating.find(s => String(s.position) === row.dataset.position);
+  if (seat) ppPick(seat.player_id);
+});
+
+// ============================================================
+// КОМПАКТНЫЙ МОБИЛЬНЫЙ ВИД
+// ============================================================
+var plExpanded = null; // позиция раскрытого игрока (только один)
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.pl-more');
+  if (!btn) return;
+  const pos = Number(btn.dataset.position);
+  plExpanded = (Number(plExpanded) === pos) ? null : pos;
+  document.querySelectorAll('#rolesGrid .pl-row').forEach(row => {
+    row.classList.toggle('expanded', Number(row.dataset.position) === plExpanded);
+  });
+});
+
+// Высота шапки → CSS-переменная, чтобы панель круга прилипала прямо под ней
+(function syncTopbarHeight() {
+  const tb = document.getElementById('gameTopbar');
+  if (!tb) return;
+  const set = () => document.documentElement.style.setProperty('--topbar-h', tb.offsetHeight + 'px');
+  set();
+  window.addEventListener('resize', set);
+  if (window.ResizeObserver) new ResizeObserver(set).observe(tb);
+})();

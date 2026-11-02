@@ -630,3 +630,197 @@ body {
   .pl-controls { order: 3; flex: 1; }
   .pl-btn { height: 36px; }
 }
+
+/* ============================================================
+   ПАНЕЛЬ КРУГА (фазы)
+   ============================================================ */
+.phase-panel {
+  border: 1px solid var(--acc-line);
+  background: var(--bg-2);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.pp-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pp-round { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; white-space: nowrap; }
+.pp-steps { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; }
+.pp-sep { color: var(--tx-2); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; margin: 0 2px 0 6px; }
+.pp-chip {
+  height: 32px; padding: 0 10px;
+  display: inline-flex; align-items: center; gap: 6px;
+  border-radius: 6px; border: 1px solid var(--line);
+  background: var(--bg-1); color: var(--tx-1);
+  font-weight: 600; font-size: 13px; cursor: pointer; transition: .12s;
+}
+.pp-chip b { color: var(--tx-0); }
+.pp-chip.filled { border-color: var(--acc-line); }
+.pp-chip.active { background: var(--acc); border-color: var(--acc); color: #1A1206; }
+.pp-chip.active b { color: #1A1206; }
+.pp-action { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.pp-hint { font-weight: 600; color: var(--tx-0); }
+.pp-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.pp-buttons .btn { padding: 8px 14px; }
+
+/* Режим выбора игрока кликом по строке */
+#rolesGrid.pick-mode .pl-row.pickable { cursor: pointer; border-color: var(--acc-line); }
+#rolesGrid.pick-mode .pl-row.pickable:hover { border-color: var(--acc); background: var(--bg-3); }
+#rolesGrid.pick-mode .pl-row:not(.pickable) { opacity: .35; }
+#rolesGrid.pick-mode .pl-row.picked { border-color: var(--acc); box-shadow: inset 0 0 0 2px var(--acc-soft); }
+#rolesGrid.pick-mode .pl-row.picked .pl-num { background: var(--acc); color: #1A1206; }
+#rolesGrid.pick-mode .pl-name-wrap select { pointer-events: none; }
+
+@media (max-width: 768px) {
+  .pp-chip { height: 38px; }
+  .pp-buttons .btn { padding: 10px 14px; }
+}
+
+/* ============================================================
+   КОМПАКТНЫЙ ВИД (строка игрока, шапка, панель круга)
+   ============================================================ */
+
+/* Десктоп: «⋯» и значки не нужны, кнопки в одну линию как раньше */
+.pl-more, .pl-flags { display: none; }
+.pl-extra { display: inline-flex; gap: 6px; }
+.pl-flag {
+  font-size: 10px; font-weight: 800; line-height: 1;
+  padding: 3px 4px; border-radius: 4px;
+}
+.pl-flag.f-yellow { background: var(--warn); color: #1A1206; }
+.pl-flag.f-red    { background: var(--bad);  color: #fff; }
+.pl-flag.f-crit   { background: var(--acc);  color: #1A1206; }
+
+@media (max-width: 768px) {
+  /* --- секция --- */
+  #rolesSection { padding: 10px; }
+  #rolesSection .roles-head { margin-bottom: 8px; }
+  #rolesSection .roles-head h3 { font-size: 16px; margin: 0; }
+
+  /* --- строка игрока: сетка, основная линия + скрытая вторая --- */
+  .pl-row {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) auto auto 34px;
+    grid-template-areas:
+      "num name flags fouls more"
+      "ctrl ctrl ctrl ctrl ctrl";
+    align-items: center;
+    column-gap: 6px;
+    row-gap: 0;
+    padding: 4px 6px;
+    margin-bottom: 4px;
+    min-height: 48px;
+  }
+  .pl-num   { grid-area: num; width: 26px; height: 26px; font-size: 13px; }
+  .pl-name-wrap { grid-area: name; min-width: 0; }
+  .pl-flags { grid-area: flags; display: flex; gap: 3px; }
+  .pl-fouls { grid-area: fouls; gap: 2px; }
+  .pl-more  { grid-area: more; }
+
+  /* ник выглядит как текст, но остаётся выпадающим списком */
+  .pl-name-wrap .form-select {
+    -webkit-appearance: none; appearance: none;
+    background: transparent; background-image: none;
+    border: 0; box-shadow: none;
+    padding: 6px 2px;
+    font-size: 16px;          /* меньше 16px — iPhone зумит страницу при тапе */
+    font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* фолы: большая зона нажатия */
+  .foul-bars { padding: 10px 6px; gap: 3px; }
+  .foul-bar  { width: 5px; height: 18px; }
+  .foul-minus-btn { width: 32px; height: 32px; }
+
+  /* кнопка «⋯» */
+  .pl-more {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 36px;
+    border: 0; border-radius: 6px;
+    background: transparent; color: var(--tx-1);
+    cursor: pointer;
+  }
+  .pl-row.expanded .pl-more { color: var(--acc); background: var(--bg-3); }
+  .pl-row.expanded .pl-flags { display: none; }
+
+  /* вторая линия: видна только при раскрытии или включённых ролях */
+  .pl-controls {
+    grid-area: ctrl;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px 0 4px;
+    width: 100%;
+  }
+  .pl-row.expanded .pl-controls,
+  #rolesSection.roles-visible .pl-controls { display: flex; }
+
+  .pl-extra { display: none; }
+  .pl-row.expanded .pl-extra {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 100%;
+  }
+  #rolesSection.roles-visible .pl-roles {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 100%;
+  }
+  .pl-controls .pl-btn { height: 36px; padding: 0 4px; }
+
+  /* --- панель круга --- */
+  .phase-panel {
+    position: sticky;
+    top: calc(var(--topbar-h, 56px) + 4px);
+    z-index: 40;
+    background: #1E293B;
+    padding: 8px;
+    margin-bottom: 8px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, .35);
+  }
+  .pp-top { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+  .pp-round {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%;
+  }
+  .pp-steps {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 4px;
+    width: 100%;
+  }
+  .pp-sep { display: none; }
+  .pp-chip {
+    height: 36px; min-width: 0;
+    padding: 0 2px;
+    font-size: 12px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pp-action {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    margin-top: 6px;
+  }
+  .pp-hint { flex: 1 1 auto; min-width: 0; font-size: 13px; margin: 0; }
+  .pp-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pp-buttons button { height: 34px; padding: 0 10px; font-size: 13px; }
+}
+
+/* --- шапка в одну строку на телефоне --- */
+@media (max-width: 560px) {
+  .game-topbar {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 8px;
+    margin-bottom: 10px;
+  }
+  .gt-games { gap: 4px; }
+  .gt-nav-btn { width: 34px; height: 40px; }
+  .gt-game-label { min-width: 0; }
+  .gt-game-num { font-size: 15px; white-space: nowrap; }
+  .gt-game-sub { display: none; }
+  .gt-timers { gap: 6px; }
+  .timer-btn { min-width: 52px; height: 40px; padding: 0 8px; font-size: 17px; }
+  .timer-reset-btn { width: 34px; height: 40px; }
+
+  /* OBS на телефоне скрыт, пока не подключён */
+  .gt-obs { display: none; }
+  .game-topbar:has(.obs-status.connected) { flex-wrap: wrap; }
+  .gt-obs:has(.obs-status.connected) { display: flex; width: 100%; }
+}
