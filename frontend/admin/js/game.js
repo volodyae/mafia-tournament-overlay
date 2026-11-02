@@ -12,28 +12,10 @@ let gameData = null;
 let tournamentPlayers = [];
 let socket = null; // локальная переменная для удобства
 let currentNominees = [];
-let votedOutPlayers = [];
-let nobodyVotedOut = false; // явный выбор "Никто не выбыл"
-let selectedFirstKilled = null;
-let selectedSuspects = [];
 
 // DOM элементы
-const gameTitle = document.getElementById('gameTitle');
-const overlayUrl = document.getElementById('overlayUrl');
-const copyOverlayBtn = document.getElementById('copyOverlayBtn');
-const openOverlayBtn = document.getElementById('openOverlayBtn');
-const toggleOverlayVisibilityBtn = document.getElementById('toggleOverlayVisibilityBtn');
 const rolesSection = document.getElementById('rolesSection');
 const rolesGrid = document.getElementById('rolesGrid');
-const bestMoveSection = document.getElementById('bestMoveSection');
-const nomineesSection = document.getElementById('nomineesSection');
-const roundsSection = document.getElementById('roundsSection');
-const roundModal = document.getElementById('roundModal');
-const roundForm = document.getElementById('roundForm');
-const closeRoundModal = document.getElementById('closeRoundModal');
-const closeRoundBtn = document.getElementById('closeRoundBtn');
-const addRoundBtn = document.getElementById('addRoundBtn');
-const roundsList = document.getElementById('roundsList');
 const saveSeatingBtn = document.getElementById('saveSeatingBtn');
 const winRedBtn = document.getElementById('winRedBtn');
 const winBlackBtn = document.getElementById('winBlackBtn');
@@ -125,25 +107,15 @@ async function loadGameData() {
   try {
     gameData = await API.request(`/games/by-number/${tournamentId}/${gameNumber}`);
     tournamentPlayers = await API.getTournamentPlayers(gameData.tournament_id);
-    
+
     renderGameHeader();
     renderOverlayLink();
-    updateOverlayVisibilityButton();
-    
-    rolesSection.style.display = 'block';
-    renderRoles();
 
-    bestMoveSection.style.display = 'block';
-    nomineesSection.style.display = 'block';
-    roundsSection.style.display = 'block';
-    
-    loadBestMoveData();
-    renderBestMove();
-    renderNominees();
-    renderRounds();
+    rolesSection.style.display = 'block';
+    syncNominees();
+    renderRoles();
     ppSyncFromData();
     renderPhasePanel();
-    updateResultButtons();
     updateResultButtons();
     updateNextGameButton();
     
@@ -285,14 +257,34 @@ function renderGameHeader() {
 }
 
 // Ссылка на оверлей
+let overlayLinkUrl = '';
 function renderOverlayLink() {
   const base = window.OVERLAY_CONFIG?.BASE_URL || window.location.origin;
-  const url = `${base}/overlay/index.html?tournament=${tournamentId}&game=${gameNumber}`;
-  overlayUrl.textContent = url;
+  overlayLinkUrl = `${base}/overlay/index.html?tournament=${tournamentId}&game=${gameNumber}`;
+  const btn = document.getElementById('copyOverlayBtn');
+  if (btn) btn.title = 'Скопировать ссылку на оверлей\n' + overlayLinkUrl;
 }
 
-function updateOverlayVisibilityButton() {
-  return; // кнопка удалена, функция оставлена для совместимости вызова
+// Копирование с запасным способом (буфер обмена недоступен на http:// по IP)
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e) {}
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.top = '-1000px';
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) {}
+  ta.remove();
+  return ok;
 }
 
 // === Рассадка + роли ===
@@ -387,8 +379,6 @@ function renderRoles() {
     </div>
     `;
   }).join('');
-
-  saveSeatingBtn.style.display = 'inline-block';
 
   document.querySelectorAll('.pl-btn, .foul-plus, .foul-minus').forEach(btn => {
     const isEliminateBtn = btn.classList.contains('eliminated-toggle');
@@ -501,6 +491,14 @@ window.updateAvailablePlayers = () => {
       }
     });
   });
+  // «Сохранить рассадку»: после сохранения видна только при несохранённых изменениях
+  if (gameData && gameData.seating && gameData.seating.length) {
+    const dirty = Array.from(selects).some(s => {
+      const seat = gameData.seating.find(x => String(x.position) === s.dataset.position);
+      return !seat || s.value !== seat.player_id;
+    });
+    saveSeatingBtn.style.display = dirty ? 'inline-block' : 'none';
+  }
 };
 
 saveSeatingBtn.addEventListener('click', async () => {
@@ -577,133 +575,13 @@ async function applyRolesInstant() {
   }
 }
 
-// === ЛУЧШИЙ ХОД ===
-
-function renderBestMove() {
-  const aliveSeats = gameData.seating.filter(s => !s.is_eliminated);
-  
-  const bestMoveInfo = document.getElementById('bestMoveInfo');
-  if (gameData.best_move && gameData.best_move.first_killed_player_id) {
-    const firstKilledSeat = gameData.seating.find(s => s.player_id === gameData.best_move.first_killed_player_id);
-    if (firstKilledSeat) {
-      bestMoveInfo.innerHTML = `<p><strong>ПУ:</strong> ${firstKilledSeat.position}. ${firstKilledSeat.nickname}</p>`;
-    }
-  } else {
-    bestMoveInfo.innerHTML = `<p style="color: var(--text-secondary);">ПУ</p>`;
-  }
-  
-  const suspectsButtons = document.getElementById('suspectsButtons');
-  suspectsButtons.innerHTML = aliveSeats.map(s => `
-    <button class="btn ${selectedSuspects.includes(s.player_id) ? 'btn-primary' : 'btn-secondary'}" 
-        onclick="toggleSuspect('${s.player_id}', ${s.position})"
-        style="min-width: 50px;">
-        ${s.position}
-    </button>
-  `).join('');
-}
-
-function loadBestMoveData() {
-  if (gameData.best_move) {
-    selectedSuspects = [
-      gameData.best_move.suspect_1,
-      gameData.best_move.suspect_2,
-      gameData.best_move.suspect_3
-    ].filter(Boolean);
-  } else {
-    selectedSuspects = [];
-  }
-}
-
-window.toggleSuspect = (playerId) => {
-  const index = selectedSuspects.indexOf(playerId);
-  
-  if (index > -1) {
-    selectedSuspects.splice(index, 1);
-  } else {
-    if (selectedSuspects.length >= 3) {
-      UI.showToast('Максимум 3 подозреваемых', 'error');
-      return;
-    }
-    selectedSuspects.push(playerId);
-  }
-  
-  selectedSuspects.sort((a, b) => {
-    const posA = gameData.seating.find(s => s.player_id === a).position;
-    const posB = gameData.seating.find(s => s.player_id === b).position;
-    return posA - posB;
-  });
-  
-  renderBestMove();
-};
-
-document.getElementById('applyBestMoveBtn').addEventListener('click', async () => {
-  if (selectedSuspects.length === 0) {
-    UI.showToast('Выберите хотя бы 1 номер', 'error');
-    return;
-  }
-  
-  let firstKilledPlayerId = gameData.best_move?.first_killed_player_id;
-  
-  if (!firstKilledPlayerId) {
-    UI.showToast('Сначала добавьте круг 1 с первым убитым', 'error');
-    return;
-  }
-  
-  const data = {
-    first_killed_player_id: firstKilledPlayerId,
-    suspect_1: selectedSuspects[0],
-    suspect_2: selectedSuspects[1],
-    suspect_3: selectedSuspects[2]
-  };
-  
-  try {
-    await API.setBestMove(gameIdFromData(), data);
-    UI.showToast('ЛХ сохранен');
-    socket.emit('game_updated', { gameId: gameIdFromData() });
-    
-    await loadGameData();
-  } catch (error) {
-    UI.showToast('Ошибка сохранения ЛХ', 'error');
-    console.error(error);
-  }
-});
-
 // === ВЫСТАВЛЕНИЕ НА ГОЛОСОВАНИЕ ===
-
-function renderNominees() {
+// Актуальный список выставленных (только живые, в порядке выставления)
+function syncNominees() {
   const aliveSeats = gameData.seating.filter(s => !isPlayerOut(s.player_id));
-
   currentNominees = (gameData.nominees || []).filter(n =>
     aliveSeats.some(s => s.player_id === n.player_id)
   );
-
-  const nomineeButtons = document.getElementById('nomineeButtons');
-  nomineeButtons.innerHTML = Array.from({ length: 10 }, (_, i) => {
-    const position = i + 1;
-    const seat = aliveSeats.find(s => s.position === position);
-
-    if (!seat) {
-      return `<button class="nominee-btn" disabled>${position}</button>`;
-    }
-
-    const isSelected = currentNominees.some(n => n.player_id === seat.player_id);
-    const btnClass = isSelected ? 'nominee-btn active' : 'nominee-btn';
-
-    return `<button 
-        class="${btnClass}" 
-        type="button"
-        data-player-id="${seat.player_id}" 
-        data-position="${position}">
-        ${position}
-    </button>`;
-  }).join('');
-
-  nomineeButtons.querySelectorAll('.nominee-btn').forEach(btn => {
-    if (btn.disabled) return;
-    btn.addEventListener('click', () => toggleNominee(btn));
-  });
-
-  renderNomineesList();
 }
 
 function toggleNominee(button) {
@@ -740,105 +618,10 @@ async function updateNomineesOnServer() {
   }
 }
 
-function renderNomineesList() {
-  const nomineesList = document.getElementById('nomineesList');
-  
-  if (!currentNominees || currentNominees.length === 0) {
-    nomineesList.innerHTML = '<p style="color: var(--text-secondary);">Нет кандидатов</p>';
-    return;
-  }
-
-  nomineesList.innerHTML = currentNominees.map(nominee => {
-    const seat = gameData.seating.find(s => s.player_id === nominee.player_id);
-    return `
-        <div class="nominee-tag">
-            <span>${seat.position}. ${nominee.nickname}</span>
-            <button onclick="removeNominee('${nominee.player_id}')">×</button>
-        </div>
-    `;
-  }).join('');
-}
-
 window.removeNominee = async (playerId) => {
   currentNominees = currentNominees.filter(n => n.player_id !== playerId);
   await updateNomineesOnServer();
 };
-
-document.getElementById('clearNomineesBtn').addEventListener('click', async () => {
-  currentNominees = [];
-  await updateNomineesOnServer();
-  UI.showToast('Список очищен');
-});
-
-// === Круги ===
-
-function renderRounds() {
-  if (!gameData.rounds || gameData.rounds.length === 0) {
-    roundsList.innerHTML = '<p style="color: var(--text-secondary); margin-bottom:12px;">Нет кругов. Добавьте первый круг.</p>';
-    return;
-  }
-
-  roundsList.innerHTML = gameData.rounds.map(round => {
-    const mafiaKill = round.mafia_miss ? 'Промах' : round.mafia_kill_player_id ? getPlayerName(round.mafia_kill_player_id) : '—';
-    const donCheck = round.don_check_player_id ? getPlayerName(round.don_check_player_id) : (round.don_check_none ? 'Не проверял' : '—');
-    const sheriffCheck = round.sheriff_check_player_id ? getPlayerName(round.sheriff_check_player_id) : (round.sheriff_check_none ? 'Не проверял' : '—');
-    const votedOut = round.nobody_voted_out ? 'Никто' : (round.voted_out_players && round.voted_out_players.length > 0
-      ? round.voted_out_players.map(id => getPlayerName(id)).join(', ') : '—');
-
-    return `
-      <div style="background: var(--bg-2); border:1px solid var(--line); border-radius: var(--r-sm); padding: 14px; margin-bottom: 10px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <strong style="font-size:15px;">Круг ${round.round_number}</strong>
-          <button class="pl-btn" onclick="editRound(${round.round_number})" title="Редактировать">
-            <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
-          </button>
-        </div>
-        <div style="display:grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; color: var(--tx-1);">
-          <span>Убит:</span><span style="color:var(--tx-0);">${mafiaKill}</span>
-          <span>Проверка Дона:</span><span style="color:var(--tx-0);">${donCheck}</span>
-          <span>Проверка Шерифа:</span><span style="color:var(--tx-0);">${sheriffCheck}</span>
-          <span>Голосование:</span><span style="color:var(--tx-0);">${votedOut}</span>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-window.editRound = (roundNumber) => {
-  const round = gameData.rounds.find(r => r.round_number === roundNumber);
-  if (!round) return;
-  
-  votedOutPlayers = round.voted_out_players || [];
-  nobodyVotedOut = round.nobody_voted_out === true;
-  
-  document.getElementById('roundModalTitle').textContent = `Редактировать круг ${roundNumber}`;
-  document.getElementById('roundNumber').value = roundNumber;
-  
-  populateRoundSelects();
-  
-  document.getElementById('mafiaKill').value = round.mafia_miss ? 'miss' : (round.mafia_kill_player_id || '');
-  document.getElementById('donCheck').value = round.don_check_player_id || (round.don_check_none ? 'none' : '');
-  document.getElementById('sheriffCheck').value = round.sheriff_check_player_id || (round.sheriff_check_none ? 'none' : '');
-
-  renderVotedOutList();
-  roundModal.classList.add('active');
-  roundForm.dataset.mode = 'edit';
-};
-
-addRoundBtn.addEventListener('click', () => {
-  votedOutPlayers = [];
-  nobodyVotedOut = false;
-  const nextRoundNumber = (gameData.rounds?.length || 0) + 1;
-  
-  document.getElementById('roundModalTitle').textContent = `Круг ${nextRoundNumber}`;
-  document.getElementById('roundNumber').value = nextRoundNumber;
-  
-  populateRoundSelects();
-  renderVotedOutList();
-  
-  roundModal.classList.add('active');
-  roundForm.dataset.mode = 'create';
-});
 
 // Модалка доп. баллов судьи
 async function openScoresModal() {
@@ -901,140 +684,16 @@ async function openScoresModal() {
   scoresModal.classList.add('active');
 }
 
-function populateRoundSelects() {
-  const aliveSeats = gameData.seating.filter(s => !isPlayerOut(s.player_id));
-  const allSeats = gameData.seating.slice();
-
-  const aliveOptions = aliveSeats.map(s => 
-    `<option value="${s.player_id}">${s.position}. ${s.nickname}</option>`
-  ).join('');
-
-  const allOptions = allSeats.map(s => 
-    `<option value="${s.player_id}">${s.position}. ${s.nickname}</option>`
-  ).join('');
-
-  document.getElementById('mafiaKill').innerHTML = 
-    '<option value="">Выберите игрока</option><option value="miss">Промах</option>' + aliveOptions;
-  
-  document.getElementById('donCheck').innerHTML = 
-    '<option value="">Выберите игрока</option><option value="none">Не проверял</option>' + allOptions;
-  
-  document.getElementById('sheriffCheck').innerHTML = 
-    '<option value="">Выберите игрока</option><option value="none">Не проверял</option>' + allOptions;
-
-  const votedSet = new Set(votedOutPlayers);
-
-  const addVotedOutOptions = aliveSeats.map(s => {
-    const disabled = votedSet.has(s.player_id) ? 'disabled' : '';
-    return `<option value="${s.player_id}" ${disabled}>${s.position}. ${s.nickname}</option>`;
-  }).join('');
-
-  document.getElementById('addVotedOut').innerHTML = 
-    '<option value="">+ Добавить игрока</option><option value="nobody">❌ Никто не выбыл</option>' + addVotedOutOptions;
-}
-
-function renderVotedOutList() {
-  const votedOutList = document.getElementById('votedOutList');
-  
-  if (votedOutPlayers.length === 0) {
-    votedOutList.innerHTML = nobodyVotedOut
-      ? '<div class="nominee-tag"><span>Никто не выбыл</span></div>'
-      : '';
-    return;
-  }
-
-  votedOutList.innerHTML = votedOutPlayers.map(playerId => {
-    const seat = gameData.seating.find(s => s.player_id === playerId);
-    return `
-        <div class="nominee-tag">
-            <span>${seat.position}. ${seat.nickname}</span>
-            <button onclick="removeVotedOut('${playerId}')">×</button>
-        </div>
-    `;
-  }).join('');
-}
-
-window.removeVotedOut = async (playerId) => {
-  votedOutPlayers = votedOutPlayers.filter(id => id !== playerId);
-  renderVotedOutList();
-  await saveRound();
-};
-
-document.getElementById('addVotedOut').addEventListener('change', async (e) => {
-  const value = e.target.value;
-  if (!value) return;
-
-  if (value === 'nobody') {
-    votedOutPlayers = [];
-    nobodyVotedOut = true;
-    renderVotedOutList();
-    e.target.value = '';
-    await saveRound();
-    return;
-  }
-
-  if (votedOutPlayers.includes(value)) {
-    UI.showToast('Игрок уже добавлен', 'error');
-    e.target.value = '';
-    return;
-  }
-
-  votedOutPlayers.push(value);
-  nobodyVotedOut = false;
-  renderVotedOutList();
-  e.target.value = '';
-  await saveRound();
-});
-
-['mafiaKill', 'donCheck', 'sheriffCheck'].forEach(id => {
-  document.getElementById(id).addEventListener('change', () => {
-    saveRound();
-  });
-});
-
-async function saveRound() {
-  const mafiaKillValue = document.getElementById('mafiaKill').value;
-  const donCheckValue = document.getElementById('donCheck').value;
-  const sheriffCheckValue = document.getElementById('sheriffCheck').value;
-  const roundNumber = parseInt(document.getElementById('roundNumber').value);
-
-  const roundData = {
-    round_number: roundNumber,
-    mafia_kill_player_id: mafiaKillValue === 'miss' ? null : (mafiaKillValue || null),
-    mafia_miss: mafiaKillValue === 'miss',
-    don_check_player_id: (donCheckValue && donCheckValue !== 'none') ? donCheckValue : null,
-    don_check_none: donCheckValue === 'none',
-    sheriff_check_player_id: (sheriffCheckValue && sheriffCheckValue !== 'none') ? sheriffCheckValue : null,
-    sheriff_check_none: sheriffCheckValue === 'none',
-    voted_out_players: votedOutPlayers,
-    nobody_voted_out: votedOutPlayers.length === 0 && nobodyVotedOut
-  };
-
-  try {
-    const isEdit = roundForm.dataset.mode === 'edit';
-
-    if (isEdit) {
-      await API.updateRound(gameIdFromData(), roundNumber, roundData);
-    } else {
-      await API.addRound(gameIdFromData(), roundData);
-      roundForm.dataset.mode = 'edit';
-    }
-
-    socket.emit('game_updated', { gameId: gameIdFromData() });
-    await loadGameData();
-  } catch (error) {
-    UI.showToast('Ошибка сохранения круга', 'error');
-    console.error(error);
-  }
-}
-
 // === Общие обработчики ===
 
 function setupEventListeners() {
-  copyOverlayBtn.addEventListener('click', () => {
-    navigator.clipboard.writeText(overlayUrl.textContent);
-    UI.showToast('Ссылка скопирована');
-  });
+  const copyOverlayBtn = document.getElementById('copyOverlayBtn');
+  if (copyOverlayBtn) {
+    copyOverlayBtn.addEventListener('click', async () => {
+      if (await copyText(overlayLinkUrl)) UI.showToast('Ссылка на оверлей скопирована');
+      else window.prompt('Скопируйте ссылку:', overlayLinkUrl);
+    });
+  }
 
   // Кнопки результата игры
   if (winRedBtn) {
@@ -1234,28 +893,9 @@ if (saveResultBtn) {
       });
     });
   }
-
-  closeRoundModal.addEventListener('click', () => {
-    roundModal.classList.remove('active');
-  });
-
-  closeRoundBtn.addEventListener('click', () => {
-    roundModal.classList.remove('active');
-  });
-
-  roundModal.addEventListener('click', (e) => {
-    if (e.target === roundModal) {
-      roundModal.classList.remove('active');
-    }
-  });
 }
 
 // Утилиты
-
-function getPlayerName(playerId) {
-  const seat = gameData.seating.find(s => s.player_id === playerId);
-  return seat ? `${seat.position}. ${seat.nickname}` : '?';
-}
 
 function animateRoleChange(positions) {
   if (!Array.isArray(positions) || positions.length === 0) return;
